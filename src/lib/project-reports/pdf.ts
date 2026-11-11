@@ -18,7 +18,9 @@ import {
   type DprReport,
   type NarrativeKey,
 } from "./engine";
+import { eligibilityIssues, SCHEME_RULES, SECTOR_LABEL } from "./eligibility";
 import type { ProjectReportRecord } from "./store";
+import { templateById } from "./templates";
 
 /**
  * The printed DPR.
@@ -732,6 +734,70 @@ function annexures(lay: Layout, input: DprInput, report: DprReport) {
   );
 }
 
+/**
+ * The scheme's conditions set against this project, line by line, the way a
+ * bank or DIC officer checks a file before forwarding it.
+ */
+function schemeCompliance(lay: Layout, input: DprInput, report: DprReport) {
+  const terms = report.scheme;
+  const rule = SCHEME_RULES[input.scheme];
+  if (!terms || !rule || input.scheme === "none" || input.scheme === "other") return;
+  lay.section(`Scheme Eligibility and Compliance — ${terms.label}`, { fresh: true });
+  const lead = input.promoters.find((p) => p.name.trim());
+  const template = templateById(input.templateId);
+  const status = (ok: boolean | null) => (ok === null ? "To be verified" : ok ? "Meets" : "Not met");
+  const rows: [string, string, string, boolean | null][] = [
+    ["Nature of activity", rule.sectors.map((s) => SECTOR_LABEL[s].split(" (")[0]).join(", "), SECTOR_LABEL[input.sector].split(" (")[0], rule.sectors.includes(input.sector)],
+    ["Activity not in the negative list", "Not excluded under the scheme", input.activity || template?.activity || "-", template ? !template.notFor.includes(input.scheme) : null],
+  ];
+  if (terms.maxProjectCost) rows.push(["Project cost (excluding land)", `Up to Rs. ${L(terms.maxProjectCost)} lakh`, `Rs. ${L(report.cost.total)} lakh`, report.cost.total <= terms.maxProjectCost]);
+  if (terms.maxLoan) rows.push(["Bank loan", `Up to Rs. ${L(terms.maxLoan)} lakh`, `Rs. ${L(report.means.bankLoan)} lakh`, report.means.bankLoan <= terms.maxLoan]);
+  rows.push(["Promoter's contribution", `At least ${terms.ownContributionPct}% of project cost`, `${report.means.ownContributionPct}% (Rs. ${L(report.means.ownContribution)} lakh)`, report.means.ownContributionPct >= terms.ownContributionPct]);
+  if (terms.subsidyPct > 0) rows.push(["Margin money subsidy", `${terms.subsidyPct}% of project cost${terms.subsidyCap ? `, up to Rs. ${L(terms.subsidyCap)} lakh` : ""}`, `Rs. ${L(report.means.subsidy)} lakh`, null]);
+  if (terms.interestSubventionPct > 0) rows.push(["Interest subvention", `${terms.interestSubventionPct}% for ${terms.interestSubventionYears} years`, "Taken in the projections", true]);
+  rows.push(["Age of promoter", `${rule.age.min}${rule.age.max ? ` to ${rule.age.max}` : " and above"} years`, lead?.age ? `${lead.age} years` : "To be furnished", lead?.age ? lead.age >= rule.age.min && (rule.age.max === null || lead.age <= rule.age.max) : null]);
+  if (rule.educationEn) rows.push(["Educational qualification", rule.educationEn, lead?.qualification || "To be furnished", null]);
+  rows.push(["Constitution", "New micro enterprise", CONSTITUTIONS.find((c) => c.value === input.constitution)?.label ?? "", true]);
+  lay.table(
+    [{ label: "Condition", width: 24 }, { label: "Scheme requirement", width: 32 }, { label: "This project", width: 28 }, { label: "Status", width: 16 }],
+    rows.map(([a, b, c, ok]) => ({ cells: [a, b, c, status(ok)], muted: ok === null })),
+  );
+  const issues = eligibilityIssues(input);
+  lay.note(
+    issues.length
+      ? "Some conditions above are not met. The application should be corrected before submission."
+      : "The project meets the scheme's conditions as known on the date of this report. Final eligibility is decided by the implementing agency and the bank.",
+  );
+}
+
+/** What the bank will ask for along with this report. */
+function documentChecklist(lay: Layout, input: DprInput) {
+  const rule = SCHEME_RULES[input.scheme];
+  const template = templateById(input.templateId);
+  const common = [
+    "Aadhaar card and PAN card of the promoter(s)",
+    "Two recent passport-size photographs",
+    "Proof of residence of the promoter",
+    "Proof of unit premises: ownership document / rent or lease agreement / consent of owner",
+    "Quotations for machinery and equipment from suppliers (with GST number)",
+    "Educational qualification and experience / training certificates",
+    "Caste / category certificate (if claiming special category)",
+    "Bank statement of the promoter for the last 6 months",
+    "Udyam Registration certificate (or undertaking to obtain it)",
+    "This Detailed Project Report signed by the promoter",
+  ];
+  const licences = (template?.text.licences ?? []).filter((l) => !/Udyam|Current account/i.test(l));
+  const schemeDocs = rule?.documents ?? [];
+  // The scheme's own wording wins where both lists name the same document.
+  const items = [...common.filter((c) => !(/^Caste/.test(c) && schemeDocs.some((d) => /^Caste/.test(d)))), ...schemeDocs, ...licences.map((l) => `${l} (or application for it)`)];
+  lay.section("Annexure C — Documents Checklist", { fresh: true });
+  lay.note("Documents to be attached with the loan application. Tick each one as it is collected.");
+  lay.table(
+    [{ label: "#", width: 6 }, { label: "Document", width: 80 }, { label: "Attached", width: 14, align: "center" }],
+    items.map((item, i) => ({ cells: [String(i + 1), item, "[   ]"] })),
+  );
+}
+
 function declaration(lay: Layout, input: DprInput) {
   const doc = lay.doc;
   lay.ensure(170);
@@ -784,6 +850,7 @@ export async function renderProjectReportPdf(record: ProjectReportRecord) {
   doc.addPage(); // contents, filled in at the end once page numbers are known
   summary(lay, text, report);
   glance(lay, input, report);
+  schemeCompliance(lay, input, report);
   textSection(lay, "Project Profile", text, ["introduction", "promoters", "project", "employment"], { promoters: () => promoterTable(lay, input) });
   textSection(lay, "Market and Marketing", text, ["market", "marketing"]);
   textSection(lay, "Process, Machinery and Raw Material", text, ["process", "machinery", "rawMaterialSource", "licences"], { machinery: () => machineryTable(lay, input) });
@@ -800,6 +867,7 @@ export async function renderProjectReportPdf(record: ProjectReportRecord) {
   lay.para(text.conclusion);
   declaration(lay, input);
   annexures(lay, input, report);
+  documentChecklist(lay, input);
 
   doc.switchToPage(1);
   contents(doc, lay.toc);

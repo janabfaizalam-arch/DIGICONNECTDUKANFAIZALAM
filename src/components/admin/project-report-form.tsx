@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   CheckCircle2,
   ChevronDown,
+  Info,
   Plus,
   Rocket,
   Sparkles,
@@ -45,8 +46,27 @@ import {
   type DprInput,
   type Promoter,
 } from "@/lib/project-reports/engine";
+import {
+  eligibilityIssues,
+  isEligible,
+  SCHEME_RULES,
+  SECTOR_LABEL,
+  sectorsFor,
+  templatesFor,
+} from "@/lib/project-reports/eligibility";
+import {
+  DPR_GUIDE,
+  GUIDE_HEADINGS,
+  IMPORTANCE_LABEL,
+  type DprGuideKey,
+  type Importance,
+} from "@/lib/project-reports/field-guide";
 import { sampleDpr } from "@/lib/project-reports/sample";
-import { applyTemplate, TEMPLATES } from "@/lib/project-reports/templates";
+import {
+  applyTemplate,
+  templateById,
+  TEMPLATES,
+} from "@/lib/project-reports/templates";
 import { cn } from "@/lib/utils";
 
 /**
@@ -56,6 +76,12 @@ import { cn } from "@/lib/utils";
  */
 
 const rs = (value: number) => `Rs. ${formatAmount(value)}`;
+
+const PROMOTER_CATEGORIES = ["General", "OBC", "SC", "ST", "Minority", "Women", "Ex-serviceman", "Divyang"];
+
+function firstEligible(schemeId: DprInput["scheme"], sector: "all" | DprInput["sector"]) {
+  return templatesFor(schemeId, sector)[0]?.templates[0]?.id ?? TEMPLATES[0].id;
+}
 
 /** A number box that keeps what is being typed and reports a number. */
 function NumberBox({
@@ -111,27 +137,115 @@ function NumberBox({
   );
 }
 
+const IMPORTANCE_TONE: Record<Importance, "danger" | "warning" | "neutral" | "info"> = {
+  required: "danger",
+  important: "warning",
+  optional: "neutral",
+  auto: "info",
+};
+
+/** How long the pointer has to rest on a box before its guide opens. */
+const HOVER_DELAY_MS = 450;
+
+/**
+ * Shows a box's guide — what to enter, where to get it, why the bank needs
+ * it and whether it is required — as soon as focus moves into the box, or
+ * the pointer rests on it. Closes on typing, Escape, leaving the box or the
+ * pointer moving away.
+ */
+function useGuide() {
+  const [open, setOpen] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => (timer.current ? clearTimeout(timer.current) : undefined), []);
+  const cancel = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  };
+  return {
+    open,
+    handlers: {
+      onFocus: () => setOpen(true),
+      onBlur: (event: React.FocusEvent<HTMLElement>) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          cancel();
+          setOpen(false);
+        }
+      },
+      onKeyDown: (event: React.KeyboardEvent) => {
+        if (event.key === "Escape" || event.key.length === 1 || event.key === "Backspace") setOpen(false);
+      },
+      onMouseEnter: () => {
+        cancel();
+        timer.current = setTimeout(() => setOpen(true), HOVER_DELAY_MS);
+      },
+      onMouseLeave: (event: React.MouseEvent<HTMLElement>) => {
+        cancel();
+        if (!event.currentTarget.contains(document.activeElement)) setOpen(false);
+      },
+    },
+  };
+}
+
+function GuideCard({ guide, title, open, className }: { guide: DprGuideKey; title: string; open: boolean; className?: string }) {
+  const entry = DPR_GUIDE[guide];
+  return (
+    <div
+      role="tooltip"
+      hidden={!open}
+      data-guide={guide}
+      className={cn(
+        "pointer-events-none absolute z-30 w-full min-w-[16rem] max-w-[min(22rem,calc(100vw-2rem))] rounded-ds-md border border-ds-border bg-ds-surface p-3 text-xs leading-snug text-ds-text-secondary shadow-ds-lg",
+        className,
+      )}
+    >
+      <span className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1 font-bold text-ds-text-primary">
+          <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          {title.replace(/ \*$/, "")}
+        </span>
+        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold", STATUS_TONE_CLASS[IMPORTANCE_TONE[entry.importance]])}>
+          {IMPORTANCE_LABEL[entry.importance]}
+        </span>
+      </span>
+      <span className="mt-2 block">
+        <span className="font-semibold text-ds-text-primary">{GUIDE_HEADINGS.what}: </span>
+        {entry.what}
+      </span>
+      <span className="mt-1.5 block">
+        <span className="font-semibold text-ds-text-primary">{GUIDE_HEADINGS.where}: </span>
+        {entry.where}
+      </span>
+      <span className="mt-1.5 block">
+        <span className="font-semibold text-ds-text-primary">{GUIDE_HEADINGS.why}: </span>
+        {entry.why}
+      </span>
+    </div>
+  );
+}
+
 function Field({
   label,
   help,
   children,
   className,
+  guide,
 }: {
   label: string;
   help?: string;
   children: ReactNode;
   className?: string;
+  guide?: DprGuideKey;
 }) {
+  const { open, handlers } = useGuide();
   return (
-    <label className={cn("block space-y-1.5", className)}>
-      <span className="block text-xs font-bold text-ds-text-secondary">
-        {label}
-      </span>
-      {children}
-      {help ? (
-        <span className="block text-xs text-ds-text-muted">{help}</span>
-      ) : null}
-    </label>
+    <div className={cn("relative", className)} {...(guide ? handlers : {})}>
+      <label className="block space-y-1.5">
+        <span className="block text-xs font-bold text-ds-text-secondary">{label}</span>
+        {children}
+        {help ? <span className="block text-xs text-ds-text-muted">{help}</span> : null}
+      </label>
+      {guide ? <GuideCard guide={guide} title={label} open={open} className="left-0 top-full mt-1.5" /> : null}
+    </div>
   );
 }
 
@@ -140,27 +254,28 @@ function Section({
   title,
   hint,
   children,
+  guide,
 }: {
   step: number;
   title: string;
   hint?: string;
   children: ReactNode;
+  /** For sections of rows (machinery, products...), one guide for the whole list. */
+  guide?: DprGuideKey;
 }) {
+  const { open, handlers } = useGuide();
   return (
     <AdminCard>
-      <div className="flex items-start gap-3">
+      <div className="relative flex items-start gap-3" {...(guide ? handlers : {})}>
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ds-primary text-xs font-bold text-ds-text-inverted">
           {step}
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-[15px] font-bold text-ds-text-primary">
-            {title}
-          </h2>
-          {hint ? (
-            <p className="mt-0.5 text-[13px] text-ds-text-muted">{hint}</p>
-          ) : null}
+          <h2 className="text-[15px] font-bold text-ds-text-primary">{title}</h2>
+          {hint ? <p className="mt-0.5 text-[13px] text-ds-text-muted">{hint}</p> : null}
           <div className="mt-4 space-y-4">{children}</div>
         </div>
+        {guide ? <GuideCard guide={guide} title={title} open={open} className="right-0 top-0" /> : null}
       </div>
     </AdminCard>
   );
@@ -219,8 +334,9 @@ export function ProjectReportForm({
   } | null>(null);
 
   const [quickTemplate, setQuickTemplate] = useState(
-    initial.templateId ?? TEMPLATES[0].id,
+    initial.templateId ?? firstEligible(initial.scheme, "all"),
   );
+  const [quickSector, setQuickSector] = useState<"all" | DprInput["sector"]>("all");
   const [quickCostLakh, setQuickCostLakh] = useState<number | null>(
     initial.templateId ? null : 10,
   );
@@ -302,10 +418,52 @@ export function ProjectReportForm({
 
   const years = report.years.length;
 
+  const rule = SCHEME_RULES[input.scheme];
+  const allowedSectors = sectorsFor(input.scheme);
+  const eligibleGroups = useMemo(() => templatesFor(input.scheme, quickSector), [input.scheme, quickSector]);
+  const eligibleCount = eligibleGroups.reduce((sum, g) => sum + g.templates.length, 0);
+  const quickScheme = schemeFor({ ...input, sector: templateById(quickTemplate)?.sector ?? input.sector });
+  const costLimitLakh = input.scheme !== "none" && quickScheme?.maxProjectCost ? quickScheme.maxProjectCost / 100000 : null;
+  const eligibility = useMemo(() => eligibilityIssues(input), [input]);
+
+  /** Keep the business picked only if the new scheme / sector funds it; else take the first that it does. */
+  function keepEligible(schemeId: DprInput["scheme"], sector: typeof quickSector) {
+    const current = templateById(quickTemplate);
+    if (current && isEligible(current, schemeId) && (sector === "all" || current.sector === sector)) return;
+    setQuickTemplate(firstEligible(schemeId, sector));
+  }
+  function changeScheme(next: DprInput["scheme"]) {
+    set("scheme", next);
+    const sector = quickSector !== "all" && !sectorsFor(next).includes(quickSector) ? "all" : quickSector;
+    setQuickSector(sector);
+    keepEligible(next, sector);
+    // Smaller schemes have a lower project cost limit; bring the default within it.
+    const limit = schemeFor({ ...input, scheme: next })?.maxProjectCost;
+    if (limit && quickCostLakh && quickCostLakh * 100000 > limit) setQuickCostLakh(limit / 100000);
+  }
+  function changeSector(next: typeof quickSector) {
+    setQuickSector(next);
+    keepEligible(input.scheme, next);
+  }
+  /** The scheme category follows the promoter's: anyone but General counts as special. */
+  function changeSocialCategory(next: string) {
+    setInput((current) => ({
+      ...current,
+      category: next === "General" ? "general" : "special",
+      promoters: current.promoters.length
+        ? current.promoters.map((p, i) => (i === 0 ? { ...p, socialCategory: next } : p))
+        : [{ ...(emptyPromoter() as Promoter), socialCategory: next }],
+    }));
+  }
+
   function buildQuick() {
     const lakh = quickCostLakh ?? report.cost.total / 100000;
     if (!(lakh > 0)) {
       setMessage({ tone: "danger", text: "Project cost (lakh mein) bhariye." });
+      return;
+    }
+    if (!quickTemplate) {
+      setMessage({ tone: "danger", text: "Kaam / business type chuniye." });
       return;
     }
     setInput((current) =>
@@ -357,104 +515,17 @@ export function ProjectReportForm({
               <Rocket className="h-4 w-4" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
-              <h2 className="text-[15px] font-bold text-ds-text-primary">
-                Quick DPR: sirf basic details
-              </h2>
+              <h2 className="text-[15px] font-bold text-ds-text-primary">Quick DPR: sirf basic details</h2>
               <p className="mt-0.5 text-[13px] text-ds-text-muted">
-                Kaam chuniye aur project cost daaliye. Machinery, capacity, raw
-                material, staff, kharche, market, process, licence, risk aur
-                SWOT apne aap bhar jaayenge, aur 18–20 page ki bank-ready DPR
-                banegi.
+                Yojana chuniye, phir kaam. Sirf wahi business dikhenge jo us yojana mein loan ke layak hain. Machinery, capacity, raw material, staff, kharche,
+                market, process, licence, risk aur SWOT apne aap bhar jaayenge, aur 18–20 page ki bank-ready DPR banegi. Kisi bhi box par jaate hi
+                batayega ki kya bharna hai, kahan se milega aur kyon.
               </p>
+              <p className="mt-1 text-xs font-semibold text-ds-text-secondary">* wale box zaroori hain. Baaki khaali chhod sakte hain.</p>
+
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <Field label="Kaam / business type *">
-                  <AdminSelect
-                    value={quickTemplate}
-                    onChange={(e) => setQuickTemplate(e.target.value)}
-                  >
-                    {TEMPLATES.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </AdminSelect>
-                </Field>
-                <Field
-                  label="Project cost (Rs. lakh) *"
-                  help="Machinery + working capital milakar, jaise 10"
-                >
-                  <NumberBox
-                    label="Project cost (Rs. lakh) *"
-                    nullable
-                    value={quickCostLakh}
-                    onChange={setQuickCostLakh}
-                    suffix="lakh"
-                  />
-                </Field>
-                <Field label="Business ka naam *">
-                  <AdminInput
-                    value={input.businessName}
-                    onChange={(e) => set("businessName", e.target.value)}
-                  />
-                </Field>
-                <Field label="District">
-                  <AdminInput
-                    value={input.district}
-                    onChange={(e) => set("district", e.target.value)}
-                  />
-                </Field>
-                <Field label="Promoter ka naam">
-                  <AdminInput
-                    value={lead.name}
-                    onChange={(e) => setLead({ name: e.target.value })}
-                  />
-                </Field>
-                <Field label="Pita / pati">
-                  <AdminInput
-                    value={lead.fatherName}
-                    onChange={(e) => setLead({ fatherName: e.target.value })}
-                  />
-                </Field>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Promoter ki umr">
-                    <NumberBox
-                      label="Promoter ki umr"
-                      nullable
-                      value={lead.age}
-                      onChange={(v) =>
-                        setLead({ age: v === null ? null : Math.round(v) })
-                      }
-                    />
-                  </Field>
-                  <Field label="Promoter category">
-                    <AdminSelect
-                      value={lead.socialCategory}
-                      onChange={(e) =>
-                        setLead({ socialCategory: e.target.value })
-                      }
-                    >
-                      {[
-                        "General",
-                        "OBC",
-                        "SC",
-                        "ST",
-                        "Minority",
-                        "Women",
-                        "Ex-serviceman",
-                        "Divyang",
-                      ].map((c) => (
-                        <option key={c}>{c}</option>
-                      ))}
-                    </AdminSelect>
-                  </Field>
-                </div>
-                <Field label="Yojana">
-                  <AdminSelect
-                    value={input.scheme}
-                    onChange={(e) =>
-                      set("scheme", e.target.value as DprInput["scheme"])
-                    }
-                  >
+                <Field guide="scheme" label="Yojana *">
+                  <AdminSelect value={input.scheme} onChange={(e) => changeScheme(e.target.value as DprInput["scheme"])}>
                     {SCHEME_OPTIONS.map((s) => (
                       <option key={s.value} value={s.value}>
                         {s.label}
@@ -462,14 +533,83 @@ export function ProjectReportForm({
                     ))}
                   </AdminSelect>
                 </Field>
+                <Field guide="sector" label="Kaam ka prakaar *">
+                  <AdminSelect value={quickSector} onChange={(e) => changeSector(e.target.value as typeof quickSector)}>
+                    <option value="all">Sab ({allowedSectors.map((x) => SECTOR_LABEL[x].split(" (")[0]).join(", ")})</option>
+                    {allowedSectors.map((x) => (
+                      <option key={x} value={x}>
+                        {SECTOR_LABEL[x]}
+                      </option>
+                    ))}
+                  </AdminSelect>
+                </Field>
+                <Field
+                  guide="templateId"
+                  label="Kaam / business type *"
+                  help={`${eligibleCount} business is yojana mein milte hain`}
+                  className="md:col-span-2"
+                >
+                  <AdminSelect value={quickTemplate} onChange={(e) => setQuickTemplate(e.target.value)}>
+                    {eligibleGroups.map((group) => (
+                      <optgroup key={group.group} label={group.label}>
+                        {group.templates.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </AdminSelect>
+                </Field>
+
+                {rule && input.scheme !== "none" && input.scheme !== "other" ? (
+                  <div className="rounded-ds-lg border border-ds-border bg-ds-surface-sunken p-3 text-xs leading-relaxed text-ds-text-secondary md:col-span-2">
+                    <p className="font-bold text-ds-text-primary">{scheme?.label ?? "Yojana"} ki shartein</p>
+                    <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                      {scheme?.summary ? <li>{scheme.summary}</li> : null}
+                      <li>
+                        Umr: {rule.age.min}
+                        {rule.age.max ? `–${rule.age.max}` : "+"} saal{rule.education ? `. Padhai: ${rule.education}` : "."}
+                      </li>
+                      {rule.excludes ? <li>{rule.excludes}</li> : null}
+                    </ul>
+                  </div>
+                ) : null}
+
+                <Field
+                  guide="projectCost"
+                  label="Project cost (Rs. lakh) *"
+                  help={costLimitLakh ? `Is yojana mein zyada se zyada Rs. ${costLimitLakh} lakh` : "Machinery + working capital milakar, jaise 10"}
+                >
+                  <NumberBox label="Project cost (Rs. lakh) *" nullable value={quickCostLakh} onChange={setQuickCostLakh} suffix="lakh" />
+                </Field>
+                <Field guide="businessName" label="Business ka naam *">
+                  <AdminInput value={input.businessName} onChange={(e) => set("businessName", e.target.value)} />
+                </Field>
+                <Field guide="promoterName" label="Promoter ka naam *">
+                  <AdminInput value={lead.name} onChange={(e) => setLead({ name: e.target.value })} />
+                </Field>
+                <Field guide="fatherName" label="Pita / pati">
+                  <AdminInput value={lead.fatherName} onChange={(e) => setLead({ fatherName: e.target.value })} />
+                </Field>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Area">
-                    <AdminSelect
-                      value={input.area}
-                      onChange={(e) =>
-                        set("area", e.target.value as DprInput["area"])
-                      }
-                    >
+                  <Field guide="age" label="Promoter ki umr">
+                    <NumberBox label="Promoter ki umr" nullable value={lead.age} onChange={(v) => setLead({ age: v === null ? null : Math.round(v) })} />
+                  </Field>
+                  <Field guide="socialCategory" label="Promoter category">
+                    <AdminSelect value={lead.socialCategory} onChange={(e) => changeSocialCategory(e.target.value)}>
+                      {PROMOTER_CATEGORIES.map((c) => (
+                        <option key={c}>{c}</option>
+                      ))}
+                    </AdminSelect>
+                  </Field>
+                </div>
+                <Field guide="district" label="District *">
+                  <AdminInput value={input.district} onChange={(e) => set("district", e.target.value)} />
+                </Field>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field guide="area" label="Area">
+                    <AdminSelect value={input.area} onChange={(e) => set("area", e.target.value as DprInput["area"])}>
                       {AREA_OPTIONS.map((s) => (
                         <option key={s.value} value={s.value}>
                           {s.label}
@@ -477,13 +617,8 @@ export function ProjectReportForm({
                       ))}
                     </AdminSelect>
                   </Field>
-                  <Field label="Yojana category">
-                    <AdminSelect
-                      value={input.category}
-                      onChange={(e) =>
-                        set("category", e.target.value as DprInput["category"])
-                      }
-                    >
+                  <Field guide="category" label="Yojana category">
+                    <AdminSelect value={input.category} onChange={(e) => set("category", e.target.value as DprInput["category"])}>
                       {CATEGORY_OPTIONS.map((s) => (
                         <option key={s.value} value={s.value}>
                           {s.value === "general" ? "General" : "Special"}
@@ -492,22 +627,18 @@ export function ProjectReportForm({
                     </AdminSelect>
                   </Field>
                 </div>
-                <Field label="Bank aur branch">
-                  <AdminInput
-                    value={input.bankName}
-                    placeholder="Jaise: Bank of Baroda"
-                    onChange={(e) => set("bankName", e.target.value)}
-                  />
+                <Field guide="bankName" label="Bank">
+                  <AdminInput value={input.bankName} placeholder="Jaise: Bank of Baroda" onChange={(e) => set("bankName", e.target.value)} />
+                </Field>
+                <Field guide="bankBranch" label="Branch">
+                  <AdminInput value={input.bankBranch} placeholder="Jaise: Orai" onChange={(e) => set("bankBranch", e.target.value)} />
                 </Field>
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <AdminButton type="button" onClick={buildQuick}>
-                  <Sparkles className="h-4 w-4" aria-hidden="true" /> DPR
-                  taiyaar karein
+                  <Sparkles className="h-4 w-4" aria-hidden="true" /> DPR taiyaar karein
                 </AdminButton>
-                <span className="text-xs text-ds-text-muted">
-                  Pehle se bhari details (naam, promoter, yojana) nahi badlengi.
-                </span>
+                <span className="text-xs text-ds-text-muted">Upar bhari details (naam, promoter, yojana) nahi badlengi; baaki sab apne aap bharega.</span>
               </div>
             </div>
           </div>
@@ -542,13 +673,13 @@ export function ProjectReportForm({
             hint="Ye report ke cover page aur 'Project at a glance' mein jaata hai."
           >
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Business / unit ka naam *">
+              <Field guide="businessName" label="Business / unit ka naam *">
                 <AdminInput
                   value={input.businessName}
                   onChange={(e) => set("businessName", e.target.value)}
                 />
               </Field>
-              <Field label="Constitution">
+              <Field guide="constitution" label="Constitution">
                 <AdminSelect
                   value={input.constitution}
                   onChange={(e) =>
@@ -566,6 +697,7 @@ export function ProjectReportForm({
                 </AdminSelect>
               </Field>
               <Field
+                guide="activity"
                 label="Kaam / activity"
                 help="Jaise: manufacturing of wheat flour, computer training centre"
                 className="md:col-span-2"
@@ -575,26 +707,26 @@ export function ProjectReportForm({
                   onChange={(e) => set("activity", e.target.value)}
                 />
               </Field>
-              <Field label="Address" className="md:col-span-2">
+              <Field guide="address" label="Address" className="md:col-span-2">
                 <AdminInput
                   value={input.address}
                   onChange={(e) => set("address", e.target.value)}
                 />
               </Field>
-              <Field label="District">
+              <Field guide="district" label="District">
                 <AdminInput
                   value={input.district}
                   onChange={(e) => set("district", e.target.value)}
                 />
               </Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="State">
+                <Field guide="state" label="State">
                   <AdminInput
                     value={input.state}
                     onChange={(e) => set("state", e.target.value)}
                   />
                 </Field>
-                <Field label="Pincode">
+                <Field guide="pincode" label="Pincode">
                   <AdminInput
                     value={input.pincode}
                     inputMode="numeric"
@@ -605,7 +737,7 @@ export function ProjectReportForm({
                   />
                 </Field>
               </div>
-              <Field label="Premises">
+              <Field guide="premises" label="Premises">
                 <AdminSelect
                   value={input.premises}
                   onChange={(e) =>
@@ -618,19 +750,19 @@ export function ProjectReportForm({
                 </AdminSelect>
               </Field>
               <div className="grid grid-cols-3 gap-3">
-                <Field label="Udyam no.">
+                <Field guide="udyamNumber" label="Udyam no.">
                   <AdminInput
                     value={input.udyamNumber}
                     onChange={(e) => set("udyamNumber", e.target.value)}
                   />
                 </Field>
-                <Field label="GSTIN">
+                <Field guide="gstin" label="GSTIN">
                   <AdminInput
                     value={input.gstin}
                     onChange={(e) => set("gstin", e.target.value.toUpperCase())}
                   />
                 </Field>
-                <Field label="PAN">
+                <Field guide="pan" label="PAN">
                   <AdminInput
                     value={input.pan}
                     maxLength={10}
@@ -638,13 +770,13 @@ export function ProjectReportForm({
                   />
                 </Field>
               </div>
-              <Field label="Bank ka naam">
+              <Field guide="bankName" label="Bank ka naam">
                 <AdminInput
                   value={input.bankName}
                   onChange={(e) => set("bankName", e.target.value)}
                 />
               </Field>
-              <Field label="Branch">
+              <Field guide="bankBranch" label="Branch">
                 <AdminInput
                   value={input.bankBranch}
                   onChange={(e) => set("bankBranch", e.target.value)}
@@ -669,7 +801,7 @@ export function ProjectReportForm({
                   ) : null}
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
-                  <Field label="Naam">
+                  <Field guide="promoterName" label="Naam">
                     <AdminInput
                       value={p.name}
                       onChange={(e) =>
@@ -677,7 +809,7 @@ export function ProjectReportForm({
                       }
                     />
                   </Field>
-                  <Field label="Pita / pati ka naam">
+                  <Field guide="fatherName" label="Pita / pati ka naam">
                     <AdminInput
                       value={p.fatherName}
                       onChange={(e) =>
@@ -688,7 +820,7 @@ export function ProjectReportForm({
                     />
                   </Field>
                   <div className="grid grid-cols-2 gap-3">
-                    <Field label="Umr">
+                    <Field guide="age" label="Umr">
                       <NumberBox
                         label="Umr"
                         nullable
@@ -700,7 +832,7 @@ export function ProjectReportForm({
                         }
                       />
                     </Field>
-                    <Field label="Category">
+                    <Field guide="socialCategory" label="Category">
                       <AdminSelect
                         value={p.socialCategory}
                         onChange={(e) =>
@@ -724,7 +856,7 @@ export function ProjectReportForm({
                       </AdminSelect>
                     </Field>
                   </div>
-                  <Field label="Qualification">
+                  <Field guide="qualification" label="Qualification">
                     <AdminInput
                       value={p.qualification}
                       onChange={(e) =>
@@ -734,7 +866,7 @@ export function ProjectReportForm({
                       }
                     />
                   </Field>
-                  <Field label="Experience" className="md:col-span-2">
+                  <Field guide="experience" label="Experience" className="md:col-span-2">
                     <AdminInput
                       value={p.experience}
                       placeholder="Jaise: 5 years of experience in a flour mill"
@@ -745,7 +877,7 @@ export function ProjectReportForm({
                       }
                     />
                   </Field>
-                  <Field label="Mobile">
+                  <Field guide="mobile" label="Mobile">
                     <AdminInput
                       value={p.mobile}
                       inputMode="tel"
@@ -754,7 +886,7 @@ export function ProjectReportForm({
                       }
                     />
                   </Field>
-                  <Field label="Email">
+                  <Field guide="email" label="Email">
                     <AdminInput
                       value={p.email}
                       type="email"
@@ -763,7 +895,7 @@ export function ProjectReportForm({
                       }
                     />
                   </Field>
-                  <Field label="Gender">
+                  <Field guide="gender" label="Gender">
                     <AdminSelect
                       value={p.gender}
                       onChange={(e) =>
@@ -799,7 +931,7 @@ export function ProjectReportForm({
             hint="Yojana chunte hi own contribution, subsidy aur byaaj chhoot ke default lag jaate hain. Bank ya portal se confirm karein."
           >
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Loan yojana">
+              <Field guide="scheme" label="Loan yojana">
                 <AdminSelect
                   value={input.scheme}
                   onChange={(e) =>
@@ -814,7 +946,7 @@ export function ProjectReportForm({
                 </AdminSelect>
               </Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Pehla saal (FY)">
+                <Field guide="startFy" label="Pehla saal (FY)">
                   <AdminSelect
                     value={input.startFy}
                     onChange={(e) => set("startFy", Number(e.target.value))}
@@ -829,7 +961,7 @@ export function ProjectReportForm({
                     })}
                   </AdminSelect>
                 </Field>
-                <Field label="Kitne saal ka projection">
+                <Field guide="years" label="Kitne saal ka projection">
                   <AdminSelect
                     value={input.years}
                     onChange={(e) => set("years", Number(e.target.value))}
@@ -842,7 +974,7 @@ export function ProjectReportForm({
                   </AdminSelect>
                 </Field>
               </div>
-              <Field label="Sector">
+              <Field guide="sector" label="Sector">
                 <AdminSelect
                   value={input.sector}
                   onChange={(e) =>
@@ -857,7 +989,7 @@ export function ProjectReportForm({
                 </AdminSelect>
               </Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Area">
+                <Field guide="area" label="Area">
                   <AdminSelect
                     value={input.area}
                     onChange={(e) =>
@@ -871,7 +1003,7 @@ export function ProjectReportForm({
                     ))}
                   </AdminSelect>
                 </Field>
-                <Field label="Category (yojana ke liye)">
+                <Field guide="category" label="Category (yojana ke liye)">
                   <AdminSelect
                     value={input.category}
                     onChange={(e) =>
@@ -901,6 +1033,7 @@ export function ProjectReportForm({
             ) : null}
             <div className="grid gap-4 md:grid-cols-4">
               <Field
+                guide="ownContributionPct"
                 label="Own contribution %"
                 help={`Khaali = yojana ka (${report.means.ownContributionPct}%)`}
               >
@@ -912,7 +1045,7 @@ export function ProjectReportForm({
                   suffix="%"
                 />
               </Field>
-              <Field label="Term loan byaaj">
+              <Field guide="termLoanInterestPct" label="Term loan byaaj">
                 <NumberBox
                   label="Term loan byaaj"
                   value={input.termLoanInterestPct}
@@ -920,7 +1053,7 @@ export function ProjectReportForm({
                   suffix="%"
                 />
               </Field>
-              <Field label="CC byaaj">
+              <Field guide="ccInterestPct" label="CC byaaj">
                 <NumberBox
                   label="CC byaaj"
                   value={input.ccInterestPct}
@@ -928,7 +1061,7 @@ export function ProjectReportForm({
                   suffix="%"
                 />
               </Field>
-              <Field label="Tax (net profit par)">
+              <Field guide="taxPct" label="Tax (net profit par)">
                 <NumberBox
                   label="Tax percent"
                   value={input.taxPct}
@@ -936,7 +1069,7 @@ export function ProjectReportForm({
                   suffix="%"
                 />
               </Field>
-              <Field label="Loan avadhi (saal)" help="Moratorium milakar">
+              <Field guide="tenureYears" label="Loan avadhi (saal)" help="Moratorium milakar">
                 <NumberBox
                   label="Loan avadhi"
                   value={input.tenureYears}
@@ -944,7 +1077,7 @@ export function ProjectReportForm({
                   suffix="saal"
                 />
               </Field>
-              <Field label="Moratorium (mahine)" help="Sirf byaaj, kisht nahi">
+              <Field guide="moratoriumMonths" label="Moratorium (mahine)" help="Sirf byaaj, kisht nahi">
                 <NumberBox
                   label="Moratorium"
                   value={input.moratoriumMonths}
@@ -953,6 +1086,7 @@ export function ProjectReportForm({
                 />
               </Field>
               <Field
+                guide="termLoanOverride"
                 label="Term loan (khud likhein)"
                 help={`Khaali = auto (${rs(report.means.termLoan)})`}
               >
@@ -964,6 +1098,7 @@ export function ProjectReportForm({
                 />
               </Field>
               <Field
+                guide="ccLimitOverride"
                 label="CC limit (khud likhein)"
                 help={`Khaali = auto (${rs(report.means.ccLimit)})`}
               >
@@ -975,6 +1110,7 @@ export function ProjectReportForm({
                 />
               </Field>
               <Field
+                guide="subsidyOverride"
                 label="Subsidy (khud likhein)"
                 help={`Khaali = yojana se (${rs(report.means.subsidy)})`}
               >
@@ -985,7 +1121,7 @@ export function ProjectReportForm({
                   onChange={(v) => set("subsidyOverride", v)}
                 />
               </Field>
-              <Field label="Byaaj chhoot %" help="Khaali = yojana se">
+              <Field guide="interestSubventionPct" label="Byaaj chhoot %" help="Khaali = yojana se">
                 <NumberBox
                   label="Byaaj chhoot"
                   nullable
@@ -994,7 +1130,7 @@ export function ProjectReportForm({
                   suffix="%"
                 />
               </Field>
-              <Field label="Chhoot kitne saal" help="Khaali = yojana se">
+              <Field guide="interestSubventionYears" label="Chhoot kitne saal" help="Khaali = yojana se">
                 <NumberBox
                   label="Chhoot saal"
                   nullable
@@ -1008,6 +1144,7 @@ export function ProjectReportForm({
                 />
               </Field>
               <Field
+                guide="drawingsPerYear"
                 label="Drawings / saal"
                 help="Promoter ghar kharch ke liye nikalega"
               >
@@ -1022,7 +1159,7 @@ export function ProjectReportForm({
 
           <Section
             step={3}
-            title="Project cost: machinery aur capital items"
+            title="Project cost: machinery aur capital items" guide="capitalItem"
             hint="Har machine / item alag line mein. Zameen PMEGP aur MYSY mein project cost mein nahi gini jaati."
           >
             <div className="space-y-2">
@@ -1107,7 +1244,7 @@ export function ProjectReportForm({
                 />
                 Zameen project cost mein shamil karein
               </label>
-              <Field label="Preliminary kharch kitne saal mein write-off">
+              <Field guide="preliminaryWriteOffYears" label="Preliminary kharch kitne saal mein write-off">
                 <NumberBox
                   label="Write-off saal"
                   value={input.preliminaryWriteOffYears}
@@ -1152,7 +1289,7 @@ export function ProjectReportForm({
 
           <Section
             step={4}
-            title="Products / services aur capacity"
+            title="Products / services aur capacity" guide="product"
             hint="Capacity = 100% chalne par saal bhar mein kitna banega ya kitni service dega. Sales = capacity × utilisation × rate."
           >
             <div className="space-y-2">
@@ -1216,7 +1353,7 @@ export function ProjectReportForm({
               </p>
               <div className="mt-1.5 grid grid-cols-3 gap-2 sm:grid-cols-5">
                 {Array.from({ length: years }, (_, index) => (
-                  <Field key={index} label={fyLabel(input.startFy + index)}>
+                  <Field key={index} guide="utilisation" label={fyLabel(input.startFy + index)}>
                     <NumberBox
                       label={`Utilisation ${fyLabel(input.startFy + index)}`}
                       value={
@@ -1243,6 +1380,7 @@ export function ProjectReportForm({
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <Field
+                guide="priceGrowthPct"
                 label="Selling rate badhotri / saal"
                 help="Raw material ka rate bhi isi hisaab se badhega"
               >
@@ -1253,7 +1391,7 @@ export function ProjectReportForm({
                   suffix="%"
                 />
               </Field>
-              <Field label="Salary aur kharche badhotri / saal">
+              <Field guide="costGrowthPct" label="Salary aur kharche badhotri / saal">
                 <NumberBox
                   label="Cost growth"
                   value={input.costGrowthPct}
@@ -1266,7 +1404,7 @@ export function ProjectReportForm({
 
           <Section
             step={5}
-            title="Raw material (100% capacity par saal bhar ka)"
+            title="Raw material (100% capacity par saal bhar ka)" guide="rawMaterial"
             hint="Service project mein raw material na ho to khaali chhod dein."
           >
             <div className="space-y-2">
@@ -1328,7 +1466,7 @@ export function ProjectReportForm({
 
           <Section
             step={6}
-            title="Staff aur kharche"
+            title="Staff aur kharche" guide="staff"
             hint="Direct = utpadan / service mein seedha laga hua (operator, karigar). Indirect = office staff. 'Output ke saath badhe' wale kharche 100% capacity ke hisaab se bharein."
           >
             <div className="space-y-2">
@@ -1461,7 +1599,7 @@ export function ProjectReportForm({
             hint="Kitne din ka maal stock mein rahega, grahak kitne din mein paisa denge, supplier kitne din ka udhaar denge."
           >
             <div className="grid gap-4 sm:grid-cols-4">
-              <Field label="Raw material stock">
+              <Field guide="rawMaterialDays" label="Raw material stock">
                 <NumberBox
                   label="Raw material days"
                   value={input.rawMaterialDays}
@@ -1469,7 +1607,7 @@ export function ProjectReportForm({
                   suffix="din"
                 />
               </Field>
-              <Field label="Taiyar maal stock">
+              <Field guide="finishedGoodsDays" label="Taiyar maal stock">
                 <NumberBox
                   label="Finished goods days"
                   value={input.finishedGoodsDays}
@@ -1477,7 +1615,7 @@ export function ProjectReportForm({
                   suffix="din"
                 />
               </Field>
-              <Field label="Debtors (udhaar bikri)">
+              <Field guide="debtorDays" label="Debtors (udhaar bikri)">
                 <NumberBox
                   label="Debtor days"
                   value={input.debtorDays}
@@ -1485,7 +1623,7 @@ export function ProjectReportForm({
                   suffix="din"
                 />
               </Field>
-              <Field label="Creditors (supplier udhaar)">
+              <Field guide="creditorDays" label="Creditors (supplier udhaar)">
                 <NumberBox
                   label="Creditor days"
                   value={input.creditorDays}
@@ -1505,7 +1643,7 @@ export function ProjectReportForm({
 
           <Section
             step={8}
-            title="Report ka text"
+            title="Report ka text" guide="narrative"
             hint="Har section ka text figures se apne aap ban jaata hai. Badalna ho to yahan likhein; khaali chhodne par auto text chhapega."
           >
             {NARRATIVE_KEYS.map((key) => (
@@ -1594,13 +1732,14 @@ export function ProjectReportForm({
         </div>
       </div>
 
-      <LiveSummary report={report} />
+      <LiveSummary report={report} extraWarnings={eligibility} />
     </div>
   );
 }
 
-function LiveSummary({ report }: { report: ReturnType<typeof buildDpr> }) {
+function LiveSummary({ report, extraWarnings = [] }: { report: ReturnType<typeof buildDpr>; extraWarnings?: string[] }) {
   const y1 = report.years[0];
+  const warnings = [...extraWarnings, ...report.warnings];
   const rows: [string, string, boolean?][] = [
     ["Project cost", rs(report.cost.total), true],
     [
@@ -1716,9 +1855,9 @@ function LiveSummary({ report }: { report: ReturnType<typeof buildDpr> }) {
             {report.paybackYears?.toFixed(1) ?? "-"} saal.
           </p>
         ) : null}
-        {report.warnings.length ? (
+        {warnings.length ? (
           <ul className="space-y-1.5" aria-label="Dhyan dene wali baatein">
-            {report.warnings.map((warning) => (
+            {warnings.map((warning) => (
               <li
                 key={warning}
                 className={cn(

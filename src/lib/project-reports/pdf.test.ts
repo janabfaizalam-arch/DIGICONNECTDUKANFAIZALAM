@@ -35,7 +35,7 @@ describe("DPR PDF", () => {
     const { text, pages } = await textOf(pdf);
     // No blank pages: the footer must not push content onto new pages.
     expect(pages).toBeGreaterThanOrEqual(15);
-    expect(pages).toBeLessThanOrEqual(26);
+    expect(pages).toBeLessThanOrEqual(28);
     for (const heading of [
       "DETAILED PROJECT REPORT",
       "Project at a Glance",
@@ -65,6 +65,9 @@ describe("DPR PDF", () => {
       "KEY FINANCIAL RATIOS",
       "Month-wise Repayment Schedule",
       "Basis of Projections",
+      "Scheme Eligibility and Compliance",
+      "Documents Checklist",
+      "EDP (Entrepreneurship Development Programme) training certificate",
     ]) {
       expect(text, heading).toContain(heading);
     }
