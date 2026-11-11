@@ -822,6 +822,31 @@ export function ProjectReportForm({
                     suffix="lakh"
                   />
                 </Field>
+                {report.cost.total > 0 &&
+                quickCostLakh !== null &&
+                Math.abs(quickCostLakh * 100000 - report.cost.total) > 1000 ? (
+                  <p
+                    role="note"
+                    className={cn(
+                      "rounded-ds-md px-3 py-2 text-xs md:col-span-2",
+                      STATUS_TONE_CLASS.info,
+                    )}
+                  >
+                    Is DPR ka asli project cost{" "}
+                    <strong>{rs(report.cost.total)}</strong> hai: machinery /
+                    saaman{" "}
+                    {rs(
+                      report.cost.fixedCapital +
+                        report.cost.preliminary +
+                        report.cost.deposits,
+                    )}{" "}
+                    + working capital {rs(report.cost.workingCapital)}. Upar ka
+                    &quot;{quickCostLakh} lakh&quot; sirf &quot;DPR taiyaar
+                    karein&quot; dabane par lagta hai (tab machinery dobara
+                    banti hai). Loan hamesha asli project cost ke hisaab se hota
+                    hai.
+                  </p>
+                ) : null}
                 <Field guide="businessName" label="Business ka naam *">
                   <AdminInput
                     value={input.businessName}
@@ -2478,7 +2503,42 @@ export function ProjectReportForm({
         </div>
       </div>
 
-      <LiveSummary report={report} extraWarnings={eligibility} />
+      <LiveSummary
+        report={report}
+        extraWarnings={eligibility}
+        fixes={[
+          ...((input.termLoanOverride !== null ||
+            input.ccLimitOverride !== null) &&
+          (report.means.gap !== 0 ||
+            report.warnings.some((w) => w.startsWith("Apna hissa")))
+            ? [
+                {
+                  label: `Loan apne aap theek karein (${report.scheme?.ownContributionPct ?? 25}% apna + baaki loan = ${rs(report.cost.total)})`,
+                  apply: () =>
+                    setInput((current) => ({
+                      ...current,
+                      termLoanOverride: null,
+                      ccLimitOverride: null,
+                    })),
+                },
+              ]
+            : []),
+          ...(report.means.ccLimit > report.cost.workingCapital + 1 &&
+          report.cost.workingCapital > 0
+            ? [
+                {
+                  label: `CC = working capital zaroorat (${rs(report.cost.workingCapital)}), baaki term loan`,
+                  apply: () =>
+                    setInput((current) => ({
+                      ...current,
+                      ccLimitOverride: report.cost.workingCapital,
+                      termLoanOverride: null,
+                    })),
+                },
+              ]
+            : []),
+        ]}
+      />
     </div>
   );
 }
@@ -2486,9 +2546,12 @@ export function ProjectReportForm({
 function LiveSummary({
   report,
   extraWarnings = [],
+  fixes = [],
 }: {
   report: ReturnType<typeof buildDpr>;
   extraWarnings?: string[];
+  /** One-click corrections for the warnings shown. */
+  fixes?: { label: string; apply: () => void }[];
 }) {
   const y1 = report.years[0];
   const warnings = [...extraWarnings, ...report.warnings];
@@ -2606,6 +2669,22 @@ function LiveSummary({
             Pehle saal ki sales {rs(y1.sales)}, payback{" "}
             {report.paybackYears?.toFixed(1) ?? "-"} saal.
           </p>
+        ) : null}
+        {fixes.length ? (
+          <div className="space-y-1.5" aria-label="Theek karein">
+            {fixes.map((fix) => (
+              <AdminButton
+                key={fix.label}
+                type="button"
+                size="sm"
+                className="h-auto w-full whitespace-normal py-2 text-left"
+                onClick={fix.apply}
+              >
+                <Wand2 className="h-4 w-4 shrink-0" aria-hidden="true" />{" "}
+                {fix.label}
+              </AdminButton>
+            ))}
+          </div>
         ) : null}
         {warnings.length ? (
           <ul className="space-y-1.5" aria-label="Dhyan dene wali baatein">

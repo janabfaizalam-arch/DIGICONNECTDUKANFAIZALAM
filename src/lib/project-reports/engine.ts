@@ -1297,10 +1297,15 @@ function errorsFor(report: DprReport): string[] {
   if (!c.costReconciles) out.push("Galti: project cost ke heads ka jod total se nahi milta.");
   if (!c.meansReconcile) {
     const m = report.means;
+    const cost = report.cost;
     const lakh = (v: number) => `Rs. ${(v / 100000).toLocaleString("en-IN", { maximumFractionDigits: 2 })} lakh`;
+    const minOwnPct = report.scheme?.ownContributionPct ?? 0;
+    const maxLoan = Math.max(0, cost.total - m.otherFunding - (cost.total * minOwnPct) / 100);
     out.push(
-      `Paisa project cost se ${lakh(Math.abs(m.gap))} ${m.gap > 0 ? "zyada" : "kam"} hai: project cost ${lakh(report.cost.total)}, lekin apna ${lakh(m.ownContribution)} + term loan ${lakh(m.termLoan)} + CC ${lakh(m.ccLimit)}${m.otherFunding ? ` + dusra ${lakh(m.otherFunding)}` : ""} = ${lakh(m.total)}. ` +
-        (m.gap > 0 ? `Term loan aur CC ka jod ${lakh(Math.max(0, report.cost.total - m.otherFunding))} se zyada nahi ho sakta; dono mein se ek kam karein ya khaali chhodein (khaali = apne aap).` : "Term loan ya CC badhayein, ya khaali chhodein taaki apne aap barabar ho jaaye."),
+      m.gap > 0
+        ? `Loan project cost se ${lakh(m.gap)} zyada hai. Is DPR ka project cost ${lakh(cost.total)} hai (machinery / saaman ${lakh(cost.fixedCapital + cost.preliminary + cost.deposits)} + working capital ${lakh(cost.workingCapital)}), lekin term loan ${lakh(m.termLoan)} + CC ${lakh(m.ccLimit)}${m.otherFunding ? ` + dusra ${lakh(m.otherFunding)}` : ""} = ${lakh(m.total - m.ownContribution)}. ` +
+            `${minOwnPct ? `${minOwnPct}% apna paisa rakh kar ` : ""}term loan + CC zyada se zyada ${lakh(maxLoan)} ho sakta hai. "Loan apne aap theek karein" dabayein, ya machinery / saaman badhayein.`
+        : `Paisa project cost se ${lakh(-m.gap)} kam hai: project cost ${lakh(cost.total)}, lekin apna ${lakh(m.ownContribution)} + term loan ${lakh(m.termLoan)} + CC ${lakh(m.ccLimit)}${m.otherFunding ? ` + dusra ${lakh(m.otherFunding)}` : ""} = ${lakh(m.total)}. Term loan ya CC badhayein, ya khaali chhodein taaki apne aap barabar ho jaaye.`,
     );
   }
   if (!c.loanReconciles) out.push("Galti: loan schedule avadhi ke ant tak zero par khatam nahi hota. Loan avadhi / moratorium check karein.");
