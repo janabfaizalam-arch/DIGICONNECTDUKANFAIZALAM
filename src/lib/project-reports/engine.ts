@@ -665,7 +665,8 @@ export function workingCapitalOf(input: DprInput): WorkingCapital {
     debtors: round(b.debtors),
     minimumCash: round(b.minimumCash),
     creditors: round(b.creditors),
-    requirement: round(Math.max(0, b.rawMaterialStock + b.workInProgress + b.finishedGoods + b.debtors + b.minimumCash - b.creditors)),
+    // Whole rupees, as a bank sanctions it, so typed loans can add up to the project cost exactly.
+    requirement: Math.round(Math.max(0, b.rawMaterialStock + b.workInProgress + b.finishedGoods + b.debtors + b.minimumCash - b.creditors)),
   };
 }
 
@@ -704,15 +705,42 @@ export function projectCostOf(input: DprInput, workingCapital = workingCapitalOf
   };
 }
 
+/**
+ * Who pays for the project. The promoter's share is the scheme's (or the
+ * typed) percent; the rest is bank finance, split between term loan and cash
+ * credit in proportion to fixed assets and working capital.
+ *
+ * When the admin types the loans the bank has sanctioned, the other figures
+ * adjust so the total still equals the project cost:
+ * - term loan and CC both typed: the promoter brings in whatever is left;
+ * - only one typed: the other loan takes up the balance.
+ * Only if the typed loans alone exceed the project cost is there a gap.
+ */
 export function meansOf(input: DprInput, cost: ProjectCost, scheme: SchemeTerms | null): MeansOfFinance {
-  const ownPct = input.ownContributionPct ?? scheme?.ownContributionPct ?? 25;
-  const ownContribution = round((cost.total * pos(ownPct)) / 100);
+  const ownPctTarget = pos(input.ownContributionPct ?? scheme?.ownContributionPct ?? 25);
   const other = round(pos(input.otherFunding));
-  const bankNeed = Math.max(0, cost.total - ownContribution - other);
-  const wcShare = cost.total > 0 ? cost.workingCapital / cost.total : 0;
-  const autoCc = round(bankNeed * wcShare);
-  const ccLimit = round(pos(input.ccLimitOverride ?? autoCc));
-  const termLoan = round(pos(input.termLoanOverride ?? round(bankNeed - autoCc)));
+  const typedTl = input.termLoanOverride === null || input.termLoanOverride === undefined ? null : round(pos(input.termLoanOverride));
+  const typedCc = input.ccLimitOverride === null || input.ccLimitOverride === undefined ? null : round(pos(input.ccLimitOverride));
+
+  let ownContribution = round((cost.total * ownPctTarget) / 100);
+  let termLoan: number;
+  let ccLimit: number;
+  if (typedTl !== null && typedCc !== null) {
+    termLoan = typedTl;
+    ccLimit = typedCc;
+    ownContribution = round(Math.max(0, cost.total - other - termLoan - ccLimit));
+  } else if (typedTl !== null) {
+    termLoan = typedTl;
+    ccLimit = round(Math.max(0, cost.total - ownContribution - other - termLoan));
+  } else if (typedCc !== null) {
+    ccLimit = typedCc;
+    termLoan = round(Math.max(0, cost.total - ownContribution - other - ccLimit));
+  } else {
+    const bankNeed = Math.max(0, cost.total - ownContribution - other);
+    const wcShare = cost.total > 0 ? cost.workingCapital / cost.total : 0;
+    ccLimit = round(bankNeed * wcShare);
+    termLoan = round(bankNeed - ccLimit);
+  }
 
   const rawSubsidy = scheme ? (cost.total * scheme.subsidyPct) / 100 : 0;
   const autoSubsidy = scheme ? round(scheme.subsidyCap === null ? rawSubsidy : Math.min(rawSubsidy, scheme.subsidyCap)) : 0;
@@ -721,7 +749,7 @@ export function meansOf(input: DprInput, cost: ProjectCost, scheme: SchemeTerms 
   const total = round(ownContribution + other + termLoan + ccLimit);
   return {
     ownContribution,
-    ownContributionPct: pos(ownPct),
+    ownContributionPct: cost.total > 0 ? round((ownContribution / cost.total) * 100) : ownPctTarget,
     termLoan,
     ccLimit,
     otherFunding: other,
@@ -1267,7 +1295,14 @@ function errorsFor(report: DprReport): string[] {
   const out: string[] = [];
   const c = report.checks;
   if (!c.costReconciles) out.push("Galti: project cost ke heads ka jod total se nahi milta.");
-  if (!c.meansReconcile) out.push(`Means of finance project cost se Rs. ${Math.abs(report.means.gap).toLocaleString("en-IN")} ${report.means.gap > 0 ? "zyada" : "kam"} hai. Term loan / CC theek karein.`);
+  if (!c.meansReconcile) {
+    const m = report.means;
+    const lakh = (v: number) => `Rs. ${(v / 100000).toLocaleString("en-IN", { maximumFractionDigits: 2 })} lakh`;
+    out.push(
+      `Paisa project cost se ${lakh(Math.abs(m.gap))} ${m.gap > 0 ? "zyada" : "kam"} hai: project cost ${lakh(report.cost.total)}, lekin apna ${lakh(m.ownContribution)} + term loan ${lakh(m.termLoan)} + CC ${lakh(m.ccLimit)}${m.otherFunding ? ` + dusra ${lakh(m.otherFunding)}` : ""} = ${lakh(m.total)}. ` +
+        (m.gap > 0 ? `Term loan aur CC ka jod ${lakh(Math.max(0, report.cost.total - m.otherFunding))} se zyada nahi ho sakta; dono mein se ek kam karein ya khaali chhodein (khaali = apne aap).` : "Term loan ya CC badhayein, ya khaali chhodein taaki apne aap barabar ho jaaye."),
+    );
+  }
   if (!c.loanReconciles) out.push("Galti: loan schedule avadhi ke ant tak zero par khatam nahi hota. Loan avadhi / moratorium check karein.");
   if (!c.balanceSheetBalances) out.push("Galti: projected balance sheet tally nahi ho rahi. Report final nahi ho sakti.");
   if (!c.cashFlowReconciles) out.push("Galti: cash flow aur balance sheet ka cash nahi milta.");
@@ -1306,6 +1341,15 @@ function warningsFor(input: DprInput, report: DprReport): string[] {
   if (scheme?.maxLoan && means.bankLoan > scheme.maxLoan) out.push(`${scheme.label} mein loan Rs. ${scheme.maxLoan.toLocaleString("en-IN")} tak milta hai; yahan Rs. ${means.bankLoan.toLocaleString("en-IN")} hai.`);
   if (scheme?.needsComposite && (means.termLoan <= 0 || means.ccLimit <= 0)) out.push(`${scheme.label} mein loan composite hota hai: term loan aur CC dono chahiye.`);
   if ((input.scheme === "pmegp" || input.scheme === "mysy") && input.includeLand && cost.land > 0) out.push("PMEGP / MYSY mein zameen project cost mein nahi gini jaati. 'Zameen project cost mein' ka tick hatayein.");
+  const minOwn = input.ownContributionPct ?? scheme?.ownContributionPct ?? null;
+  if (minOwn !== null && cost.total > 0 && means.ownContributionPct + 0.01 < minOwn) {
+    out.push(
+      `Apna hissa (margin) sirf ${means.ownContributionPct.toFixed(1)}% (Rs. ${means.ownContribution.toLocaleString("en-IN")}) bach raha hai, jabki ${scheme?.label ?? "bank"} mein kam se kam ${minOwn}% (Rs. ${Math.round((cost.total * minOwn) / 100).toLocaleString("en-IN")}) chahiye. Term loan + CC ka jod utna kam karein.`,
+    );
+  }
+  if (means.ccLimit > cost.workingCapital + 1 && cost.workingCapital > 0) {
+    out.push(`CC limit (Rs. ${means.ccLimit.toLocaleString("en-IN")}) working capital zaroorat (Rs. ${cost.workingCapital.toLocaleString("en-IN")}) se zyada hai. Bank aam taur par CC zaroorat tak hi deta hai.`);
+  }
   if (!input.promoters.some((p) => p.name.trim())) out.push("Promoter ka naam bharein.");
   const lead = input.promoters.find((p) => p.name.trim());
   if (lead && !lead.qualification.trim()) out.push("Promoter ki qualification khaali hai. Bank aur yojana dono dekhte hain.");

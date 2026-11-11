@@ -43,7 +43,7 @@ describe("project cost and means of finance", () => {
     // Year 1 at 60%: sales 54 lakh; wheat consumption follows production.
     expect(wc.debtors).toBeCloseTo((5400000 * 30) / 365, 1);
     expect(wc.creditors).toBeCloseTo((y1.rawMaterial * 15) / 365, 1);
-    expect(wc.requirement).toBeCloseTo(wc.rawMaterialStock + wc.workInProgress + wc.finishedGoods + wc.debtors + wc.minimumCash - wc.creditors, 1);
+    expect(Math.abs(wc.requirement - (wc.rawMaterialStock + wc.workInProgress + wc.finishedGoods + wc.debtors + wc.minimumCash - wc.creditors))).toBeLessThanOrEqual(0.5);
     expect(wc.minimumCash).toBeGreaterThan(0);
   });
 
@@ -58,10 +58,16 @@ describe("project cost and means of finance", () => {
     expect(report.means.ccLimit / report.means.bankLoan).toBeCloseTo(report.cost.workingCapital / report.cost.total, 4);
   });
 
-  it("flags a gap when typed loans do not cover the cost", () => {
+  it("flags a gap when typed loans alone exceed the project cost", () => {
+    const report = buildDpr(sample({ termLoanOverride: 1500000, ccLimitOverride: 500000 }));
+    expect(report.means.gap).toBeGreaterThan(0);
+    expect(report.errors.some((w) => w.includes("zyada"))).toBe(true);
+  });
+
+  it("lets the promoter's share absorb the balance when both loans are typed", () => {
     const report = buildDpr(sample({ termLoanOverride: 100000, ccLimitOverride: 0 }));
-    expect(report.means.gap).toBeLessThan(0);
-    expect(report.warnings.some((w) => w.includes("Means of finance"))).toBe(true);
+    expect(report.means.gap).toBe(0);
+    expect(report.means.ownContribution).toBeCloseTo(report.cost.total - 100000, 1);
   });
 });
 
