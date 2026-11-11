@@ -23,6 +23,8 @@ describe("project templates", () => {
         expect(report.warnings, detail).toEqual([]);
         expect(report.averageDscr!, detail).toBeGreaterThanOrEqual(1.5);
         expect(report.minimumDscr!, detail).toBeGreaterThanOrEqual(1.2);
+        // Much higher reads as inflated to a credit officer.
+        expect(report.averageDscr!, detail).toBeLessThanOrEqual(4);
         expect(dprInputSchema.safeParse(input).success).toBe(true);
       });
     }

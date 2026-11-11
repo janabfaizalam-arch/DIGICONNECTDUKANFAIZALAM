@@ -1,5 +1,7 @@
-import type { CapitalItem, DprInput, Overhead, Product, RawMaterial, StaffRow } from "./engine";
-import type { SchemeSector } from "@/lib/balance-sheets/engine";
+import type { SchemeId, SchemeSector } from "@/lib/balance-sheets/engine";
+
+import { BUILT_ACTIVITIES, GROUP_LABELS, type ActivityGroup } from "./activities";
+import { buildDpr, type CapitalItem, type DprInput, type Overhead, type Product, type RawMaterial, type StaffRow } from "./engine";
 
 /**
  * Ready-made project templates for the businesses this shop files DPRs for
@@ -29,6 +31,10 @@ export type ProjectTemplate = {
   label: string;
   activity: string;
   sector: SchemeSector;
+  /** Heading the business is listed under in the form. */
+  group: ActivityGroup;
+  /** Schemes that do not fund this activity even though its sector qualifies. */
+  notFor: SchemeId[];
   capitalItems: CapitalItem[];
   products: Product[];
   rawMaterials: RawMaterial[];
@@ -49,7 +55,7 @@ const cost = (name: string, monthly: number, variable: boolean, isDirect: boolea
 
 const COMMON_LICENCES = ["Udyam Registration (MSME)", "GST registration", "Trade licence / shop registration from the local body", "Current account with the financing bank"];
 
-export const TEMPLATES: ProjectTemplate[] = [
+const HAND_BUILT: Omit<ProjectTemplate, "group" | "notFor">[] = [
   {
     id: "flour-mill",
     label: "Aata chakki (flour mill)",
@@ -770,31 +776,90 @@ export const TEMPLATES: ProjectTemplate[] = [
   },
 ];
 
+const HAND_BUILT_GROUP: Record<string, ActivityGroup> = {
+  "flour-mill": "food",
+  "oil-mill": "food",
+  masala: "food",
+  bakery: "food",
+  dairy: "food",
+  namkeen: "food",
+  garments: "textile",
+  furniture: "engineering",
+  fabrication: "engineering",
+  "beauty-parlour": "personal",
+  "mobile-repair": "repair",
+  "computer-centre": "personal",
+  "flex-printing": "paper",
+  kirana: "trading",
+};
+
+/** Every business the form offers: the hand-built units first, then the wider list. */
+export const TEMPLATES: ProjectTemplate[] = [
+  ...HAND_BUILT.map((t) => ({ ...t, group: HAND_BUILT_GROUP[t.id] ?? (t.sector === "trading" ? "trading" : "repair"), notFor: [] })),
+  ...BUILT_ACTIVITIES,
+];
+
+export { GROUP_LABELS };
+
 export function templateById(id: string | null | undefined) {
   return TEMPLATES.find((t) => t.id === id) ?? null;
 }
 
 /** Scale a template unit by a factor: machinery value, capacity and material grow with it; fixed costs more slowly. */
-function scaled(template: ProjectTemplate, f: number): Pick<DprInput, "capitalItems" | "products" | "rawMaterials" | "staff" | "overheads"> {
+function scaled(template: ProjectTemplate, f: number, staffFactor = f): Pick<DprInput, "capitalItems" | "products" | "rawMaterials" | "staff" | "overheads"> {
   const r = (v: number) => Math.round(v);
   const root = Math.sqrt(f);
+  const staffRoot = Math.sqrt(staffFactor);
   return {
     capitalItems: template.capitalItems.map((item) => ({ ...item, rate: item.kind === "preliminary" ? r(item.rate * root) : r(item.rate * f) })),
     products: template.products.map((p) => (p.unit === "lot" ? { ...p, price: r(p.price * f) } : { ...p, capacity: r(p.capacity * f) })),
     rawMaterials: template.rawMaterials.map((mat) => (mat.unit === "lot" ? { ...mat, rate: r(mat.rate * f) } : { ...mat, quantity: r(mat.quantity * f) })),
     // In a smaller unit the promoter does the office work himself, so office staff may drop to none.
     staff: template.staff
-      .map((s) => ({ ...s, count: s.direct ? Math.max(1, Math.round(s.count * f)) : Math.round(s.count * (f < 1 ? f : root)) }))
+      .map((s) => ({ ...s, count: s.direct ? Math.max(1, Math.round(s.count * staffFactor)) : Math.round(s.count * (staffFactor < 1 ? staffFactor : staffRoot)) }))
       .filter((s) => s.count > 0),
     overheads: template.overheads.map((o) => ({ ...o, monthly: r(o.monthly * (o.variable ? f : root)) })),
   };
 }
 
+/** Change the volume of trade (sales, the material it uses and the running costs that move with it) by a factor. */
+function withVolume(unit: ReturnType<typeof scaled>, v: number): ReturnType<typeof scaled> {
+  if (v === 1) return unit;
+  const r = (x: number) => Math.max(1, Math.round(x));
+  return {
+    ...unit,
+    products: unit.products.map((p) => (p.unit === "lot" ? { ...p, price: r(p.price * v) } : { ...p, capacity: r(p.capacity * v) })),
+    rawMaterials: unit.rawMaterials.map((mat) => (mat.unit === "lot" ? { ...mat, rate: r(mat.rate * v) } : { ...mat, quantity: r(mat.quantity * v) })),
+    overheads: unit.overheads.map((o) => (o.variable ? { ...o, monthly: Math.round(o.monthly * v) } : o)),
+  };
+}
+
+/**
+ * What a quick DPR must show to read as bankable without looking inflated:
+ * profit and positive cash in every year, a minimum DSCR of 1.4 and an
+ * average of at least 2.0, but not above 3.5.
+ */
+export const DSCR_BAND = { minimum: 1.4, averageAtLeast: 2.0, averageAtMost: 3.5 } as const;
+
+function bankable(report: ReturnType<typeof buildDpr>) {
+  return (
+    report.years.every((y) => y.netProfit >= 0 && y.cash >= 0) &&
+    (report.minimumDscr ?? 0) >= DSCR_BAND.minimum &&
+    (report.averageDscr ?? 0) >= DSCR_BAND.averageAtLeast
+  );
+}
+
 /**
  * Apply a template to a DPR, sized so the project cost comes out at the
  * amount given. Business and promoter details already typed are kept.
+ *
+ * Machinery and capacity scale with the cost, but staff and fixed costs do
+ * not scale in proportion, so a very small or very large unit can come out
+ * weak or unrealistically strong. When that happens the volume of trade is
+ * set to the lowest level at which the project is bankable (see
+ * DSCR_BAND), and the size refitted to the cost.
  */
-export function applyTemplate(input: DprInput, templateId: string, projectCost: number, buildTotal: (input: DprInput) => number): DprInput {
+export function applyTemplate(input: DprInput, templateId: string, projectCost: number, buildTotal: (input: DprInput) => number = (i) => buildDpr(i).cost.total): DprInput {
   const template = templateById(templateId);
   if (!template) return input;
   const base: DprInput = {
@@ -808,14 +873,63 @@ export function applyTemplate(input: DprInput, templateId: string, projectCost: 
     creditorDays: template.creditorDays,
     narrative: {},
   };
-  let f = 1;
-  if (projectCost > 0) {
-    // Project cost is close to linear in the factor; three passes settle it to the rupee range.
-    for (let pass = 0; pass < 3; pass += 1) {
-      const total = buildTotal({ ...base, ...scaled(template, f) });
-      if (total <= 0) break;
-      f = f * (projectCost / total);
+  // Staff are counted once, from the size at the template's own volume, so that adjusting
+  // the volume below does not make a worker appear or vanish and the figures jump.
+  const composeWith = (staff: number | null) => (f: number, v: number) => ({ ...base, ...withVolume(scaled(template, f, staff ?? f), v) });
+  // Project cost is close to linear in the size factor; three passes settle it to the rupee range.
+  const fitWith = (build: (f: number, v: number) => DprInput) => (v: number) => {
+    let f = 1;
+    if (projectCost > 0) {
+      for (let pass = 0; pass < 3; pass += 1) {
+        const total = buildTotal(build(f, v));
+        if (total <= 0) break;
+        f = f * (projectCost / total);
+      }
     }
-  }
-  return { ...base, ...scaled(template, f), activity: input.activity && input.templateId === templateId ? input.activity : template.activity };
+    return f;
+  };
+  const staffFactor = fitWith(composeWith(null))(1);
+  const compose = composeWith(staffFactor);
+  const fit = fitWith(compose);
+
+  let v = 1;
+  let f = staffFactor;
+  const at = (volume: number) => {
+    const size = fit(volume);
+    return { size, report: buildDpr(compose(size, volume)) };
+  };
+  const start = at(v);
+  if (!bankable(start.report) || (start.report.averageDscr ?? 0) > DSCR_BAND.averageAtMost) {
+    // The smallest volume that is bankable. Bankability rises with volume, though not
+    // perfectly smoothly (staff counts round), so walk up in small steps and then refine.
+    let best: { volume: number; size: number } | null = null;
+    let below = 0.1;
+    for (let volume = 0.12; volume <= 10; volume *= 1.06) {
+      const probe = at(volume);
+      if (bankable(probe.report)) {
+        best = { volume, size: probe.size };
+        break;
+      }
+      below = volume;
+    }
+    if (best) {
+      let lo = below;
+      let hi = best.volume;
+      for (let step = 0; step < 8; step += 1) {
+        const mid = (lo + hi) / 2;
+        const probe = at(mid);
+        if (bankable(probe.report)) {
+          best = { volume: mid, size: probe.size };
+          hi = mid;
+        } else lo = mid;
+      }
+    }
+    if (best) {
+      // A touch above the edge, so rounding in the form does not tip it over.
+      v = best.volume * 1.03;
+      f = fit(v);
+    }
+  } else f = start.size;
+  const unit = compose(f, v);
+  return { ...unit, activity: input.activity && input.templateId === templateId ? input.activity : template.activity };
 }
