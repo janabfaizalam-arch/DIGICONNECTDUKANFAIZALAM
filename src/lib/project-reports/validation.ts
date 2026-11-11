@@ -9,7 +9,7 @@ export function finalBlockerFor(payload: { status: "draft" | "final"; input: Dpr
   if (payload.status !== "final") return null;
   const report = buildDpr(payload.input);
   if (Math.abs(report.means.gap) > 1) {
-    const detail = report.errors.find((e) => e.startsWith("Paisa project cost")) ?? "Means of finance project cost ke barabar nahi hai.";
+    const detail = report.errors.find((e) => e.startsWith("Paisa project cost") || e.startsWith("Loan project cost")) ?? "Means of finance project cost ke barabar nahi hai.";
     return `${detail} Isliye final nahi kar sakte; draft save karein.`;
   }
   if ((report.years[0]?.sales ?? 0) <= 0) return "Sales projection khaali hai. Products aur capacity bharein.";

@@ -356,7 +356,29 @@ describe("typed loans (admin enters what the bank sanctioned)", () => {
   it("loans larger than the project: a plain explanation with the arithmetic", () => {
     const report = buildDpr({ ...plant(), termLoanOverride: 1800000, ccLimitOverride: 300000 });
     const message = report.errors.join(" ");
-    expect(message).toContain("Rs. 1 lakh zyada");
+    expect(message).toContain("Loan project cost se Rs. 1 lakh zyada");
     expect(message).toContain("term loan Rs. 18 lakh + CC Rs. 3 lakh");
+    expect(message).toContain("zyada se zyada Rs. 19 lakh");
+  });
+});
+
+describe("one machine of Rs. 17 lakh with TL 17 + CC 3 (the reported case, as saved)", () => {
+  const saved = () => {
+    const input = fromTemplate("packaged-water", 20, { scheme: "mysy", category: "special" });
+    return { ...input, capitalItems: [{ kind: "machinery" as const, description: "PET Blowing Machine (3000 BPH)", quantity: 1, rate: 1700000, supplier: "Supplier", quotationRef: "Q-1" }], termLoanOverride: 1700000, ccLimitOverride: 300000 };
+  };
+  it("explains that the project is smaller than the loans and how much loan fits", () => {
+    const report = buildDpr(saved());
+    expect(report.cost.total).toBeLessThan(2000000);
+    const msg = report.errors.join(" ");
+    expect(msg).toContain("Is DPR ka project cost");
+    expect(msg).toContain("machinery / saaman Rs. 17 lakh");
+    expect(msg).toMatch(/zyada se zyada Rs\. [\d.]+ lakh/);
+  });
+  it("clearing the typed loans balances it with the scheme's 5%", () => {
+    const report = buildDpr({ ...saved(), termLoanOverride: null, ccLimitOverride: null });
+    expect(report.errors).toEqual([]);
+    expect(report.means.ownContributionPct).toBe(5);
+    expect(report.means.ccLimit).toBeLessThanOrEqual(report.cost.workingCapital);
   });
 });
