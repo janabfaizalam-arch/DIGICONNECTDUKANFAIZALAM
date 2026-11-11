@@ -319,3 +319,44 @@ describe("Leaf Beverages (DIGI-DPR-00003) regression", () => {
     expect(report.taxBasis.regime).toBe("new");
   });
 });
+
+describe("typed loans (admin enters what the bank sanctioned)", () => {
+  // The case reported: a Rs. 20 lakh MYSY mineral water plant, special category (5% margin).
+  const plant = () => fromTemplate("packaged-water", 20, { scheme: "mysy", category: "special" });
+
+  it("quick DPR hits the project cost to the rupee", () => {
+    expect(buildDpr(plant()).cost.total).toBe(2000000);
+  });
+
+  it("TL 17 lakh + CC 3 lakh on a 20 lakh project: no false 'means exceed' error; the promoter's share comes out nil and is warned", () => {
+    const input = { ...plant(), termLoanOverride: 1700000, ccLimitOverride: 300000 };
+    const report = buildDpr(input);
+    expect(report.means.gap).toBe(0);
+    expect(report.errors).toEqual([]);
+    expect(report.means.ownContribution).toBe(0);
+    expect(report.warnings.some((w) => /kam se kam 5%/.test(w))).toBe(true);
+    expectReconciles(report, input);
+  });
+
+  it("TL 17 lakh + CC 2 lakh: promoter brings in the 5% (Rs. 1 lakh) and nothing is flagged", () => {
+    const input = { ...plant(), termLoanOverride: 1700000, ccLimitOverride: 200000 };
+    const report = buildDpr(input);
+    expect(report.means.ownContribution).toBe(100000);
+    expect(report.means.ownContributionPct).toBe(5);
+    expect(report.warnings.some((w) => /Apna hissa|Paisa project cost/.test(w))).toBe(false);
+    expectReconciles(report, input);
+  });
+
+  it("only the term loan typed: CC takes up the balance", () => {
+    const report = buildDpr({ ...plant(), termLoanOverride: 1700000 });
+    expect(report.means.ccLimit).toBe(2000000 - 100000 - 1700000);
+    expect(report.means.gap).toBe(0);
+  });
+
+  it("loans larger than the project: a plain explanation with the arithmetic", () => {
+    const report = buildDpr({ ...plant(), termLoanOverride: 1800000, ccLimitOverride: 300000 });
+    const message = report.errors.join(" ");
+    expect(message).toContain("Rs. 1 lakh zyada");
+    expect(message).toContain("term loan Rs. 18 lakh + CC Rs. 3 lakh");
+  });
+});

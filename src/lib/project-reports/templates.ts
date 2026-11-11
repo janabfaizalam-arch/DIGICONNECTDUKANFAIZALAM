@@ -836,6 +836,28 @@ function withVolume(unit: ReturnType<typeof scaled>, v: number): ReturnType<type
 }
 
 /**
+ * Settle the last few rupees: the size factor gets the project cost within a
+ * fraction of a percent, and the remainder goes into preliminary and
+ * pre-operative expenses, so a "20 lakh project" is exactly Rs. 20,00,000 and
+ * loans typed against that figure add up.
+ */
+function trimToCost(input: DprInput, projectCost: number, buildTotal: (input: DprInput) => number): DprInput {
+  if (!(projectCost > 0)) return input;
+  let current = input;
+  for (let pass = 0; pass < 3; pass += 1) {
+    const diff = Math.round(projectCost - buildTotal(current));
+    if (diff === 0) break;
+    const at = current.capitalItems.findIndex((i) => i.kind === "preliminary");
+    const items = [...current.capitalItems];
+    if (at >= 0 && items[at].rate * items[at].quantity + diff >= 0) items[at] = { ...items[at], rate: Math.round(items[at].rate + diff / Math.max(1, items[at].quantity)) };
+    else if (diff > 0) items.push({ kind: "preliminary", description: "Registration, project report and pre-operative expenses", quantity: 1, rate: diff });
+    else break;
+    current = { ...current, capitalItems: items };
+  }
+  return current;
+}
+
+/**
  * What a quick DPR must show to read as bankable without looking inflated:
  * profit and positive cash in every year, a minimum DSCR of 1.4 and an
  * average of at least 2.0, but not above 3.5.
@@ -933,6 +955,6 @@ export function applyTemplate(input: DprInput, templateId: string, projectCost: 
       f = fit(v);
     }
   } else f = start.size;
-  const unit = compose(f, v);
+  const unit = trimToCost(compose(f, v), projectCost, buildTotal);
   return { ...unit, activity: input.activity && input.templateId === templateId ? input.activity : template.activity };
 }

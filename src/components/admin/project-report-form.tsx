@@ -1481,7 +1481,7 @@ export function ProjectReportForm({
               <Field
                 guide="termLoanOverride"
                 label="Term loan (khud likhein)"
-                help={`Khaali = auto (${rs(report.means.termLoan)})`}
+                help={`Khaali = auto (${rs(report.means.termLoan)}). Term loan aur CC dono likhne par apna hissa baaki raashi se nikalega.`}
               >
                 <NumberBox
                   label="Term loan"
@@ -1493,7 +1493,7 @@ export function ProjectReportForm({
               <Field
                 guide="ccLimitOverride"
                 label="CC limit (khud likhein)"
-                help={`Khaali = auto (${rs(report.means.ccLimit)})`}
+                help={`Khaali = auto (${rs(report.means.ccLimit)}). Sirf ek likhein to dusra baaki raashi le lega.`}
               >
                 <NumberBox
                   label="CC limit"
