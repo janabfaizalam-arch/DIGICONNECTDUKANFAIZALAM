@@ -382,3 +382,12 @@ describe("one machine of Rs. 17 lakh with TL 17 + CC 3 (the reported case, as sa
     expect(report.means.ccLimit).toBeLessThanOrEqual(report.cost.workingCapital);
   });
 });
+
+describe("a machine entered under the wrong head", () => {
+  it("warns when preliminary expenses are an unusual share of the project", () => {
+    const input = fromTemplate("packaged-water", 20, { scheme: "mysy" });
+    const wrong = { ...input, capitalItems: [{ kind: "preliminary" as const, description: "PET Blowing Machine", quantity: 1, rate: 1700000 }] };
+    expect(buildDpr(wrong).warnings.some((w) => /Plant & machinery/.test(w))).toBe(true);
+    expect(buildDpr(input).warnings.some((w) => /Plant & machinery/.test(w))).toBe(false);
+  });
+});
