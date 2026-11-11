@@ -1378,11 +1378,85 @@ export function ProjectReportForm({
                 </ul>
               </div>
             ) : null}
+            {(() => {
+              const targetPct =
+                input.ownContributionPct ??
+                report.scheme?.ownContributionPct ??
+                25;
+              const own = Math.round((report.cost.total * targetPct) / 100);
+              const loanRoom = Math.max(
+                0,
+                report.cost.total - own - report.means.otherFunding,
+              );
+              const typed = report.means.termLoan + report.means.ccLimit;
+              const diff = typed - loanRoom;
+              return (
+                <div
+                  aria-label="Paise ka hisaab"
+                  className="rounded-ds-lg border border-ds-border p-3 text-sm"
+                >
+                  <p className="mb-1.5 font-bold text-ds-text-primary">
+                    Paise ka hisaab
+                  </p>
+                  <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 tabular-nums text-ds-text-secondary">
+                    <dt>
+                      Project cost (machinery / saaman{" "}
+                      {rs(
+                        report.cost.fixedCapital +
+                          report.cost.preliminary +
+                          report.cost.deposits,
+                      )}{" "}
+                      + working capital {rs(report.cost.workingCapital)})
+                    </dt>
+                    <dd className="text-right font-semibold text-ds-text-primary">
+                      {rs(report.cost.total)}
+                    </dd>
+                    <dt>Apna hissa ({targetPct}%)</dt>
+                    <dd className="text-right">− {rs(own)}</dd>
+                    {report.means.otherFunding ? (
+                      <>
+                        <dt>Dusra funding</dt>
+                        <dd className="text-right">
+                          − {rs(report.means.otherFunding)}
+                        </dd>
+                      </>
+                    ) : null}
+                    <dt className="font-semibold text-ds-text-primary">
+                      Term loan + CC kitna ho sakta hai
+                    </dt>
+                    <dd className="text-right font-semibold text-ds-text-primary">
+                      {rs(loanRoom)}
+                    </dd>
+                    <dt>Abhi term loan + CC</dt>
+                    <dd className="text-right">{rs(typed)}</dd>
+                  </dl>
+                  <p
+                    className={cn(
+                      "mt-2 rounded-ds-md px-2 py-1 text-xs font-semibold",
+                      Math.abs(diff) <= 1
+                        ? STATUS_TONE_CLASS.success
+                        : STATUS_TONE_CLASS.warning,
+                    )}
+                  >
+                    {Math.abs(diff) <= 1
+                      ? "Sahi hai: apna hissa + loan = project cost."
+                      : diff > 0
+                        ? `Loan ${rs(diff)} zyada hai. Term loan / CC kam karein, ya machinery / saaman badhayein.`
+                        : `Loan ${rs(-diff)} kam hai; ye apna hissa badhayega. Theek hai to chhod dein, warna loan badhayein.`}
+                  </p>
+                </div>
+              );
+            })()}
             <div className="grid gap-4 md:grid-cols-4">
               <Field
                 guide="ownContributionPct"
                 label="Own contribution %"
-                help={`Khaali = yojana ka (${report.means.ownContributionPct}%)`}
+                help={
+                  input.termLoanOverride !== null &&
+                  input.ccLimitOverride !== null
+                    ? `Term loan aur CC dono likhe hain, isliye apna hissa = baaki raashi (abhi ${report.means.ownContributionPct}%)`
+                    : `Khaali = yojana ka (${report.scheme?.ownContributionPct ?? 25}%)`
+                }
               >
                 <NumberBox
                   label="Own contribution percent"
@@ -1593,7 +1667,7 @@ export function ProjectReportForm({
               {input.capitalItems.map((item, index) => (
                 <div
                   key={index}
-                  className="grid gap-2 rounded-ds-lg border border-ds-border p-2 md:grid-cols-[12rem_1fr_6rem_8rem_8rem_auto] md:items-center"
+                  className="grid gap-2 rounded-ds-lg border border-ds-border p-2 md:grid-cols-12 md:items-center md:[&>*:nth-child(1)]:col-span-4 md:[&>*:nth-child(2)]:col-span-8 md:[&>*:nth-child(3)]:col-span-3 md:[&>*:nth-child(4)]:col-span-3 md:[&>*:nth-child(5)]:col-span-4 md:[&>*:nth-child(6)]:col-span-2 md:[&>*:nth-child(7)]:col-span-12"
                 >
                   <AdminSelect
                     aria-label="Head"
@@ -1789,7 +1863,7 @@ export function ProjectReportForm({
               {input.products.map((p, index) => (
                 <div
                   key={index}
-                  className="grid gap-2 rounded-ds-lg border border-ds-border p-2 md:grid-cols-[1fr_6rem_8rem_8rem_6rem_6rem_auto] md:items-center"
+                  className="grid gap-2 rounded-ds-lg border border-ds-border p-2 md:grid-cols-12 md:items-center md:[&>*:nth-child(1)]:col-span-9 md:[&>*:nth-child(2)]:col-span-3 md:[&>*:nth-child(3)]:col-span-3 md:[&>*:nth-child(4)]:col-span-3 md:[&>*:nth-child(5)]:col-span-2 md:[&>*:nth-child(6)]:col-span-2 md:[&>*:nth-child(7)]:col-span-2"
                 >
                   <AdminInput
                     aria-label="Product ka naam"
@@ -1930,7 +2004,7 @@ export function ProjectReportForm({
               {input.rawMaterials.map((m, index) => (
                 <div
                   key={index}
-                  className="grid gap-2 rounded-ds-lg border border-ds-border p-2 md:grid-cols-[1fr_6rem_8rem_8rem_auto] md:items-center"
+                  className="grid gap-2 rounded-ds-lg border border-ds-border p-2 md:grid-cols-12 md:items-center md:[&>*:nth-child(1)]:col-span-5 md:[&>*:nth-child(2)]:col-span-2 md:[&>*:nth-child(3)]:col-span-2 md:[&>*:nth-child(4)]:col-span-2 md:[&>*:nth-child(5)]:col-span-1 md:[&>*:nth-child(6)]:col-span-12"
                 >
                   <AdminInput
                     aria-label="Material ka naam"
@@ -2513,7 +2587,7 @@ export function ProjectReportForm({
             report.warnings.some((w) => w.startsWith("Apna hissa")))
             ? [
                 {
-                  label: `Loan apne aap theek karein (${report.scheme?.ownContributionPct ?? 25}% apna + baaki loan = ${rs(report.cost.total)})`,
+                  label: `Loan apne aap theek karein (${input.ownContributionPct ?? report.scheme?.ownContributionPct ?? 25}% apna + baaki loan = ${rs(report.cost.total)})`,
                   apply: () =>
                     setInput((current) => ({
                       ...current,

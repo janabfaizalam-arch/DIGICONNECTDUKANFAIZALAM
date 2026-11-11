@@ -1356,6 +1356,11 @@ function warningsFor(input: DprInput, report: DprReport): string[] {
     out.push(`CC limit (Rs. ${means.ccLimit.toLocaleString("en-IN")}) working capital zaroorat (Rs. ${cost.workingCapital.toLocaleString("en-IN")}) se zyada hai. Bank aam taur par CC zaroorat tak hi deta hai.`);
   }
   if (!input.promoters.some((p) => p.name.trim())) out.push("Promoter ka naam bharein.");
+  if (cost.total > 0 && cost.preliminary > cost.total * 0.1) {
+    out.push(
+      `Preliminary / pre-operative kharcha Rs. ${cost.preliminary.toLocaleString("en-IN")} project cost ka ${Math.round((cost.preliminary / cost.total) * 100)}% hai. Ye aam taur par 2–5% hota hai; machine ho to item ka head "Plant & machinery" chuniye (isse depreciation sahi lagega).`,
+    );
+  }
   const lead = input.promoters.find((p) => p.name.trim());
   if (lead && !lead.qualification.trim()) out.push("Promoter ki qualification khaali hai. Bank aur yojana dono dekhte hain.");
   if (lead && !lead.experience.trim()) out.push("Promoter ka anubhav (experience) khaali hai. Promoter profile kamzor dikhegi.");
