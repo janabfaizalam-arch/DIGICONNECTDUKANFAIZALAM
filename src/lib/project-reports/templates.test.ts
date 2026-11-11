@@ -8,7 +8,7 @@ import { applyTemplate, TEMPLATES } from "./templates";
 const total = (input: DprInput) => buildDpr(input).cost.total;
 
 function quick(templateId: string, projectCost: number): DprInput {
-  const base = { ...emptyDpr(new Date("2026-11-08")), businessName: "Test Unit", scheme: "none" as const, promoters: [{ ...emptyDpr().promoters[0], name: "Asha Devi" }] };
+  const base = { ...emptyDpr(new Date("2026-11-08")), businessName: "Test Unit", scheme: "none" as const, promoters: [{ ...emptyDpr().promoters[0], name: "Asha Devi", qualification: "Graduate", experience: "5 years in the trade" }] };
   return applyTemplate(base, templateId, projectCost, total);
 }
 
@@ -20,7 +20,10 @@ describe("project templates", () => {
         const report = buildDpr(input);
         const detail = `DSCR ${report.averageDscr} min ${report.minimumDscr}; ${report.warnings.join(" | ")}`;
         expect(Math.abs(report.cost.total - cost) / cost, detail).toBeLessThan(0.01);
-        expect(report.warnings, detail).toEqual([]);
+        expect(report.errors, detail).toEqual([]);
+        // Quotations are the customer's to furnish; every other warning would be a modelling gap.
+        expect(report.warnings.filter((w) => !/quotation/i.test(w)), detail).toEqual([]);
+        expect(Object.values(report.checks).every(Boolean), detail).toBe(true);
         expect(report.averageDscr!, detail).toBeGreaterThanOrEqual(1.5);
         expect(report.minimumDscr!, detail).toBeGreaterThanOrEqual(1.2);
         // Much higher reads as inflated to a credit officer.

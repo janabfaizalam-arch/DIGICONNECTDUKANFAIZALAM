@@ -76,7 +76,7 @@ export const projectionSchema = z.object({
   stockDays: optionalDays,
   // Loan scheme fields came later; defaults keep older saved sheets and
   // callers valid.
-  scheme: z.enum(["none", "cmyuva", "mysy", "pmegp", "mudra", "other"]).default("none"),
+  scheme: z.enum(["none", "cmyuva", "mysy", "pmegp", "pmfme", "mudra", "other"]).default("none"),
   schemeSector: z.enum(["manufacturing", "service", "trading"]).default("manufacturing"),
   schemeArea: z.enum(["urban", "rural"]).default("urban"),
   schemeCategory: z.enum(["general", "special"]).default("general"),

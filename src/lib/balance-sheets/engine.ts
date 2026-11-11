@@ -72,7 +72,7 @@ export type ActualFigures = {
  * read off the customer's own books unless the admin overrides them.
  */
 /** Government loan schemes the form has presets for. See schemes.ts. */
-export type SchemeId = "none" | "cmyuva" | "mysy" | "pmegp" | "mudra" | "other";
+export type SchemeId = "none" | "cmyuva" | "mysy" | "pmegp" | "pmfme" | "mudra" | "other";
 export type SchemeSector = "manufacturing" | "service" | "trading";
 export type SchemeArea = "urban" | "rural";
 export type SchemeCategory = "general" | "special";

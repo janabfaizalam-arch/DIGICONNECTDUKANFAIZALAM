@@ -130,6 +130,21 @@ export const DPR_GUIDE = {
   drawingsPerYear: g("Promoter ghar kharch ke liye saal mein kitna nikalega.", "Customer se; chhote project mein aam taur par 0 ya thoda.", "Capital aur cash se ghat-ta hai; bank zyada drawings pasand nahi karta.", "optional"),
   preliminaryWriteOffYears: g("Registration / project report jaise shuruaati kharche kitne saal mein kharche mein daalein.", "Aam taur par 5 saal.", "Har saal ka hissa P&L mein jaata hai.", "auto"),
 
+  taxRegime: g(
+    "Income tax kaise lagega: New regime (ab default), Old regime, ya khud % likhein.",
+    "Proprietor ka ITR ya CA se. Firm / company ke liye apne aap sahi dar lagti hai.",
+    "Bank tax ke baad ka profit dekhta hai; 0 tax tabhi jab slab / rebate se sach mein 0 ho.",
+    "auto",
+  ),
+  repaymentMethod: g("Kisht ka tarika: har baar barabar principal + bacha hua byaaj, ya EMI (har baar barabar kisht).", "Bank ki sanction letter se; MSME term loan mein aksar barabar principal.", "Repayment schedule, byaaj aur DSCR isi se bante hain.", "auto"),
+  repaymentFrequency: g("Kisht har mahine ya har teen mahine.", "Bank ki sanction letter se.", "Kisht ki taareekh aur saal ka byaaj isi se banta hai.", "auto"),
+  otherFunding: g("Parivar / dost se liya unsecured loan jo project mein lagega.", "Customer se; loan agreement / confirmation letter.", "Means of finance mein alag dikhta hai; isse bank loan kam hota hai.", "optional"),
+  contingencyPct: g("Machine / building ki keemat par kitna % aakasmik kharcha (contingency).", "Aam taur par 0–5%; bank ya CA se.", "Keemat badhne ka margin; project cost aur depreciation mein judta hai.", "optional"),
+  depreciationMethod: g("Depreciation ka tarika: WDV (Income-tax dar) ya SLM (Companies Act ki life).", "Proprietor / firm ke liye WDV, company / LLP ke liye SLM (auto).", "Profit aur balance sheet ki net block isi se banti hai; tarika report mein likha jaata hai.", "auto"),
+  employerContributionPct: g("Employer ka EPF / ESI hissa, salary ka %.", "Khaali chhodne par apne aap: 10+ staff par ESI 3.25%, 20+ par EPF 12%.", "Kanoonan dena padta hai; salary kharche mein judta hai.", "auto"),
+  workInProgressDays: g("Kitne din ka maal banne ki prakriya mein (WIP) rahega.", "Kaam ke hisaab se; zyaadatar chhote unit mein 0–7 din.", "Working capital ka hissa.", "auto"),
+  minimumCashDays: g("Kitne din ke nakad kharche haath mein cash rakhna hai.", "Aam taur par 7 din.", "Working capital mein judta hai taaki roz ke kharche ruke nahi.", "auto"),
+
   // ── Running ──
   utilisation: g("Har saal unit apni poori capacity ka kitna % chalegi.", "Aam taur par 60, 70, 80, 85, 90%. Bank isse zyada pehle saal mein nahi maanta.", "Sales aur raw material isi % se bante hain.", "auto"),
   priceGrowthPct: g("Selling rate har saal kitna % badhega.", "Aam taur par 0 (bank conservative dekhna chahta hai).", "Zyada rakhne se projection badha-chadha lagta hai.", "auto"),

@@ -1,6 +1,7 @@
 import type { SchemeId, SchemeSector } from "@/lib/balance-sheets/engine";
 
 import { BUILT_ACTIVITIES, GROUP_LABELS, type ActivityGroup } from "./activities";
+import { withEstimatedCosts } from "./estimates";
 import { buildDpr, type CapitalItem, type DprInput, type Overhead, type Product, type RawMaterial, type StaffRow } from "./engine";
 
 /**
@@ -875,7 +876,9 @@ export function applyTemplate(input: DprInput, templateId: string, projectCost: 
   };
   // Staff are counted once, from the size at the template's own volume, so that adjusting
   // the volume below does not make a worker appear or vanish and the figures jump.
-  const composeWith = (staff: number | null) => (f: number, v: number) => ({ ...base, ...withVolume(scaled(template, f, staff ?? f), v) });
+  // Running-cost heads the template does not carry (rent on rented premises, insurance,
+  // professional fees…) are added as marked estimates, so the projections never leave them out.
+  const composeWith = (staff: number | null) => (f: number, v: number) => withEstimatedCosts({ ...base, ...withVolume(scaled(template, f, staff ?? f), v) });
   // Project cost is close to linear in the size factor; three passes settle it to the rupee range.
   const fitWith = (build: (f: number, v: number) => DprInput) => (v: number) => {
     let f = 1;

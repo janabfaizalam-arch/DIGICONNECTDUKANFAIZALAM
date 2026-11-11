@@ -47,8 +47,9 @@ export function sampleDpr(now = new Date()): DprInput {
     ],
     debtorDays: 20,
     creditorDays: 20,
-    products: [{ name: "Wheat flour (atta)", unit: "quintal", capacity: 3000, price: 3000 }],
-    rawMaterials: [{ name: "Wheat", unit: "quintal", quantity: 3100, rate: 2400 }],
+    products: [{ name: "Wheat flour (atta)", unit: "quintal", capacity: 3000, price: 3000, processLossPct: 0, rejectionPct: 0 }],
+    // About 1.033 quintal of wheat per quintal of atta (cleaning loss and bran).
+    rawMaterials: [{ name: "Wheat", unit: "quintal", quantity: 3100, rate: 2400, productIndex: 0, perUnit: 1.0333, lossPct: 0 }],
     staff: [
       { role: "Machine operator", count: 2, monthlySalary: 12000, direct: true },
       { role: "Accountant", count: 1, monthlySalary: 10000, direct: false },
@@ -58,6 +59,8 @@ export function sampleDpr(now = new Date()): DprInput {
       { name: "Repairs & maintenance", monthly: 2000, variable: false, direct: true },
       { name: "Office, telephone & stationery", monthly: 2000, variable: false, direct: false },
       { name: "Marketing & transport", monthly: 5000, variable: true, direct: false },
+      { name: "Insurance of plant and stock", monthly: 600, variable: false, direct: false },
+      { name: "Professional, audit and compliance fees", monthly: 1500, variable: false, direct: false },
     ],
   };
 }

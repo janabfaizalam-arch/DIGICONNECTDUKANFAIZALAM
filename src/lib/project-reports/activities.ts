@@ -56,6 +56,8 @@ export type TemplateTextParts = {
   swot?: { strengths?: string[]; weaknesses?: string[]; opportunities?: string[]; threats?: string[] };
 };
 
+export type MaterialLink = { product: number; perUnit: number; lossPct?: number };
+
 export type ActivitySketch = {
   id: string;
   label: string;
@@ -71,8 +73,12 @@ export type ActivitySketch = {
   preliminary?: number;
   /** [name, unit, price, share of sales]. Shares add up to 1. */
   products: [string, string, number, number][];
-  /** [name, unit, rate, share of sales]. The shares add up to the raw material ratio. */
-  materials: [string, string, number, number][];
+  /**
+   * [name, unit, rate, share of sales, link?]. Without a link the shares add up to the raw
+   * material ratio; with a link the quantity follows the product's production (per unit, plus loss)
+   * and the share is worked out from it.
+   */
+  materials: [string, string, number, number, MaterialLink?][];
   /** [role, count, monthly salary, direct?]. */
   staff: [string, number, number, boolean][];
   /** Running costs that move with output: [name, share of sales, direct?]. */
@@ -257,10 +263,12 @@ export const ACTIVITY_SKETCHES: ActivitySketch[] = [
       ["20 litre jar (with refill)", "jar", 30, 0.3],
       ["Water pouch 250 ml (bag of 50)", "bag", 45, 0.2],
     ],
+    // Bill of materials per unit sold: 12 bottles a case, one cap set a jar, 50 pouches (about 2.2 g each) a bag.
     materials: [
-      ["PET preforms and caps", "1000 pcs", 1900, 0.2],
-      ["Labels, shrink film and cartons", "1000 pcs", 650, 0.08],
-      ["Pouch film roll", "kg", 190, 0.04],
+      ["PET preforms and caps", "1000 pcs", 1900, 0, { product: 0, perUnit: 0.012, lossPct: 2 }],
+      ["Labels, shrink film and cartons", "1000 cases", 7800, 0, { product: 0, perUnit: 0.001, lossPct: 2 }],
+      ["Jar caps and seals", "1000 pcs", 1500, 0, { product: 1, perUnit: 0.001, lossPct: 2 }],
+      ["Pouch film roll", "kg", 190, 0, { product: 2, perUnit: 0.11, lossPct: 3 }],
     ],
     staff: [
       ["Plant operator", 1, 13000, true],
@@ -1931,7 +1939,10 @@ export const ACTIVITY_SKETCHES: ActivitySketch[] = [
     preliminary: 15000,
     products: [["Cement, steel and building material sales", "lot", 100, 1]],
     materials: [["Purchases", "lot", 88, 0.88]],
-    staff: [["Salesman / loader", 2, 9000, true]],
+    staff: [
+      ["Salesman", 1, 9000, true],
+      ["Loader", 1, 8000, true],
+    ],
     variable: [["Transport and loading", 0.01, true]],
     fixed: [["Yard rent", 5000, false]],
     days: [20, 0, 15, 15],
@@ -1996,7 +2007,12 @@ export function buildActivity(sketch: ActivitySketch): BuiltActivity {
   ];
   const fixedCapital = capitalItems.reduce((sum, item) => sum + item.rate * item.quantity, 0);
 
-  const materialShare = sketch.materials.reduce((sum, [, , , share]) => sum + share, 0);
+  const shareOf = ([, , rate, share, link]: ActivitySketch["materials"][number]) => {
+    if (!link) return share;
+    const product = sketch.products[link.product];
+    return product ? (link.perUnit * (1 + (link.lossPct ?? 0) / 100) * rate * product[3]) / product[2] : 0;
+  };
+  const materialShare = sketch.materials.reduce((sum, m) => sum + shareOf(m), 0);
   const variableShare = sketch.variable.reduce((sum, [, share]) => sum + share, 0);
   const directVariableShare = sketch.variable.filter(([, , d]) => d).reduce((sum, [, share]) => sum + share, 0);
   const wages = sketch.staff.reduce((sum, [, count, salary]) => sum + count * salary * 12, 0);
@@ -2019,8 +2035,12 @@ export function buildActivity(sketch: ActivitySketch): BuiltActivity {
   const products: Product[] = sketch.products.map(([name, unit, price, share]) =>
     unit === "lot" ? { name, unit, price: tidy(sales * share), capacity: 1 } : { name, unit, price, capacity: Math.max(1, Math.round((sales * share) / price)) },
   );
-  const rawMaterials: RawMaterial[] = sketch.materials.map(([name, unit, rate, share]) =>
-    unit === "lot" ? { name, unit, rate: tidy(sales * share), quantity: 1 } : { name, unit, rate, quantity: Math.max(1, Math.round((sales * share) / rate)) },
+  const rawMaterials: RawMaterial[] = sketch.materials.map(([name, unit, rate, share, link]) =>
+    link
+      ? { name, unit, rate, quantity: 0, productIndex: link.product, perUnit: link.perUnit, lossPct: link.lossPct ?? 0 }
+      : unit === "lot"
+        ? { name, unit, rate: tidy(sales * share), quantity: 1 }
+        : { name, unit, rate, quantity: Math.max(1, Math.round((sales * share) / rate)) },
   );
   const staff: StaffRow[] = sketch.staff.map(([role, count, monthlySalary, direct]) => ({ role, count, monthlySalary, direct }));
   const overheads: Overhead[] = [
