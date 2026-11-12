@@ -41,4 +41,15 @@ describe("margin money on both term loan and CC", () => {
     expect(report.means.termLoan).toBeCloseTo((500000 - wc) * 0.875, -1);
     expect(report.means.ownContribution).toBe(62500);
   });
+
+  it("takes loans typed as sanctioned: TL 2,62,500 + CC 1,75,000 at 12.5% -> project 5 lakh, own 62,500", () => {
+    const built = bakery(200000, 500000, 12.5);
+    const report = buildDpr({ ...built, termLoanOverride: 262500, ccLimitOverride: 175000 });
+    expect(report.cost.total).toBe(500000);
+    expect(report.cost.workingCapital).toBe(200000);
+    expect(report.means.termLoan).toBe(262500);
+    expect(report.means.ccLimit).toBe(175000);
+    expect(report.means.ownContribution).toBe(62500);
+    expect(report.errors).toEqual([]);
+  });
 });

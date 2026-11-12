@@ -295,7 +295,7 @@ const toLakh = (value: number) => Math.round((value / 100000) * 100) / 100;
  */
 const RUPEES_IN_LAKH_BOX = 1000;
 const lakhOf = (typed: number) =>
-  typed >= RUPEES_IN_LAKH_BOX ? Math.round(typed / 1000) / 100 : typed;
+  typed >= RUPEES_IN_LAKH_BOX ? typed / 100000 : typed;
 
 /**
  * Basic details only — the same points as the bank DPR's "Project at a
@@ -317,12 +317,26 @@ export function ProjectReportForm({
   // override; it was the CC share of the project, margin included.
   const [input, setInput] = useState<DprInput>(() =>
     (initial.workingCapitalOverride ?? null) === null &&
-    initial.ccLimitOverride !== null
+    initial.ccLimitOverride !== null &&
+    initial.termLoanOverride === null
       ? { ...initial, workingCapitalOverride: initial.ccLimitOverride }
       : initial,
   );
+  // Bank loans typed directly ("TL 2,62,500, CC 1,75,000") are saved as both
+  // overrides together with the working capital they come from.
+  const loansTyped =
+    initial.termLoanOverride !== null &&
+    initial.ccLimitOverride !== null &&
+    (initial.workingCapitalOverride ?? null) !== null;
   const stale =
-    initial.ccLimitOverride !== null || initial.termLoanOverride !== null;
+    !loansTyped &&
+    (initial.ccLimitOverride !== null || initial.termLoanOverride !== null);
+  const [bankTl, setBankTl] = useState<number | null>(
+    loansTyped ? toLakh(initial.termLoanOverride ?? 0) : null,
+  );
+  const [bankCc, setBankCc] = useState<number | null>(
+    loansTyped ? toLakh(initial.ccLimitOverride ?? 0) : null,
+  );
   const [saving, setSaving] = useState<"draft" | "final" | null>(null);
   const [message, setMessage] = useState<{
     tone: "success" | "danger";
@@ -401,6 +415,21 @@ export function ProjectReportForm({
 
   const ownPct = input.ownContributionPct ?? scheme?.ownContributionPct ?? 25;
   const margin = ownPct / 100;
+  const loanMode = bankTl !== null || bankCc !== null;
+  /**
+   * Loans typed as the bank sanctions them: the project is what they and the
+   * margin make together, and the CC part of it is the CC grossed up by the
+   * same margin. TL 2.625 + CC 1.75 at 12.5% -> project 5.00, CC part 2.00.
+   */
+  function fromLoans(tl: number | null, cc: number | null, pct: number) {
+    if (tl === null && cc === null) return;
+    const keep = 1 - pct / 100;
+    if (!(keep > 0)) return;
+    const t = tl === null ? 0 : lakhOf(tl);
+    const c = cc === null ? 0 : lakhOf(cc);
+    setCostLakh(Math.round(((t + c) / keep) * 100000) / 100000);
+    set("workingCapitalOverride", Math.round((c / keep) * 100000));
+  }
   const wc = input.workingCapitalOverride ?? null;
   const wcTyped = wc === null ? null : wc / 100000;
   const costShown = lakhOf(costLakh ?? 0);
@@ -433,12 +462,15 @@ export function ProjectReportForm({
     if (wcL !== null && wcL >= costL)
       return `Working capital Rs. ${wcL.toFixed(2)} lakh, project cost Rs. ${costL.toFixed(2)} lakh se kam hona chahiye (baaki machinery hai). Box lakh mein hai: 4 lakh ke liye sirf 4 likhiye.`;
     if (costL !== costLakh) setCostLakh(costL);
+    // Typed loans are kept to the rupee; the margin is then exactly the rest.
+    const typedTl = loanMode ? Math.round(lakhOf(bankTl ?? 0) * 100000) : null;
+    const typedCc = loanMode ? Math.round(lakhOf(bankCc ?? 0) * 100000) : null;
     const base: DprInput = {
       ...input,
       businessName: input.businessName.trim() || lead.name.trim(),
-      // Loans follow the margin on both parts (engine default split).
-      termLoanOverride: null,
-      ccLimitOverride: null,
+      // Otherwise the loans follow the margin on both parts (engine default split).
+      termLoanOverride: typedTl,
+      ccLimitOverride: typedCc,
       workingCapitalOverride: wcL === null ? null : Math.round(wcL * 100000),
     };
     return applyTemplate(
@@ -741,6 +773,40 @@ export function ProjectReportForm({
                 {scheme?.summary ? `. ${scheme.summary}` : "."}
               </p>
             ) : null}
+            <div className="rounded-ds-lg border border-dashed border-ds-border p-3 md:col-span-2">
+              <p className="text-xs font-bold text-ds-text-secondary">
+                Seedha bank loan likhiye (agar pata hai)
+              </p>
+              <p className="mt-0.5 text-xs text-ds-text-muted">
+                Jaise TL 262500 aur CC 175000: margin % ke saath project cost
+                aur CC wala hissa neeche apne aap bhar jaayega. Rupees ya lakh,
+                dono chalega.
+              </p>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                <Field guide="termLoanOverride" label="Term loan, bank se">
+                  <NumberBox
+                    label="Term loan, bank se"
+                    nullable
+                    value={bankTl}
+                    onChange={(v) => {
+                      setBankTl(v);
+                      fromLoans(v, bankCc, ownPct);
+                    }}
+                  />
+                </Field>
+                <Field guide="ccLimitOverride" label="CC, bank se">
+                  <NumberBox
+                    label="CC, bank se"
+                    nullable
+                    value={bankCc}
+                    onChange={(v) => {
+                      setBankCc(v);
+                      fromLoans(bankTl, v, ownPct);
+                    }}
+                  />
+                </Field>
+              </div>
+            </div>
             <Field
               guide="projectCost"
               label="Total project cost, margin sahit (Rs. lakh) *"
@@ -756,7 +822,11 @@ export function ProjectReportForm({
                 label="Total project cost, margin sahit (Rs. lakh) *"
                 nullable
                 value={costLakh}
-                onChange={setCostLakh}
+                onChange={(v) => {
+                  setCostLakh(v);
+                  setBankTl(null);
+                  setBankCc(null);
+                }}
                 suffix="lakh"
               />
             </Field>
@@ -769,7 +839,15 @@ export function ProjectReportForm({
                 label="Apna hissa / margin (%)"
                 nullable
                 value={input.ownContributionPct}
-                onChange={(v) => set("ownContributionPct", v)}
+                onChange={(v) => {
+                  set("ownContributionPct", v);
+                  if (loanMode)
+                    fromLoans(
+                      bankTl,
+                      bankCc,
+                      v ?? scheme?.ownContributionPct ?? 25,
+                    );
+                }}
                 suffix="%"
               />
             </Field>
@@ -788,12 +866,14 @@ export function ProjectReportForm({
                 label="Isme CC / working capital wala hissa, margin sahit (Rs. lakh)"
                 nullable
                 value={wc === null ? null : toLakh(wc)}
-                onChange={(v) =>
+                onChange={(v) => {
                   set(
                     "workingCapitalOverride",
                     v === null ? null : Math.round(v * 100000),
-                  )
-                }
+                  );
+                  setBankTl(null);
+                  setBankCc(null);
+                }}
                 suffix="lakh"
               />
             </Field>
