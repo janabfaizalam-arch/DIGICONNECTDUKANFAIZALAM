@@ -313,7 +313,16 @@ export function ProjectReportForm({
   initialStatus?: "draft" | "final";
 }) {
   const router = useRouter();
-  const [input, setInput] = useState<DprInput>(initial);
+  // DPRs saved before the working capital box kept the CC part in the CC
+  // override; it was the CC share of the project, margin included.
+  const [input, setInput] = useState<DprInput>(() =>
+    (initial.workingCapitalOverride ?? null) === null &&
+    initial.ccLimitOverride !== null
+      ? { ...initial, workingCapitalOverride: initial.ccLimitOverride }
+      : initial,
+  );
+  const stale =
+    initial.ccLimitOverride !== null || initial.termLoanOverride !== null;
   const [saving, setSaving] = useState<"draft" | "final" | null>(null);
   const [message, setMessage] = useState<{
     tone: "success" | "danger";
@@ -505,6 +514,20 @@ export function ProjectReportForm({
             </div>
           </div>
 
+          {stale ? (
+            <p
+              role="note"
+              className={cn(
+                "mt-4 rounded-ds-md px-3 py-2 text-xs",
+                STATUS_TONE_CLASS.warning,
+              )}
+            >
+              Yeh DPR purane tareeke se bani thi (loan seedha likha gaya tha,
+              margin sirf ek mein laga). Neeche project cost aur CC wala hissa
+              check kariye aur &quot;DPR banaiye&quot; dabaiye: margin dono mein
+              se nikalkar hisaab dobara banega.
+            </p>
+          ) : null}
           <h3 className="mt-5 text-xs font-bold uppercase tracking-wide text-ds-text-muted">
             1. Promoter
           </h3>
@@ -720,7 +743,7 @@ export function ProjectReportForm({
             ) : null}
             <Field
               guide="projectCost"
-              label="Total project cost (Rs. lakh) *"
+              label="Total project cost, margin sahit (Rs. lakh) *"
               help={
                 (costLakh ?? 0) >= RUPEES_IN_LAKH_BOX
                   ? `Rupees mein likha tha; Rs. ${costShown.toFixed(2)} lakh maana jaayega`
@@ -730,7 +753,7 @@ export function ProjectReportForm({
               }
             >
               <NumberBox
-                label="Total project cost (Rs. lakh) *"
+                label="Total project cost, margin sahit (Rs. lakh) *"
                 nullable
                 value={costLakh}
                 onChange={setCostLakh}
@@ -752,17 +775,17 @@ export function ProjectReportForm({
             </Field>
             <Field
               guide="workingCapitalOverride"
-              label="Working capital (Rs. lakh)"
+              label="Isme CC / working capital wala hissa, margin sahit (Rs. lakh)"
               help={
                 wcTooBig
                   ? "Working capital project cost se kam hona chahiye. Box lakh mein hai: 4 lakh ke liye sirf 4 likhiye."
                   : wcShown !== null && wcShown !== wcTyped
                     ? `Rupees mein likha tha; Rs. ${wcShown.toFixed(2)} lakh maana jaayega`
-                    : "Khaali = business ke hisaab se apne aap. Lakh mein likhiye: 4 lakh = 4"
+                    : "Jaise 5 lakh project mein 1 lakh CC aur 4 lakh TL ho to yahan 1 likhiye. Khaali = business ke hisaab se apne aap"
               }
             >
               <NumberBox
-                label="Working capital (Rs. lakh)"
+                label="Isme CC / working capital wala hissa, margin sahit (Rs. lakh)"
                 nullable
                 value={wc === null ? null : toLakh(wc)}
                 onChange={(v) =>
@@ -776,7 +799,7 @@ export function ProjectReportForm({
             </Field>
             <div className="rounded-ds-lg bg-ds-surface-sunken p-3 text-sm">
               <p className="text-xs font-bold text-ds-text-secondary">
-                Loan (apne aap, margin dono par)
+                Loan (margin dono mein se)
               </p>
               {wcTooBig ? (
                 <p className="mt-1 text-xs font-semibold text-ds-danger">
@@ -789,15 +812,19 @@ export function ProjectReportForm({
                 </p>
               ) : (
                 <>
+                  <p className="mt-1 text-xs text-ds-text-secondary">
+                    Term loan wala hissa (machinery) Rs.{" "}
+                    {(costShown - (wcForSplit ?? 0)).toFixed(2)} + CC wala hissa
+                    Rs. {(wcForSplit ?? 0).toFixed(2)} = project Rs.{" "}
+                    {costShown.toFixed(2)} lakh
+                  </p>
                   <p className="mt-1 font-bold tabular-nums text-ds-text-primary">
-                    Term loan Rs. {tlLakh.toFixed(2)} lakh · CC Rs.{" "}
+                    Bank se: Term loan Rs. {tlLakh.toFixed(2)} · CC Rs.{" "}
                     {ccLakh.toFixed(2)} lakh
                   </p>
                   <p className="mt-0.5 text-xs text-ds-text-muted">
-                    Machinery Rs. {(costShown - (wcForSplit ?? 0)).toFixed(2)} ×{" "}
-                    {100 - ownPct}% = TL; working capital Rs.{" "}
-                    {(wcForSplit ?? 0).toFixed(2)} × {100 - ownPct}% = CC; apna
-                    hissa Rs. {(costShown * margin).toFixed(2)} lakh
+                    Dono mein se {ownPct}% margin nikala: apna hissa Rs.{" "}
+                    {(costShown * margin).toFixed(2)} lakh
                   </p>
                 </>
               )}
