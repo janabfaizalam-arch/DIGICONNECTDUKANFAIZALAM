@@ -124,6 +124,12 @@ export const DPR_GUIDE = {
   moratoriumMonths: g("Shuru ke kitne mahine sirf byaaj, kisht nahi.", "Bank se; aam taur par 6 mahine.", "Kaam jamne ka samay milta hai; repayment schedule mein dikhta hai.", "auto"),
   termLoanOverride: g("Term loan ki raashi sirf tab likhein jab bank ne alag sanction kiya ho. Term loan + CC + apna hissa = project cost; dono loan likhne par apna hissa baaki raashi se nikalta hai.", "Bank ki sanction letter ya branch manager se.", "Khaali chhodne par yojana ke hisaab se apne aap banta hai. Jaise 20 lakh project, 5% apna: term loan + CC = 19 lakh.", "optional"),
   ccLimitOverride: g("CC / working capital limit sirf tab likhein jab bank ne alag di ho.", "Bank ki sanction letter ya branch manager se.", "Khaali chhodne par working capital ke hisaab se apne aap.", "optional"),
+  workingCapitalOverride: g(
+    "Project cost mein kitna working capital (kachcha maal, stock, udhaar bikri, cash) rakhna hai, lakh mein. Jaise 10 lakh ke project mein 4.",
+    "Business ke chakra se: ek-do mahine ka kachcha maal + taiyaar maal + udhaar. Bank ki pichhli DPR se bhi.",
+    "Isi se CC banta hai: working capital mein se apna hissa (margin) nikaal kar CC, aur baaki machinery mein se margin nikaal kar term loan. Khaali chhodne par business ke hisaab se apne aap.",
+    "optional",
+  ),
   subsidyOverride: g("Subsidy ki raashi sirf tab likhein jab yojana ne alag tay ki ho.", "Portal / bank ki subsidy claim.", "Khaali chhodne par yojana ke % se apne aap.", "optional"),
   interestSubventionPct: g("Sarkar byaaj ka kitna % degi.", "Yojana se; CM-YUVA mein pehle 4 saal 100%.", "Byaaj kharcha kam hota hai, profit badhta hai.", "auto"),
   interestSubventionYears: g("Byaaj chhoot kitne saal milegi.", "Yojana se apne aap; CM-YUVA mein 4 saal.", "Utne saal byaaj kharche mein chhoot dikhti hai.", "auto"),

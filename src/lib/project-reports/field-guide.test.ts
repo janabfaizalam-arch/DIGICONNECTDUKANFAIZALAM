@@ -24,7 +24,7 @@ describe("DPR field guide", () => {
     const used = new Set([...form.matchAll(/\bguide="([A-Za-z]+)"/g)].map((m) => m[1]));
     expect([...used].filter((key) => !(key in DPR_GUIDE))).toEqual([]);
     // The basic form asks only the points of the bank's "Project at a Glance".
-    for (const key of ["promoterName", "fatherName", "mobile", "businessName", "constitution", "address", "district", "scheme", "templateId", "projectCost", "ownContributionPct", "ccLimitOverride", "termLoanInterestPct", "tenureYears"]) {
+    for (const key of ["promoterName", "fatherName", "mobile", "businessName", "constitution", "address", "district", "scheme", "templateId", "projectCost", "ownContributionPct", "workingCapitalOverride", "termLoanInterestPct", "tenureYears"]) {
       expect(used.has(key), key).toBe(true);
     }
   });

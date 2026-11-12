@@ -391,18 +391,24 @@ export function ProjectReportForm({
   }
 
   const ownPct = input.ownContributionPct ?? scheme?.ownContributionPct ?? 25;
-  const cc = input.ccLimitOverride;
-  const ccTyped = cc === null ? null : cc / 100000;
+  const margin = ownPct / 100;
+  const wc = input.workingCapitalOverride ?? null;
+  const wcTyped = wc === null ? null : wc / 100000;
   const costShown = lakhOf(costLakh ?? 0);
-  const ccShown =
-    ccTyped === null ? null : ccTyped > costShown ? lakhOf(ccTyped) : ccTyped;
-  const cost = costShown * 100000;
-  const own = (cost * ownPct) / 100;
-  const ccTooBig = ccShown !== null && ccShown * 100000 > cost - own + 500;
-  const termLoan = Math.max(
-    0,
-    cost - own - (ccShown === null ? report.means.ccLimit : ccShown * 100000),
-  );
+  const wcShown =
+    wcTyped === null ? null : wcTyped > costShown ? lakhOf(wcTyped) : wcTyped;
+  const wcTooBig = wcShown !== null && wcShown >= costShown;
+  // The bank's way: the margin is taken from both parts. Term loan =
+  // machinery x (1 - margin), CC = working capital x (1 - margin).
+  const wcForSplit =
+    wcShown !== null
+      ? wcShown
+      : input.products.length > 0
+        ? toLakh(report.cost.workingCapital)
+        : null;
+  const ccLakh = wcForSplit === null ? null : wcForSplit * (1 - margin);
+  const tlLakh =
+    wcForSplit === null ? null : (costShown - wcForSplit) * (1 - margin);
 
   /** Fills every detail from the business type, sized to the project cost. */
   function compose(): DprInput | string {
@@ -413,17 +419,18 @@ export function ProjectReportForm({
     const costL = lakhOf(costLakh);
     if (limit && costL * 100000 > limit)
       return `Is yojana mein project cost Rs. ${limit / 100000} lakh se zyada nahi ho sakta.`;
-    const ownL = (costL * ownPct) / 100;
-    const ccL =
-      ccTyped === null ? null : ccTyped > costL ? lakhOf(ccTyped) : ccTyped;
-    if (ccL !== null && ccL > costL - ownL + 0.005)
-      return `CC loan Rs. ${ccL.toFixed(2)} lakh, project cost Rs. ${costL.toFixed(2)} lakh mein apna hissa Rs. ${ownL.toFixed(2)} lakh nikaal kar bache Rs. ${(costL - ownL).toFixed(2)} lakh se zyada nahi ho sakta. Box lakh mein hai: 4 lakh ke liye sirf 4 likhiye.`;
+    const wcL =
+      wcTyped === null ? null : wcTyped > costL ? lakhOf(wcTyped) : wcTyped;
+    if (wcL !== null && wcL >= costL)
+      return `Working capital Rs. ${wcL.toFixed(2)} lakh, project cost Rs. ${costL.toFixed(2)} lakh se kam hona chahiye (baaki machinery hai). Box lakh mein hai: 4 lakh ke liye sirf 4 likhiye.`;
     if (costL !== costLakh) setCostLakh(costL);
     const base: DprInput = {
       ...input,
       businessName: input.businessName.trim() || lead.name.trim(),
+      // Loans follow the margin on both parts (engine default split).
       termLoanOverride: null,
-      ccLimitOverride: ccL === null ? null : Math.round(ccL * 100000),
+      ccLimitOverride: null,
+      workingCapitalOverride: wcL === null ? null : Math.round(wcL * 100000),
     };
     return applyTemplate(
       base,
@@ -744,23 +751,23 @@ export function ProjectReportForm({
               />
             </Field>
             <Field
-              guide="ccLimitOverride"
-              label="Working capital loan / CC (Rs. lakh)"
+              guide="workingCapitalOverride"
+              label="Working capital (Rs. lakh)"
               help={
-                ccTooBig
-                  ? "CC project cost se zyada hai. Box lakh mein hai: 4 lakh ke liye sirf 4 likhiye."
-                  : ccShown !== null && ccShown !== ccTyped
-                    ? `Rupees mein likha tha; Rs. ${ccShown.toFixed(2)} lakh maana jaayega`
-                    : "Khaali = working capital ki zaroorat ke hisaab se. Lakh mein likhiye: 4 lakh = 4"
+                wcTooBig
+                  ? "Working capital project cost se kam hona chahiye. Box lakh mein hai: 4 lakh ke liye sirf 4 likhiye."
+                  : wcShown !== null && wcShown !== wcTyped
+                    ? `Rupees mein likha tha; Rs. ${wcShown.toFixed(2)} lakh maana jaayega`
+                    : "Khaali = business ke hisaab se apne aap. Lakh mein likhiye: 4 lakh = 4"
               }
             >
               <NumberBox
-                label="Working capital loan / CC (Rs. lakh)"
+                label="Working capital (Rs. lakh)"
                 nullable
-                value={cc === null ? null : toLakh(cc)}
+                value={wc === null ? null : toLakh(wc)}
                 onChange={(v) =>
                   set(
-                    "ccLimitOverride",
+                    "workingCapitalOverride",
                     v === null ? null : Math.round(v * 100000),
                   )
                 }
@@ -769,16 +776,31 @@ export function ProjectReportForm({
             </Field>
             <div className="rounded-ds-lg bg-ds-surface-sunken p-3 text-sm">
               <p className="text-xs font-bold text-ds-text-secondary">
-                Term loan (apne aap)
+                Loan (apne aap, margin dono par)
               </p>
-              <p className="mt-1 font-bold tabular-nums text-ds-text-primary">
-                Rs. {toLakh(termLoan).toFixed(2)} lakh
-              </p>
-              <p className="mt-0.5 text-xs text-ds-text-muted">
-                {ccTooBig
-                  ? "CC galat hai: project cost se zyada. Pehle CC theek kariye."
-                  : `= project cost − apna hissa Rs. ${toLakh(own).toFixed(2)} lakh − CC`}
-              </p>
+              {wcTooBig ? (
+                <p className="mt-1 text-xs font-semibold text-ds-danger">
+                  Working capital galat hai. Pehle use theek kariye.
+                </p>
+              ) : ccLakh === null || tlLakh === null ? (
+                <p className="mt-1 text-xs text-ds-text-muted">
+                  Working capital bhariye, ya &quot;DPR banaiye&quot; dabaiye:
+                  term loan aur CC apne aap banenge.
+                </p>
+              ) : (
+                <>
+                  <p className="mt-1 font-bold tabular-nums text-ds-text-primary">
+                    Term loan Rs. {tlLakh.toFixed(2)} lakh · CC Rs.{" "}
+                    {ccLakh.toFixed(2)} lakh
+                  </p>
+                  <p className="mt-0.5 text-xs text-ds-text-muted">
+                    Machinery Rs. {(costShown - (wcForSplit ?? 0)).toFixed(2)} ×{" "}
+                    {100 - ownPct}% = TL; working capital Rs.{" "}
+                    {(wcForSplit ?? 0).toFixed(2)} × {100 - ownPct}% = CC; apna
+                    hissa Rs. {(costShown * margin).toFixed(2)} lakh
+                  </p>
+                </>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field guide="termLoanInterestPct" label="Byaaj (% saalana)">

@@ -117,6 +117,7 @@ export const dprInputSchema = z.object({
   otherFunding: amount.default(0),
   termLoanOverride: optionalAmount,
   ccLimitOverride: optionalAmount,
+  workingCapitalOverride: optionalAmount.default(null),
   subsidyOverride: optionalAmount,
   termLoanInterestPct: pct(30),
   ccInterestPct: pct(30),
