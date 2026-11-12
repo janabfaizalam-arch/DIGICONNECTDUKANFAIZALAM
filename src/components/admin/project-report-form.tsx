@@ -289,6 +289,15 @@ function Field({
 const toLakh = (value: number) => Math.round((value / 100000) * 100) / 100;
 
 /**
+ * A lakh box that got rupees: "400000" typed for Rs. 4,00,000 reads as
+ * 4 lakh lakh. A figure of 1,000 lakh (Rs. 10 crore) or more in these boxes
+ * is taken as rupees.
+ */
+const RUPEES_IN_LAKH_BOX = 1000;
+const lakhOf = (typed: number) =>
+  typed >= RUPEES_IN_LAKH_BOX ? Math.round(typed / 1000) / 100 : typed;
+
+/**
  * Basic details only — the same points as the bank DPR's "Project at a
  * Glance". Everything else (machinery, capacity, raw material, staff,
  * running costs, working capital) comes from the chosen business type and
@@ -381,23 +390,45 @@ export function ProjectReportForm({
     setLead({ socialCategory: next });
   }
 
+  const ownPct = input.ownContributionPct ?? scheme?.ownContributionPct ?? 25;
+  const cc = input.ccLimitOverride;
+  const ccTyped = cc === null ? null : cc / 100000;
+  const costShown = lakhOf(costLakh ?? 0);
+  const ccShown =
+    ccTyped === null ? null : ccTyped > costShown ? lakhOf(ccTyped) : ccTyped;
+  const cost = costShown * 100000;
+  const own = (cost * ownPct) / 100;
+  const ccTooBig = ccShown !== null && ccShown * 100000 > cost - own + 500;
+  const termLoan = Math.max(
+    0,
+    cost - own - (ccShown === null ? report.means.ccLimit : ccShown * 100000),
+  );
+
   /** Fills every detail from the business type, sized to the project cost. */
   function compose(): DprInput | string {
     if (!lead.name.trim()) return "Promoter ka naam bhariye.";
     if (!input.district.trim()) return "District bhariye.";
     if (!(costLakh && costLakh > 0)) return "Project cost (lakh mein) bhariye.";
     if (!template) return "Business type chuniye.";
-    if (limit && costLakh * 100000 > limit)
+    const costL = lakhOf(costLakh);
+    if (limit && costL * 100000 > limit)
       return `Is yojana mein project cost Rs. ${limit / 100000} lakh se zyada nahi ho sakta.`;
+    const ownL = (costL * ownPct) / 100;
+    const ccL =
+      ccTyped === null ? null : ccTyped > costL ? lakhOf(ccTyped) : ccTyped;
+    if (ccL !== null && ccL > costL - ownL + 0.005)
+      return `CC loan Rs. ${ccL.toFixed(2)} lakh, project cost Rs. ${costL.toFixed(2)} lakh mein apna hissa Rs. ${ownL.toFixed(2)} lakh nikaal kar bache Rs. ${(costL - ownL).toFixed(2)} lakh se zyada nahi ho sakta. Box lakh mein hai: 4 lakh ke liye sirf 4 likhiye.`;
+    if (costL !== costLakh) setCostLakh(costL);
     const base: DprInput = {
       ...input,
       businessName: input.businessName.trim() || lead.name.trim(),
       termLoanOverride: null,
+      ccLimitOverride: ccL === null ? null : Math.round(ccL * 100000),
     };
     return applyTemplate(
       base,
       template,
-      costLakh * 100000,
+      costL * 100000,
       (i) => buildDpr(i).cost.total,
     );
   }
@@ -441,12 +472,6 @@ export function ProjectReportForm({
     if (!id) window.location.assign(`/admin/project-reports/${body.id}`);
     else router.refresh();
   }
-
-  const cost = (costLakh ?? 0) * 100000;
-  const ownPct = input.ownContributionPct ?? scheme?.ownContributionPct ?? 25;
-  const own = (cost * ownPct) / 100;
-  const cc = input.ccLimitOverride;
-  const termLoan = Math.max(0, cost - own - (cc ?? report.means.ccLimit));
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -690,9 +715,11 @@ export function ProjectReportForm({
               guide="projectCost"
               label="Total project cost (Rs. lakh) *"
               help={
-                limit
-                  ? `Is yojana mein zyada se zyada Rs. ${limit / 100000} lakh`
-                  : "Machinery + working capital milakar, jaise 10"
+                (costLakh ?? 0) >= RUPEES_IN_LAKH_BOX
+                  ? `Rupees mein likha tha; Rs. ${costShown.toFixed(2)} lakh maana jaayega`
+                  : limit
+                    ? `Lakh mein likhiye (10 lakh = 10). Is yojana mein zyada se zyada Rs. ${limit / 100000} lakh`
+                    : "Lakh mein likhiye: machinery + working capital milakar, jaise 10"
               }
             >
               <NumberBox
@@ -719,7 +746,13 @@ export function ProjectReportForm({
             <Field
               guide="ccLimitOverride"
               label="Working capital loan / CC (Rs. lakh)"
-              help="Khaali = working capital ki zaroorat ke hisaab se"
+              help={
+                ccTooBig
+                  ? "CC project cost se zyada hai. Box lakh mein hai: 4 lakh ke liye sirf 4 likhiye."
+                  : ccShown !== null && ccShown !== ccTyped
+                    ? `Rupees mein likha tha; Rs. ${ccShown.toFixed(2)} lakh maana jaayega`
+                    : "Khaali = working capital ki zaroorat ke hisaab se. Lakh mein likhiye: 4 lakh = 4"
+              }
             >
               <NumberBox
                 label="Working capital loan / CC (Rs. lakh)"
@@ -742,8 +775,9 @@ export function ProjectReportForm({
                 Rs. {toLakh(termLoan).toFixed(2)} lakh
               </p>
               <p className="mt-0.5 text-xs text-ds-text-muted">
-                = project cost − apna hissa Rs. {toLakh(own).toFixed(2)} lakh −
-                CC
+                {ccTooBig
+                  ? "CC galat hai: project cost se zyada. Pehle CC theek kariye."
+                  : `= project cost − apna hissa Rs. ${toLakh(own).toFixed(2)} lakh − CC`}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
