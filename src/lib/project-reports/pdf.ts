@@ -43,6 +43,16 @@ const L = (value: number) => {
   if (Math.abs(v) < 0.005) return "-";
   return v < 0 ? `(${INR.format(-v)})` : INR.format(v);
 };
+/**
+ * The promoter's share as the balancing figure in lakh, so that the rounded
+ * parts of the means of finance foot to the rounded total (2.63 + 1.75 +
+ * 0.62 = 5.00, not 0.63).
+ */
+const ownFooted = (m: DprReport["means"]) => {
+  const r = (v: number) => Math.round((v / 100000) * 100);
+  const own = r(m.total) - r(m.termLoan) - r(m.ccLimit) - r(m.otherFunding);
+  return own <= 0 ? L(m.ownContribution) : INR.format(own / 100);
+};
 const Rs = (value: number) => (value < 0 ? `(${INR.format(-value)})` : INR.format(value));
 const ratio = (value: number | null) => (value === null || !Number.isFinite(value) ? "-" : value.toFixed(2));
 const roman = (n: number) => ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][n] ?? String(n + 1);
@@ -163,7 +173,7 @@ function glance(doc: Doc, input: DprInput, report: DprReport) {
   const capital: string[] = [`Term Loan :  ${L(m.termLoan)} LACS`];
   if (m.ccLimit > 0) capital.push(`Working Capital Loan :  ${L(m.ccLimit)} LACS`);
   if (m.otherFunding > 0) capital.push(`Unsecured Loan :  ${L(m.otherFunding)} LACS`);
-  capital.push(`Promoter's Capital :  ${L(m.ownContribution)} LACS`);
+  capital.push(`Promoter's Capital :  ${ownFooted(m)} LACS`);
 
   const items: [string, string][] = [
     ["Name of the Concern", [upper(input.businessName), lead && lead.fatherName.trim() && lead.name.trim().toUpperCase() === input.businessName.trim().toUpperCase() ? `S/O ${upper(lead.fatherName)}` : "", upper(lead?.address.trim() || place)].filter(Boolean).join("\n")],
@@ -227,7 +237,7 @@ function costAndMeans(doc: Doc, input: DprInput, report: DprReport) {
   heading(doc, "MEANS OF FINANCE");
   unit(doc);
   const m = report.means;
-  const means: Line[] = [{ cells: ["1-", "Proprietor's/ Contribution", L(m.ownContribution)] }];
+  const means: Line[] = [{ cells: ["1-", "Proprietor's/ Contribution", ownFooted(m)] }];
   let k = 2;
   if (m.otherFunding > 0) means.push({ cells: [`${k++}-`, "Unsecured Loans", L(m.otherFunding)], gap: 6 });
   means.push({ cells: [`${k++}-`, "Bank Loans", ""], gap: 6 });
