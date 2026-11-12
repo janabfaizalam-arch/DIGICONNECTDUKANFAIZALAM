@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { loadPdfParse } from "@/lib/balance-sheets/pdf-text";
 
+import { buildDpr } from "./engine";
 import { renderProjectReportPdf } from "./pdf";
 import { sampleDpr } from "./sample";
 import type { ProjectReportRecord } from "./store";
@@ -28,76 +29,59 @@ async function textOf(pdf: Buffer) {
 }
 
 describe("DPR PDF", () => {
-  it("renders every section of a bank DPR", async () => {
+  it("renders the ten statements of the bank format and nothing else", async () => {
     const pdf = await renderProjectReportPdf(record());
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     if (process.env.DPR_PDF_OUT) writeFileSync(process.env.DPR_PDF_OUT, pdf);
     const { text, pages } = await textOf(pdf);
-    // No blank pages: the footer must not push content onto new pages.
-    expect(pages).toBeGreaterThanOrEqual(20);
-    expect(pages).toBeLessThanOrEqual(34);
-    // The 28 sections a bank expects, in the report's own words.
+    expect(pages).toBeGreaterThanOrEqual(10);
+    expect(pages).toBeLessThanOrEqual(12);
     for (const heading of [
-      "DETAILED PROJECT REPORT",
-      "Table of Contents",
-      "Executive Summary",
-      "Internal consistency checks",
-      "Project at a Glance",
-      "Promoter Profile",
-      "Scheme Eligibility — PMEGP",
-      "Scheme rules used and their verification status",
-      "Project Profile",
-      "Market Analysis",
-      "Manufacturing / Service Process",
-      "Machinery and Equipment",
-      "Production, Sales and Raw Material",
-      "Production and saleable quantity",
-      "Statutory Compliance and Licences",
-      "Mandatory approvals",
-      "Project Cost",
-      "Means of Finance",
-      "Treatment of the government subsidy",
-      "Working Capital Assessment",
-      "Employees and Salary",
-      "Loan Repayment Schedule",
-      "Depreciation Schedule",
-      "Projected Profit and Loss",
-      "Computation of income tax",
-      "Projected Balance Sheet",
-      "Cash Flow Statement",
-      "Operating activities",
-      "Investing activities",
-      "Financing activities",
-      "DSCR, Current Ratio and Key Ratios",
-      "Break-even Analysis",
-      "Sensitivity Analysis",
-      "Risk Analysis and SWOT",
-      "Implementation Schedule",
-      "Conclusion and Declaration",
-      "Month-wise Repayment Schedule",
-      "Basis of Projections",
-      "Assumptions to be Confirmed and Data Gaps",
-      "Documents Checklist",
-      "EDP (Entrepreneurship Development Programme) training certificate",
-      "Quotation pending",
-      "not a CA certification",
+      "PROJECT AT A GLANCE",
+      "Name of the Concern",
+      "Capital Composition",
+      "Technical Know-how",
+      "D.S.C.R.",
+      "COST OF PROJECT",
+      "MEANS OF FINANCE",
+      "TERM LOAN REPAYMENT SCHEDULE",
+      "CALCULATION OF DEPRECIATION OF FIXED ASSETS",
+      "CALCULATION OF ESTIMATED SALARY",
+      "COST OF PRODUCTION AND PROFITABILITY STATEMENTS YEAR 1",
+      "To Opening Stock",
+      "By Closing Stock",
+      "TOTAL RUPEES",
+      "[B] EXPENDITURE",
+      "Cash Accruals",
+      "PROJECTED BALANCE SHEET",
+      "Total Liabilities",
+      "Total Assets",
+      "CASH FLOW STATEMENT",
+      "A. SOURCES OF FUNDS",
+      "B. USES OF FUNDS",
+      "CALCULATION OF CURRENT RATIO",
+      "Average CURRENT RATIO",
+      "CALCULATION OF DEBT SERVICE COVERAGE RATIO",
+      "Average Debt Service Coverage Ratio",
     ]) {
-      expect(text.toLowerCase(), heading).toContain(heading.toLowerCase());
+      expect(text, heading).toContain(heading);
     }
-    expect(text).not.toContain("NOT RECONCILED");
-    expect(text).toContain("Shree Ram Flour Mill");
+    // Everything outside the bank format is gone.
+    for (const removed of ["Table of Contents", "Executive Summary", "Market Analysis", "Sensitivity Analysis", "Documents Checklist", "Break-even"]) {
+      expect(text).not.toContain(removed);
+    }
+    expect(text).toContain("SHREE RAM FLOUR MILL");
     expect(text).toContain("PMEGP");
-    expect(text).toContain("Atta chakki 20 HP with motor");
-    expect(text).toContain("54.00"); // year I sales, Rs. lakh
-    expect(text).toContain("Wheat flour (atta) (quintal) 3,000 1,800"); // capacity and year-I production
-    expect(text).toContain("not included in the cost of project");
-    expect(text).toContain("Amount in Rs. lakh");
   });
 
-  it("uses the admin's own text for a section", async () => {
-    const input = { ...sampleDpr(new Date("2026-11-08")), narrative: { market: "Mandi mein atte ki maang bahut hai." } };
+  it("ties the profitability statement to the engine's profit", async () => {
+    const input = sampleDpr(new Date("2026-11-08"));
+    const report = buildDpr(input);
     const { text } = await textOf(await renderProjectReportPdf(record({ input })));
-    expect(text).toContain("Mandi mein atte ki maang bahut hai.");
+    const lakh = (v: number) => (Math.round(v / 1000) / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+    expect(text).toContain(lakh(report.years[0].profitBeforeTax));
+    expect(text).toContain(lakh(report.years[0].cashAccrual));
+    expect(text).toContain(lakh(report.cost.total));
   });
 
   it("renders a service project with no raw material and no scheme", async () => {
@@ -111,7 +95,7 @@ describe("DPR PDF", () => {
     };
     const pdf = await renderProjectReportPdf(record({ input }));
     const { text } = await textOf(pdf);
-    expect(text).toContain("Bank finance (no government scheme)");
-    expect(text).toContain("Computer training");
+    expect(text).toContain("BANK FINANCE");
+    expect(text).toContain("COMPUTER TRAINING");
   });
 });
