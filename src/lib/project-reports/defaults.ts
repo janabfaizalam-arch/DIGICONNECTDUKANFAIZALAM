@@ -68,6 +68,7 @@ export function emptyDpr(now = new Date()): DprInput {
     otherFunding: 0,
     termLoanOverride: null,
     ccLimitOverride: null,
+    workingCapitalOverride: null,
     subsidyOverride: null,
     termLoanInterestPct: 10.5,
     ccInterestPct: 11,

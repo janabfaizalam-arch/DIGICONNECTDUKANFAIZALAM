@@ -908,7 +908,9 @@ export function applyTemplate(input: DprInput, templateId: string, projectCost: 
       for (let pass = 0; pass < 3; pass += 1) {
         const total = buildTotal(build(f, v));
         if (total <= 0) break;
-        f = f * (projectCost / total);
+        // A typed working capital does not scale with the unit; only the rest does.
+        const fixedPart = Math.max(0, base.workingCapitalOverride ?? 0);
+        f = total - fixedPart > 0 && projectCost > fixedPart ? f * ((projectCost - fixedPart) / (total - fixedPart)) : f * (projectCost / total);
       }
     }
     return f;

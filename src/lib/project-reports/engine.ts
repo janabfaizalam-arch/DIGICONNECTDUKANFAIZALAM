@@ -177,6 +177,8 @@ export type DprInput = {
   /** Typed loan amounts override the automatic split; null works them out. */
   termLoanOverride: number | null;
   ccLimitOverride: number | null;
+  /** Working capital in the project cost as typed; null = assessed from the operating cycle. */
+  workingCapitalOverride?: number | null;
   subsidyOverride: number | null;
   termLoanInterestPct: number;
   ccInterestPct: number;
@@ -666,7 +668,12 @@ export function workingCapitalOf(input: DprInput): WorkingCapital {
     minimumCash: round(b.minimumCash),
     creditors: round(b.creditors),
     // Whole rupees, as a bank sanctions it, so typed loans can add up to the project cost exactly.
-    requirement: Math.round(Math.max(0, b.rawMaterialStock + b.workInProgress + b.finishedGoods + b.debtors + b.minimumCash - b.creditors)),
+    // A typed figure (as in the bank's own format: "Working Capital 4.00") wins; what is
+    // not tied up in stock and debtors stays as cash in the projections.
+    requirement:
+      input.workingCapitalOverride !== null && input.workingCapitalOverride !== undefined
+        ? Math.round(pos(input.workingCapitalOverride))
+        : Math.round(Math.max(0, b.rawMaterialStock + b.workInProgress + b.finishedGoods + b.debtors + b.minimumCash - b.creditors)),
   };
 }
 
