@@ -391,3 +391,12 @@ describe("a machine entered under the wrong head", () => {
     expect(buildDpr(input).warnings.some((w) => /Plant & machinery/.test(w))).toBe(false);
   });
 });
+
+describe("the maximum loan uses the percent the admin typed", () => {
+  it("5% typed under MYSY General (scheme 10%): message says 5%", () => {
+    const input = { ...fromTemplate("packaged-water", 20, { scheme: "mysy" }), ownContributionPct: 5, termLoanOverride: 1800000, ccLimitOverride: 300000 };
+    const msg = buildDpr(input).errors.join(" ");
+    expect(msg).toContain("5% apna paisa");
+    expect(msg).toContain("zyada se zyada Rs. 19 lakh");
+  });
+});

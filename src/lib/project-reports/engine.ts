@@ -1198,7 +1198,7 @@ export function buildDpr(input: DprInput): DprReport {
     dataGaps: [],
   };
   report.checks.allFinite = allFinite(report);
-  report.errors = errorsFor(report);
+  report.errors = errorsFor(report, input);
   report.warnings = [...report.errors, ...warningsFor(input, report)];
   report.dataGaps = dataGapsFor(input, report);
   return report;
@@ -1291,7 +1291,7 @@ function allFinite(value: unknown): boolean {
   return true;
 }
 
-function errorsFor(report: DprReport): string[] {
+function errorsFor(report: DprReport, input: DprInput): string[] {
   const out: string[] = [];
   const c = report.checks;
   if (!c.costReconciles) out.push("Galti: project cost ke heads ka jod total se nahi milta.");
@@ -1299,7 +1299,7 @@ function errorsFor(report: DprReport): string[] {
     const m = report.means;
     const cost = report.cost;
     const lakh = (v: number) => `Rs. ${(v / 100000).toLocaleString("en-IN", { maximumFractionDigits: 2 })} lakh`;
-    const minOwnPct = report.scheme?.ownContributionPct ?? 0;
+    const minOwnPct = input.ownContributionPct ?? report.scheme?.ownContributionPct ?? 0;
     const maxLoan = Math.max(0, cost.total - m.otherFunding - (cost.total * minOwnPct) / 100);
     out.push(
       m.gap > 0

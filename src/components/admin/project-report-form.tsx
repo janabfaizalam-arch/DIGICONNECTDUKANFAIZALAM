@@ -845,6 +845,22 @@ export function ProjectReportForm({
                     karein&quot; dabane par lagta hai (tab machinery dobara
                     banti hai). Loan hamesha asli project cost ke hisaab se hota
                     hai.
+                    <span className="mt-1.5 block">
+                      Working capital {rs(report.cost.workingCapital)} = kachcha
+                      maal stock {rs(report.workingCapital.rawMaterialStock)} (
+                      {input.rawMaterialDays} din) + taiyaar maal{" "}
+                      {rs(
+                        report.workingCapital.finishedGoods +
+                          report.workingCapital.workInProgress,
+                      )}{" "}
+                      + udhaar bikri / debtors{" "}
+                      {rs(report.workingCapital.debtors)} ({input.debtorDays}{" "}
+                      din) + kam se kam cash{" "}
+                      {rs(report.workingCapital.minimumCash)} (
+                      {input.minimumCashDays} din) − supplier udhaar{" "}
+                      {rs(report.workingCapital.creditors)} (
+                      {input.creditorDays} din).
+                    </span>
                   </p>
                 ) : null}
                 <Field guide="businessName" label="Business ka naam *">
