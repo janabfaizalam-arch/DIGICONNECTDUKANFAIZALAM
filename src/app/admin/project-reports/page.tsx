@@ -29,7 +29,7 @@ export default async function ProjectReportsPage({ searchParams }: { searchParam
   return (
     <PageContainer className="space-y-6">
       <AdminPageHeader
-        eyebrow="Money"
+        eyebrow="Accountant"
         title="Project Reports (DPR)"
         description="Naye project ke liye bank-ready Detailed Project Report: project cost, means of finance, projections, DSCR, break-even aur repayment schedule."
         action={

@@ -356,6 +356,30 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
     ],
   },
   {
+    // Admin only, like everything in this panel: the pages and their API
+    // routes check isAdminRole. Kept to these two on purpose for now.
+    id: "accountant",
+    label: "Accountant",
+    blurb: "Bank-ready DPR and balance sheets for a customer's loan file.",
+    icon: Landmark,
+    items: [
+      {
+        href: "/admin/project-reports",
+        label: "DPR",
+        description: "Bank-ready DPR for a new project: cost, finance, projections, DSCR, break-even",
+        icon: ClipboardList,
+        emphasis: true,
+      },
+      {
+        href: "/admin/balance-sheets",
+        label: "Balance Sheet",
+        description: "Bank-ready balance sheets and P&L for a customer's loan file",
+        icon: Landmark,
+        emphasis: true,
+      },
+    ],
+  },
+  {
     id: "money",
     label: "Money",
     blurb: "What came in, what is owed, and what was discounted.",
@@ -372,18 +396,6 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
         label: "Offline Invoices",
         description: "Bills raised by hand for walk-in work",
         icon: FileSpreadsheet,
-      },
-      {
-        href: "/admin/balance-sheets",
-        label: "Balance Sheets",
-        description: "Bank-ready balance sheets and P&L for a customer's loan file",
-        icon: Landmark,
-      },
-      {
-        href: "/admin/project-reports",
-        label: "Project Reports (DPR)",
-        description: "Bank-ready DPR for a new project: cost, finance, projections, DSCR, break-even",
-        icon: ClipboardList,
       },
       {
         href: "/admin/wallet",
