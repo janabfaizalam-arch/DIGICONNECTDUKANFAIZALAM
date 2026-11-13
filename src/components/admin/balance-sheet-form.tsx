@@ -1,9 +1,11 @@
 "use client";
 
 import { cloneElement, createContext, useContext, useEffect, useId, useMemo, useRef, useState, type ComponentProps, type ReactElement, type ReactNode } from "react";
-import { AlertCircle, AlertTriangle, CheckCircle2, Info, Sparkles } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, Info, Sparkles } from "lucide-react";
 
 import { BalanceSheetAutofill, type AutofillItem } from "@/components/admin/balance-sheet-autofill";
+import { BalanceSheetQuick, type QuickDetails, type QuickSeed } from "@/components/admin/balance-sheet-quick";
+import type { QuickResult } from "@/lib/balance-sheets/quick";
 import { AdminButton, AdminField, AdminInput, AdminSelect, AdminTextarea } from "@/components/admin/primitives/controls-ui";
 import { AdminCard, AdminSection } from "@/components/admin/primitives/layout";
 import {
@@ -545,6 +547,61 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
     setSchemeApplied(true);
   }
 
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [pendingSave, setPendingSave] = useState(false);
+  // The quick card starts from what the sheet already holds, so editing works too.
+  const [quickSeed] = useState<QuickSeed>(() => {
+    const actual = statements.periods.find((period) => period.kind === "actual");
+    const text = (v: string) => (toNumber(v) > 0 ? v : "");
+    return {
+      businessName: draft.businessName,
+      ownerName: draft.ownerName,
+      constitution: draft.constitution,
+      natureOfBusiness: draft.natureOfBusiness,
+      mobile: draft.mobile,
+      city: draft.city,
+      state: draft.state,
+      baseYear: draft.baseYear,
+      hasActual: draft.hasActual,
+      kind: toNumber(draft.actual.sales) > 0 || toNumber(draft.projection.year1Sales) > 0 ? (draft.projection.schemeSector as QuickSeed["kind"]) : "trading",
+      sales: draft.hasActual ? text(draft.actual.sales) : draft.projection.year1Sales,
+      netProfit: actual && toNumber(draft.actual.sales) > 0 ? String(Math.round(actual.pl.profitBeforeTax)) : "",
+      closingStock: text(draft.actual.closingStock),
+      cashAndBank: text(draft.actual.cashAndBank),
+      fixedAssets: text(draft.actual.fixedAssets),
+      loanOutstanding: text(draft.actual.termLoan),
+      scheme: (draft.projection.scheme as QuickSeed["scheme"]) || "none",
+      schemeArea: (draft.projection.schemeArea as QuickSeed["schemeArea"]) || "urban",
+      schemeCategory: (draft.projection.schemeCategory as QuickSeed["schemeCategory"]) || "general",
+      machineryCost: text(draft.projection.newFixedAssets),
+      workingCapital: text(draft.projection.workingCapitalNeed),
+      ownPct: "",
+      interestPct: draft.projection.loanInterestPct || "10",
+      tenureYears: draft.projection.loanTenureYears || "5",
+    };
+  });
+  function buildFromQuick(details: QuickDetails, result: QuickResult) {
+    setDraft((current) => ({
+      ...current,
+      ...details,
+      loanAmount: String(result.loanAmount),
+      loanPurpose: current.loanPurpose.trim() || result.loanPurpose,
+      actual: Object.fromEntries(Object.entries(result.actual).map(([key, value]) => [key, value ? String(value) : ""])) as Draft["actual"],
+      projection: {
+        ...current.projection,
+        ...(Object.fromEntries(Object.entries(result.projection).map(([key, value]) => [key, toText(value as number | null)])) as Partial<Draft["projection"]>),
+      },
+    }));
+    setPendingSave(true);
+  }
+  // Save once the built figures have rendered, so the checks see them.
+  useEffect(() => {
+    if (!pendingSave) return;
+    setPendingSave(false);
+    void save("draft");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per build
+  }, [pendingSave]);
+
   const actualPeriod = statements.periods.find((period) => period.kind === "actual");
   const projected = statements.periods.filter((period) => period.kind === "projected");
   const baseYear = Number(draft.baseYear) || lastCompletedFy();
@@ -567,7 +624,8 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
           ? `Pehle "${FIELD_LABELS[blocking[0]]}" wali galti theek karein.`
           : `Pehle laal box wali ${blocking.length} galtiyan theek karein, "${FIELD_LABELS[blocking[0]]}" se shuru karke.`,
       );
-      jumpTo(blocking[0]);
+      setDetailsOpen(true);
+      requestAnimationFrame(() => jumpTo(blocking[0]));
       return;
     }
     setSaving(status);
@@ -619,6 +677,29 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
     <ChecksContext.Provider value={checksContext}>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="flex flex-col gap-6">
+          <BalanceSheetQuick seed={quickSeed} yearOptions={yearOptions} busy={saving !== null} onBuild={buildFromQuick} />
+          {error ? (
+            <p role="alert" className="rounded-ds-md bg-ds-danger-soft px-3 py-2 text-[13px] font-semibold text-ds-danger">
+              {error}
+            </p>
+          ) : null}
+
+          <button
+            type="button"
+            aria-expanded={detailsOpen}
+            onClick={() => setDetailsOpen((open) => !open)}
+            className="flex w-full items-center justify-between rounded-ds-xl border border-ds-border bg-ds-surface px-4 py-3 text-left text-sm font-bold text-ds-text-primary hover:bg-ds-surface-sunken"
+          >
+            <span>
+              Poori details (optional)
+              <span className="block text-xs font-normal text-ds-text-muted">
+                PAN, GSTIN, pata, har kharcha aur balance sheet ka har aankda khud badalna ho to kholiye.
+              </span>
+            </span>
+            <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", detailsOpen && "rotate-180")} aria-hidden="true" />
+          </button>
+
+          <div hidden={!detailsOpen} className="flex flex-col gap-6">
           <BalanceSheetAutofill currentValue={currentValue} onApply={applyAutofill} />
           <AdminCard>
             <AdminSection title="1. Customer and business" description="As it should appear on the statements submitted to the bank. Kisi bhi box par cursor rokein ya tap karein, wahan kya bharna hai aur kahan milega, ye dikh jaayega.">
@@ -899,6 +980,7 @@ export function BalanceSheetForm({ id, initial = {} }: { id?: string; initial?: 
               </Grid>
             </AdminSection>
           </AdminCard>
+          </div>
         </div>
 
         <aside className="flex flex-col gap-4 lg:sticky lg:top-20" aria-label="Summary">
