@@ -257,7 +257,10 @@ export type APWalletEntryType =
   | "adjustment"
   | "reversal"
   | "bonus"
-  | "penalty";
+  | "penalty"
+  /* The partner spending their wallet on a new application. Added with
+     20261113090000, which widened the database's own check constraint. */
+  | "application_spend";
 
 export type APWalletEntry = {
   id: string;
@@ -482,7 +485,7 @@ export const AP_COMMISSION_STATUS_LABELS: Record<APCommissionStatus, string> = {
 };
 
 export const AP_WALLET_ENTRY_TYPE_LABELS: Record<APWalletEntryType, string> = {
-  commission_credit: "Commission Credit",
+  commission_credit: "Score Credit",
   manual_credit: "Manual Credit",
   manual_debit: "Manual Debit",
   payout_deduction: "Payout Deduction",
@@ -490,6 +493,7 @@ export const AP_WALLET_ENTRY_TYPE_LABELS: Record<APWalletEntryType, string> = {
   reversal: "Reversal",
   bonus: "Bonus",
   penalty: "Penalty",
+  application_spend: "Service Liya",
 };
 
 export const AP_PAYOUT_STATUS_LABELS: Record<APPayoutStatus, string> = {

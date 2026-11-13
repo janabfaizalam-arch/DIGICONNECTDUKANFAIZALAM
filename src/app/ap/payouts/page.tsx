@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Banknote, Clock3, HandCoins, Wallet } from "lucide-react";
 
-import { PayoutRequestForm } from "@/components/ap/payout-request-form";
+import { WalletSpendOnlyNotice } from "@/components/ap/wallet-spend-only-notice";
 import { EmptyState, GlassPanel, MetricCard, PageHeader, StatusBadge } from "@/components/ap/ui";
 import { summarizePayouts } from "@/lib/ap/finance";
 import { formatINR } from "@/lib/ap/format";
@@ -44,7 +44,7 @@ export default async function APPayoutsPage() {
         <PageHeader
           eyebrow="Finance"
           title="Payouts"
-          description="Request settlements and track payout status, payment references and processing dates."
+          description="Purani payout requests aur unka status. Naya withdrawal band hai — wallet ka paisa service apply karne mein lagta hai."
           actions={
             <Link
               href="/ap/wallet"
@@ -63,8 +63,8 @@ export default async function APPayoutsPage() {
         </section>
 
         <GlassPanel padding="md" className="max-w-xl">
-          <h2 className="mb-3 text-sm font-extrabold text-slate-900">Request payout</h2>
-          <PayoutRequestForm availableBalance={balance} />
+          <h2 className="mb-3 text-sm font-extrabold text-slate-900">Wallet ka istemaal</h2>
+          <WalletSpendOnlyNotice balance={formatINR(balance)} />
         </GlassPanel>
 
         <section aria-labelledby="payout-history-heading" className="space-y-3">
@@ -75,7 +75,7 @@ export default async function APPayoutsPage() {
           {payouts.length === 0 ? (
             <EmptyState
               title="No payouts yet"
-              description="When you request a settlement of ₹500 or more, it will appear here with status updates."
+              description="Koi payout request nahi hui. Wallet ka paisa service apply karne mein use hota hai."
               actionLabel="Open wallet"
               actionHref="/ap/wallet"
             />

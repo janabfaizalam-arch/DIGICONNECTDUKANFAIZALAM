@@ -61,7 +61,9 @@ export function ServiceDetailClient({ service }: ServiceDetailClientProps) {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-100">
             <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
-              <p className="text-[10px] font-bold uppercase text-slate-400">Customer Price</p>
+              {/* What the partner pays to apply. What they charge their own
+                  customer is theirs to decide and is not shown anywhere. */}
+              <p className="text-[10px] font-bold uppercase text-slate-400">Aap Dete Hain</p>
               <p className="mt-1 text-lg font-black text-slate-900">
                 {formatCurrency(service.customer_fee)}
               </p>

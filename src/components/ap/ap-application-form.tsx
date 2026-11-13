@@ -8,7 +8,7 @@ import {
   ShieldCheck, Check, AlertTriangle, Trash2, Camera, 
   History, HelpCircle, MapPin, Download, Printer, Share2, 
   Clock, IndianRupee, FileText, ChevronRight, X, AlertCircle, ArrowLeft,
-  MoreHorizontal, Star
+  MoreHorizontal, Star, Wallet
 } from "lucide-react";
 
 import { RazorpayCheckoutButton, type VerifiedRazorpayPayment } from "@/components/payments/razorpay-checkout-button";
@@ -63,6 +63,14 @@ interface CustomerLookupResult {
    STEP LABELS — used by the horizontal progress tracker
    ═══════════════════════════════════════════════════════════ */
 const STEP_LABELS = ["Customer", "Service", "Documents", "Payment", "Submit"] as const;
+
+/** What the partner's wallet covers of a service's price, as the server computes it. */
+type WalletSplit = {
+  price: number;
+  fromWallet: number;
+  fromRazorpay: number;
+  balance: number;
+};
 
 export function APApplicationForm({
   customers,
@@ -182,9 +190,29 @@ export function APApplicationForm({
   const finalCustomerFee = selectedVariant ? Number(selectedVariant.price) : Number(selectedService?.customer_fee ?? 0);
   const finalScore = selectedVariant ? Number(selectedVariant.score) : Number(selectedPayout);
   const { visible: scoreVisible } = useScoreVisibility();
-  const calculatedGST = Math.round(finalCustomerFee * 0.18);
-  const grossTotal = finalCustomerFee + calculatedGST;
-  const payableAmountPaise = Math.round(finalCustomerFee * 100);
+
+  /*
+    The partner is the buyer, and ₹100 means ₹100: the price on the service is
+    the whole of it. The 18% that used to be added here was shown and never
+    charged -- the summary said ₹118 while Razorpay took ₹100 -- so it is gone
+    rather than fixed.
+
+    What the partner pays at the counter is the price minus whatever their
+    wallet holds. `walletPreview` is what the server says the split will be,
+    shown while they fill the form; `reserve` is the hold actually taken before
+    checkout opens, and once it exists it is the only thing the amounts come
+    from -- the balance can have moved in between.
+  */
+  const [walletPreview, setWalletPreview] = useState<WalletSplit | null>(null);
+  const [reserve, setReserve] = useState<{ reserveId: string | null; fromWallet: number; fromRazorpay: number } | null>(null);
+  const [reserving, setReserving] = useState(false);
+
+  const walletBalance = walletPreview?.balance ?? 0;
+  const fromWallet = reserve ? reserve.fromWallet : (walletPreview?.fromWallet ?? 0);
+  const fromRazorpay = reserve ? reserve.fromRazorpay : (walletPreview?.fromRazorpay ?? finalCustomerFee);
+  const payableAmountPaise = Math.round(fromRazorpay * 100);
+  /* An empty wallet still has to reach the gateway; a full one skips it. */
+  const needsRazorpay = payableAmountPaise > 0;
 
   const receiptPrefix = `ap-${selectedService?.slug ?? "service"}`;
   const [paymentReceipt, setPaymentReceipt] = useState(receiptPrefix);
@@ -246,6 +274,84 @@ export function APApplicationForm({
     setRazorpayPayment(null);
     setPaymentReceipt(`${receiptPrefix}-${Date.now()}`);
   }, [payableAmountPaise, receiptPrefix]);
+
+  /*
+    What the wallet will cover, asked of the server rather than worked out here:
+    the balance is not in this component and the price must not be either.
+    Changing the service drops any hold already taken, so the amounts never
+    describe a different service than the one selected.
+  */
+  useEffect(() => {
+    if (!serviceId) {
+      setWalletPreview(null);
+      return;
+    }
+
+    setReserve(null);
+    const controller = new AbortController();
+    const params = new URLSearchParams({ serviceId });
+    if (variantId) params.set("variantId", variantId);
+
+    fetch(`/api/ap/applications/wallet-split?${params.toString()}`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data?.ok) return;
+        setWalletPreview({
+          price: Number(data.price) || 0,
+          fromWallet: Number(data.fromWallet) || 0,
+          fromRazorpay: Number(data.fromRazorpay) || 0,
+          balance: Number(data.balance) || 0,
+        });
+      })
+      .catch(() => {
+        /* Offline or aborted: the full price is shown, which is never an undercharge. */
+      });
+
+    return () => controller.abort();
+  }, [serviceId, variantId]);
+
+  /*
+    Take the hold before checkout opens, because Razorpay has to be told an
+    amount and that amount depends on the balance. Done on the way into the
+    payment step so the partner never taps twice for it.
+  */
+  const takeReserve = async () => {
+    if (!serviceId) return false;
+    setReserving(true);
+    try {
+      const response = await fetch("/api/ap/applications/wallet-split", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serviceId, variantId: variantId || null }),
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        message?: string;
+        reserveId?: string | null;
+        fromWallet?: number;
+        fromRazorpay?: number;
+        balance?: number;
+      };
+
+      if (!response.ok || !data.ok) {
+        toastError(data.message ?? "Wallet check nahi ho paya. Dobara try kijiye.");
+        return false;
+      }
+
+      setReserve({
+        reserveId: data.reserveId ?? null,
+        fromWallet: Number(data.fromWallet) || 0,
+        fromRazorpay: Number(data.fromRazorpay) || 0,
+      });
+      setWalletPreview((prev) => (prev ? { ...prev, balance: Number(data.balance) || prev.balance } : prev));
+      return true;
+    } catch {
+      toastError("Wallet check nahi ho paya. Dobara try kijiye.");
+      return false;
+    } finally {
+      setReserving(false);
+    }
+  };
 
   // Auto pincode check for customer profile
   useEffect(() => {
@@ -622,8 +728,8 @@ export function APApplicationForm({
   };
 
   const validateStep4 = () => {
-    if (!razorpayPayment && payableAmountPaise > 0) {
-      toastError("Please complete online payment.");
+    if (needsRazorpay && !razorpayPayment) {
+      toastError("Pehle payment poori kijiye.");
       return false;
     }
     return true;
@@ -644,7 +750,7 @@ export function APApplicationForm({
     event.preventDefault();
     if (isPending) return;
 
-    if (payableAmountPaise > 0 && !razorpayPayment) {
+    if (needsRazorpay && !razorpayPayment) {
       toastError("Razorpay verification is mandatory.");
       return;
     }
@@ -667,6 +773,9 @@ export function APApplicationForm({
     formData.set("address", customerAddress);
     formData.set("gender", customerGender);
     formData.set("dob", customerDob);
+
+    // The server re-reads the hold from the ledger; this only says which one.
+    formData.set("wallet_reserve_id", reserve?.reserveId ?? "");
 
     if (razorpayPayment) {
       formData.set("razorpay_payment_id", razorpayPayment.razorpay_payment_id);
@@ -808,7 +917,7 @@ export function APApplicationForm({
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-500">Amount</span>
-              <span className="font-semibold text-slate-800">{formatCurrency(grossTotal)}</span>
+              <span className="font-semibold text-slate-800">{formatCurrency(finalCustomerFee)}</span>
             </div>
           </div>
         </div>
@@ -1642,17 +1751,26 @@ export function APApplicationForm({
               
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between items-center text-slate-600">
-                  <span>Service Fee</span>
+                  <span>Service ka price</span>
                   <span className="font-mono font-medium">{formatCurrency(finalCustomerFee)}</span>
                 </div>
-                <div className="flex justify-between items-center text-slate-600">
-                  <span>GST (18%)</span>
-                  <span className="font-mono font-medium">{formatCurrency(calculatedGST)}</span>
-                </div>
+                {fromWallet > 0 && (
+                  <div className="flex justify-between items-center text-emerald-600">
+                    <span className="flex items-center gap-1.5">
+                      <Wallet className="w-3.5 h-3.5" />
+                      Wallet se
+                    </span>
+                    <span className="font-mono font-medium">− {formatCurrency(fromWallet)}</span>
+                  </div>
+                )}
                 <div className="border-t border-slate-100 pt-3 flex justify-between items-center">
-                  <span className="font-bold text-slate-800">Total Payable</span>
-                  <span className="font-mono font-bold text-lg text-slate-800">{formatCurrency(grossTotal)}</span>
+                  <span className="font-bold text-slate-800">{fromWallet > 0 ? "Aapko dena hai" : "Total Payable"}</span>
+                  <span className="font-mono font-bold text-lg text-slate-800">{formatCurrency(fromRazorpay)}</span>
                 </div>
+                <p className="text-xs text-slate-400">
+                  Wallet balance {formatCurrency(walletBalance)}. Service poori hone par score wallet mein add hota hai,
+                  aur agli application mein yahin se kat jata hai.
+                </p>
               </div>
 
               {/*
@@ -1675,10 +1793,23 @@ export function APApplicationForm({
             <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-slate-800">Payment Method</h3>
-                <span className="text-xs font-medium text-slate-500 bg-slate-50 px-2 py-1 rounded-md">Razorpay Only</span>
+                <span className="text-xs font-medium text-slate-500 bg-slate-50 px-2 py-1 rounded-md">
+                  {needsRazorpay ? "Razorpay" : "Wallet"}
+                </span>
               </div>
 
-              {selectedService && (
+              {/*
+                A wallet that covers the whole price means there is nothing to
+                pay and nothing to tap: the gateway is not shown at all.
+              */}
+              {!needsRazorpay && (
+                <div className="flex items-center gap-3 rounded-xl bg-emerald-50 border border-emerald-100 px-4 py-3 text-sm font-semibold text-emerald-600">
+                  <CheckCircle2 className="h-5 w-5 shrink-0" />
+                  Poora amount wallet se — kuchh pay karne ki zaroorat nahi
+                </div>
+              )}
+
+              {selectedService && needsRazorpay && (
                 <RazorpayCheckoutButton
                   amountPaise={payableAmountPaise}
                   receipt={paymentReceipt}
@@ -1689,7 +1820,7 @@ export function APApplicationForm({
                     mobile: customerMobile,
                   }}
                   description={selectedService?.title ?? "DC Partner POS application"}
-                  disabled={isPending || !selectedService || Boolean(isPmVishwakarma && !isPmVishwakarmaComplete(pmVishwakarmaValues))}
+                  disabled={isPending || reserving || !selectedService || Boolean(isPmVishwakarma && !isPmVishwakarmaComplete(pmVishwakarmaValues))}
                   onVerified={(payment) =>
                     setRazorpayPayment({
                       ...payment,
@@ -1737,8 +1868,18 @@ export function APApplicationForm({
                   <span className="font-semibold text-slate-800">{uploadedFiles.length} attached</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-slate-50">
-                  <span className="text-slate-500">Amount Paid</span>
-                  <span className="font-mono font-bold text-slate-800">{formatCurrency(grossTotal)}</span>
+                  <span className="text-slate-500">Service ka price</span>
+                  <span className="font-mono font-bold text-slate-800">{formatCurrency(finalCustomerFee)}</span>
+                </div>
+                {fromWallet > 0 && (
+                  <div className="flex justify-between items-center py-2 border-b border-slate-50">
+                    <span className="text-slate-500">Wallet se</span>
+                    <span className="font-mono font-bold text-emerald-600">{formatCurrency(fromWallet)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center py-2 border-b border-slate-50">
+                  <span className="text-slate-500">{fromWallet > 0 ? "Online diya" : "Amount Paid"}</span>
+                  <span className="font-mono font-bold text-slate-800">{formatCurrency(fromRazorpay)}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-slate-50">
                   <span className="text-slate-500">Processing Time</span>
@@ -1793,12 +1934,18 @@ export function APApplicationForm({
               onClick={() => {
                 if (currentStep === 1 && validateStep1()) setCurrentStep(2);
                 else if (currentStep === 2 && validateStep2()) setCurrentStep(3);
-                else if (currentStep === 3 && validateStep3()) setCurrentStep(4);
+                else if (currentStep === 3 && validateStep3()) {
+                  // The hold decides the gateway amount, so it is taken before step 4 renders.
+                  void takeReserve().then((ok) => {
+                    if (ok) setCurrentStep(4);
+                  });
+                }
                 else if (currentStep === 4 && validateStep4()) setCurrentStep(5);
               }}
-              className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition flex items-center justify-center cursor-pointer active:scale-[0.97] shadow-sm shadow-blue-500/20"
+              disabled={reserving}
+              className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl text-sm font-bold transition flex items-center justify-center cursor-pointer active:scale-[0.97] shadow-sm shadow-blue-500/20"
             >
-              Continue
+              {reserving ? "Wallet check..." : "Continue"}
               <ChevronRight className="w-4 h-4 ml-1" />
             </button>
           )}
@@ -1806,7 +1953,7 @@ export function APApplicationForm({
           {currentStep === 5 && (
             <FormSubmitButton
               loading={isPending}
-              disabled={!serviceId || !customerName || !customerMobile || (!razorpayPayment && payableAmountPaise > 0)}
+              disabled={!serviceId || !customerName || !customerMobile || (needsRazorpay && !razorpayPayment)}
               loadingText="Submitting"
               icon={<Send className="h-4 w-4" />}
               className="flex-1 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-500/15 cursor-pointer text-sm active:scale-[0.97]"
@@ -1959,15 +2106,17 @@ export function APApplicationForm({
                   <span className="col-span-2 truncate">{selectedService.title}{selectedVariant ? ` - ${selectedVariant.name}` : ""}</span>
                   <span className="text-right font-mono">{formatCurrency(finalCustomerFee)}</span>
                 </div>
-                <div className="grid grid-cols-3 px-3 py-2 text-slate-500">
-                  <span className="col-span-2">GST (18%)</span>
-                  <span className="text-right font-mono">{formatCurrency(calculatedGST)}</span>
-                </div>
+                {fromWallet > 0 && (
+                  <div className="grid grid-cols-3 px-3 py-2 text-slate-500">
+                    <span className="col-span-2">Wallet se</span>
+                    <span className="text-right font-mono">− {formatCurrency(fromWallet)}</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-between items-center border-t border-slate-100 pt-3 font-bold text-slate-800">
                 <span>Total</span>
-                <span className="font-mono text-base">{formatCurrency(grossTotal)}</span>
+                <span className="font-mono text-base">{formatCurrency(fromRazorpay)}</span>
               </div>
             </div>
 

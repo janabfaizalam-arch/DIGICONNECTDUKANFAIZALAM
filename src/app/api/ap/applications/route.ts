@@ -10,6 +10,7 @@ import { getRazorpayClient, getRazorpayKeySecret } from "@/lib/razorpay";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
+import { checkReserve } from "@/lib/payments/wallet-application-payment";
 import { createCommissionForApplication } from "@/lib/ap-commission-engine";
 import { linkCustomerApplicationsByMobile } from "@/lib/ap-customer-linking";
 import { validateFileSignature } from "@/lib/file-validation";
@@ -173,6 +174,7 @@ export async function POST(request: Request) {
     const razorpayOrderId = String(formData.get("razorpay_order_id") ?? "").trim();
     const razorpaySignature = String(formData.get("razorpay_signature") ?? "").trim();
     const razorpayAmountPaise = Math.round(Number(formData.get("razorpay_amount_paise") ?? 0));
+    const walletReserveId = String(formData.get("wallet_reserve_id") ?? "").trim();
     const documentFiles = formData.getAll("documents").filter((value): value is File => value instanceof File && value.size > 0);
 
     if (!agentServiceId) {
@@ -285,7 +287,33 @@ export async function POST(request: Request) {
 
     const finalCustomerFee = selectedVariant ? Number(selectedVariant.price) : Number(service.customer_fee);
     const commissionAmount = selectedVariant ? Number(selectedVariant.score) : payoutForAgentService(service);
-    const expectedAmountPaise = Math.round(finalCustomerFee * 100);
+
+    /*
+      The partner is the buyer. Their wallet pays as much of the price as it
+      holds and Razorpay covers the rest, so what Razorpay has to show is the
+      price minus the wallet's share.
+
+      That share is read back from the ledger entry the reserve points at, never
+      from the form: the browser is the one party here with a reason to say the
+      wallet paid more than it did. A reserve that belongs to someone else, is
+      not a spend, or has already been spent on another application is refused
+      rather than discounted.
+    */
+    let walletAmount = 0;
+    if (walletReserveId) {
+      const reserve = await checkReserve({ agencyPartnerId: ap.id, reserveId: walletReserveId });
+      if (!reserve.ok) {
+        return jsonError(reserve.error, 400);
+      }
+      walletAmount = reserve.fromWallet;
+    }
+
+    if (walletAmount > finalCustomerFee) {
+      // Price dropped after the hold was taken. Start again rather than bill a negative amount.
+      return jsonError("Service ka price badal gaya hai. Form dobara bhariye.", 409);
+    }
+
+    const expectedAmountPaise = Math.round((finalCustomerFee - walletAmount) * 100);
 
     if (
       paymentMode !== "link" &&
@@ -409,6 +437,15 @@ export async function POST(request: Request) {
         amount: finalCustomerFee,
         total_amount: finalCustomerFee,
         customer_fee_snapshot: finalCustomerFee,
+        /*
+          Written only when the wallet actually paid for part of this. The
+          columns arrive with 20261113090000, and until that migration has run
+          naming them here would fail every insert -- including the ones from
+          partners with an empty wallet, who have nothing to record anyway.
+        */
+        ...(walletAmount > 0
+          ? { wallet_amount: walletAmount, wallet_reserve_id: walletReserveId || null }
+          : {}),
         agent_payout_snapshot: commissionAmount,
         agent_payout_type_snapshot: selectedVariant ? "fixed" : service.payout_type,
         source_channel: "agency_partner",
@@ -483,10 +520,15 @@ export async function POST(request: Request) {
       await supabase.from("application_documents").insert(uploadedDocuments);
     }
 
+    /*
+      What went through Razorpay, not the service price: the wallet's share is
+      already recorded on the application and in the wallet ledger, and counting
+      it here too would make the partner look paid twice.
+    */
     await supabase.from("payments").insert({
       application_id: application.id,
       user_id: user.id,
-      amount: finalCustomerFee,
+      amount: Math.max(0, finalCustomerFee - walletAmount),
       status: paymentMode === "link" ? "pending" : "verified",
       razorpay_order_id: razorpayOrderId || razorpayDetails?.order_id || null,
       razorpay_payment_id: razorpayPaymentId || razorpayDetails?.id || null,

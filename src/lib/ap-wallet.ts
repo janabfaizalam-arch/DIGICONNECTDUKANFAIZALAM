@@ -20,7 +20,12 @@ function safeNumber(value: unknown, fallback = 0): number {
 }
 
 const CREDIT_TYPES = ["commission_credit", "manual_credit", "bonus"];
-const DEBIT_TYPES = ["manual_debit", "payout_deduction", "penalty", "reversal"];
+/*
+  `application_spend` is a debit. It has to be in this list or the balance
+  ignores it, and a partner whose wallet is never reduced can pay for every
+  application out of the same ₹25 forever.
+*/
+const DEBIT_TYPES = ["manual_debit", "payout_deduction", "penalty", "reversal", "application_spend"];
 
 /** Ledger rows fetched per request. PostgREST caps a single response, so the
  *  balance has to be paged — a one-shot select silently truncates a busy
@@ -353,7 +358,21 @@ export async function debitPenalty(params: {
 }
 
 /**
- * Reversal (admin).
+ * Put an amount that was taken out of the wallet back into it.
+ *
+ * Used when a payout is rejected or fails at the bank, and when a wallet hold
+ * taken for an application the partner never finished is released.
+ *
+ * It appends a CREDIT, which is a correction. It used to append `reversal`, and
+ * `reversal` is a debit in `DEBIT_TYPES` -- it is the clawback type, what
+ * `reverseCommissionCredit` writes to take a credited commission back. So a
+ * rejected ₹500 payout debited the partner ₹500 for the payout and then another
+ * ₹500 for the "refund": the money left twice and never came back. Rows already
+ * written that way are still in the ledger and need an adjustment by hand; this
+ * only stops new ones.
+ *
+ * Idempotent per entry it refunds, so a retry -- and the payout reject path did
+ * retry, repeatedly -- cannot pay the amount back twice.
  */
 export async function reverseEntry(params: {
   agencyPartnerId: string;
@@ -376,9 +395,9 @@ export async function reverseEntry(params: {
   */
   const existing = await findLedgerEntryByReference(
     params.agencyPartnerId,
-    "reversal",
+    "wallet_refund",
     params.originalEntryId,
-    "reversal",
+    "manual_credit",
   );
 
   if (existing) {
@@ -387,9 +406,9 @@ export async function reverseEntry(params: {
 
   return appendLedgerEntry({
     agencyPartnerId: params.agencyPartnerId,
-    entryType: "reversal",
+    entryType: "manual_credit",
     amount: params.amount,
-    referenceType: "reversal",
+    referenceType: "wallet_refund",
     referenceId: params.originalEntryId,
     description: params.description,
     createdBy: params.createdBy,
