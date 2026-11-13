@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   Info,
   Rocket,
   Sparkles,
@@ -348,6 +349,7 @@ export function ProjectReportForm({
   const [sector, setSector] = useState<"all" | DprInput["sector"]>("all");
   const initialCost = id ? toLakh(buildDpr(initial).cost.total) : null;
   const [costLakh, setCostLakh] = useState<number | null>(initialCost ?? 10);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const report = useMemo(() => buildDpr(input), [input]);
   const scheme = useMemo(
@@ -534,14 +536,15 @@ export function ProjectReportForm({
                 DPR: sirf basic details
               </h2>
               <p className="mt-0.5 text-[13px] text-ds-text-muted">
-                Neeche ki details bhariye aur &quot;DPR banaiye&quot; dabaiye.
-                Machinery, staff, kachcha maal, kharche, sales aur working
-                capital business type se apne aap bharenge, aur 10 page ki bank
-                DPR poori calculation ke saath ban jaayegi.
+                Sirf 5 cheezen: promoter ka naam, district, yojana, business aur
+                project cost. &quot;DPR banaiye&quot; dabate hi machinery,
+                staff, kachcha maal, kharche, sales, working capital aur loan
+                apne aap bharenge, aur 10 page ki bank DPR poori calculation ke
+                saath ban jaayegi.
               </p>
               <p className="mt-1 text-xs font-semibold text-ds-text-secondary">
-                * wale box zaroori hain. Baaki khaali chhodenge to apne aap bhar
-                jaayenge.
+                Baaki sab &quot;Aur details (optional)&quot; mein hai; khaali
+                chhodenge to apne aap bhar jaayega.
               </p>
             </div>
           </div>
@@ -561,7 +564,7 @@ export function ProjectReportForm({
             </p>
           ) : null}
           <h3 className="mt-5 text-xs font-bold uppercase tracking-wide text-ds-text-muted">
-            1. Promoter
+            Sirf yeh bhariye
           </h3>
           <div className="mt-2 grid gap-4 md:grid-cols-2">
             <Field guide="promoterName" label="Promoter ka naam *">
@@ -570,146 +573,12 @@ export function ProjectReportForm({
                 onChange={(e) => setLead({ name: e.target.value })}
               />
             </Field>
-            <Field guide="fatherName" label="Pita / pati ka naam">
-              <AdminInput
-                value={lead.fatherName}
-                onChange={(e) => setLead({ fatherName: e.target.value })}
-              />
-            </Field>
-            <Field label="Promoter ka pata" className="md:col-span-2">
-              <AdminInput
-                value={lead.address}
-                placeholder="Jaise: 22 Kabeer Nagar, Orai, Jalaun 285001"
-                onChange={(e) => setLead({ address: e.target.value })}
-              />
-            </Field>
-            <Field guide="mobile" label="Mobile">
-              <AdminInput
-                value={lead.mobile}
-                inputMode="tel"
-                onChange={(e) => setLead({ mobile: e.target.value })}
-              />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field guide="age" label="Umr">
-                <NumberBox
-                  label="Umr"
-                  nullable
-                  value={lead.age}
-                  onChange={(v) =>
-                    setLead({ age: v === null ? null : Math.round(v) })
-                  }
-                />
-              </Field>
-              <Field guide="socialCategory" label="Category">
-                <AdminSelect
-                  value={lead.socialCategory || "General"}
-                  onChange={(e) => changeSocialCategory(e.target.value)}
-                >
-                  {PROMOTER_CATEGORIES.map((c) => (
-                    <option key={c}>{c}</option>
-                  ))}
-                </AdminSelect>
-              </Field>
-            </div>
-          </div>
-
-          <h3 className="mt-6 text-xs font-bold uppercase tracking-wide text-ds-text-muted">
-            2. Unit
-          </h3>
-          <div className="mt-2 grid gap-4 md:grid-cols-2">
-            <Field
-              guide="businessName"
-              label="Unit / business ka naam"
-              help="Khaali chhodenge to promoter ka naam lagega"
-            >
-              <AdminInput
-                value={input.businessName}
-                placeholder={lead.name || "Jaise: Mohd Asif Khan"}
-                onChange={(e) => set("businessName", e.target.value)}
-              />
-            </Field>
-            <Field guide="constitution" label="Constitution">
-              <AdminSelect
-                value={input.constitution}
-                onChange={(e) =>
-                  set(
-                    "constitution",
-                    e.target.value as DprInput["constitution"],
-                  )
-                }
-              >
-                {CONSTITUTIONS.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </AdminSelect>
-            </Field>
-            <Field
-              guide="address"
-              label="Unit ka pata (location)"
-              className="md:col-span-2"
-            >
-              <AdminInput
-                value={input.address}
-                placeholder="Jaise: Naya Patel Nagar, Orai"
-                onChange={(e) => set("address", e.target.value)}
-              />
-            </Field>
             <Field guide="district" label="District *">
               <AdminInput
                 value={input.district}
                 onChange={(e) => set("district", e.target.value)}
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field guide="state" label="State">
-                <AdminInput
-                  value={input.state}
-                  onChange={(e) => set("state", e.target.value)}
-                />
-              </Field>
-              <Field guide="pincode" label="Pincode">
-                <AdminInput
-                  value={input.pincode}
-                  inputMode="numeric"
-                  maxLength={6}
-                  onChange={(e) =>
-                    set("pincode", e.target.value.replace(/\D/g, ""))
-                  }
-                />
-              </Field>
-            </div>
-            <Field guide="area" label="Area">
-              <AdminSelect
-                value={input.area}
-                onChange={(e) =>
-                  set("area", e.target.value as DprInput["area"])
-                }
-              >
-                {AREA_OPTIONS.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </AdminSelect>
-            </Field>
-            <Field guide="startFy" label="Shuru hone ka saal">
-              <NumberBox
-                label="Shuru hone ka saal"
-                value={input.startFy}
-                onChange={(v) =>
-                  set("startFy", Math.round(v ?? new Date().getFullYear()))
-                }
-              />
-            </Field>
-          </div>
-
-          <h3 className="mt-6 text-xs font-bold uppercase tracking-wide text-ds-text-muted">
-            3. Yojana, kaam aur loan
-          </h3>
-          <div className="mt-2 grid gap-4 md:grid-cols-2">
             <Field guide="scheme" label="Yojana *">
               <AdminSelect
                 value={input.scheme}
@@ -720,23 +589,6 @@ export function ProjectReportForm({
                 {SCHEME_OPTIONS.map((s) => (
                   <option key={s.value} value={s.value}>
                     {s.label}
-                  </option>
-                ))}
-              </AdminSelect>
-            </Field>
-            <Field guide="sector" label="Kaam ka prakaar">
-              <AdminSelect
-                value={sector}
-                onChange={(e) => {
-                  const next = e.target.value as typeof sector;
-                  setSector(next);
-                  keepEligible(input.scheme, next);
-                }}
-              >
-                <option value="all">Sab</option>
-                {allowedSectors.map((x) => (
-                  <option key={x} value={x}>
-                    {SECTOR_LABEL[x]}
                   </option>
                 ))}
               </AdminSelect>
@@ -773,40 +625,6 @@ export function ProjectReportForm({
                 {scheme?.summary ? `. ${scheme.summary}` : "."}
               </p>
             ) : null}
-            <div className="rounded-ds-lg border border-dashed border-ds-border p-3 md:col-span-2">
-              <p className="text-xs font-bold text-ds-text-secondary">
-                Seedha bank loan likhiye (agar pata hai)
-              </p>
-              <p className="mt-0.5 text-xs text-ds-text-muted">
-                Jaise TL 262500 aur CC 175000: margin % ke saath project cost
-                aur CC wala hissa neeche apne aap bhar jaayega. Rupees ya lakh,
-                dono chalega.
-              </p>
-              <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                <Field guide="termLoanOverride" label="Term loan, bank se">
-                  <NumberBox
-                    label="Term loan, bank se"
-                    nullable
-                    value={bankTl}
-                    onChange={(v) => {
-                      setBankTl(v);
-                      fromLoans(v, bankCc, ownPct);
-                    }}
-                  />
-                </Field>
-                <Field guide="ccLimitOverride" label="CC, bank se">
-                  <NumberBox
-                    label="CC, bank se"
-                    nullable
-                    value={bankCc}
-                    onChange={(v) => {
-                      setBankCc(v);
-                      fromLoans(bankTl, v, ownPct);
-                    }}
-                  />
-                </Field>
-              </div>
-            </div>
             <Field
               guide="projectCost"
               label="Total project cost, margin sahit (Rs. lakh) *"
@@ -828,27 +646,6 @@ export function ProjectReportForm({
                   setBankCc(null);
                 }}
                 suffix="lakh"
-              />
-            </Field>
-            <Field
-              guide="ownContributionPct"
-              label="Apna hissa / margin (%)"
-              help={`Khaali = yojana ka ${scheme?.ownContributionPct ?? 25}%`}
-            >
-              <NumberBox
-                label="Apna hissa / margin (%)"
-                nullable
-                value={input.ownContributionPct}
-                onChange={(v) => {
-                  set("ownContributionPct", v);
-                  if (loanMode)
-                    fromLoans(
-                      bankTl,
-                      bankCc,
-                      v ?? scheme?.ownContributionPct ?? 25,
-                    );
-                }}
-                suffix="%"
               />
             </Field>
             <Field
@@ -909,26 +706,259 @@ export function ProjectReportForm({
                 </>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Field guide="termLoanInterestPct" label="Byaaj (% saalana)">
+          </div>
+
+          <button
+            type="button"
+            aria-expanded={moreOpen}
+            onClick={() => setMoreOpen((open) => !open)}
+            className="mt-6 flex w-full items-center justify-between rounded-ds-lg border border-ds-border px-3 py-2.5 text-left text-sm font-bold text-ds-text-primary hover:bg-ds-surface-sunken"
+          >
+            <span>
+              Aur details (optional)
+              <span className="block text-xs font-normal text-ds-text-muted">
+                Pita ka naam, pata, mobile, unit ka naam, margin, byaaj, seedha
+                bank loan. Khaali chhodenge to bhi DPR banegi.
+              </span>
+            </span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 transition-transform",
+                moreOpen && "rotate-180",
+              )}
+              aria-hidden="true"
+            />
+          </button>
+          <div hidden={!moreOpen}>
+            <h3 className="mt-6 text-xs font-bold uppercase tracking-wide text-ds-text-muted">
+              Promoter
+            </h3>
+            <div className="mt-2 grid gap-4 md:grid-cols-2">
+              <Field guide="fatherName" label="Pita / pati ka naam">
+                <AdminInput
+                  value={lead.fatherName}
+                  onChange={(e) => setLead({ fatherName: e.target.value })}
+                />
+              </Field>
+              <Field guide="mobile" label="Mobile">
+                <AdminInput
+                  value={lead.mobile}
+                  inputMode="tel"
+                  onChange={(e) => setLead({ mobile: e.target.value })}
+                />
+              </Field>
+              <Field label="Promoter ka pata" className="md:col-span-2">
+                <AdminInput
+                  value={lead.address}
+                  placeholder="Jaise: 22 Kabeer Nagar, Orai, Jalaun 285001"
+                  onChange={(e) => setLead({ address: e.target.value })}
+                />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field guide="age" label="Umr">
+                  <NumberBox
+                    label="Umr"
+                    nullable
+                    value={lead.age}
+                    onChange={(v) =>
+                      setLead({ age: v === null ? null : Math.round(v) })
+                    }
+                  />
+                </Field>
+                <Field guide="socialCategory" label="Category">
+                  <AdminSelect
+                    value={lead.socialCategory || "General"}
+                    onChange={(e) => changeSocialCategory(e.target.value)}
+                  >
+                    {PROMOTER_CATEGORIES.map((c) => (
+                      <option key={c}>{c}</option>
+                    ))}
+                  </AdminSelect>
+                </Field>
+              </div>
+            </div>
+            <h3 className="mt-6 text-xs font-bold uppercase tracking-wide text-ds-text-muted">
+              Unit
+            </h3>
+            <div className="mt-2 grid gap-4 md:grid-cols-2">
+              <Field
+                guide="businessName"
+                label="Unit / business ka naam"
+                help="Khaali chhodenge to promoter ka naam lagega"
+              >
+                <AdminInput
+                  value={input.businessName}
+                  placeholder={lead.name || "Jaise: Mohd Asif Khan"}
+                  onChange={(e) => set("businessName", e.target.value)}
+                />
+              </Field>
+              <Field guide="constitution" label="Constitution">
+                <AdminSelect
+                  value={input.constitution}
+                  onChange={(e) =>
+                    set(
+                      "constitution",
+                      e.target.value as DprInput["constitution"],
+                    )
+                  }
+                >
+                  {CONSTITUTIONS.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </AdminSelect>
+              </Field>
+              <Field
+                guide="address"
+                label="Unit ka pata (location)"
+                className="md:col-span-2"
+              >
+                <AdminInput
+                  value={input.address}
+                  placeholder="Jaise: Naya Patel Nagar, Orai"
+                  onChange={(e) => set("address", e.target.value)}
+                />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field guide="state" label="State">
+                  <AdminInput
+                    value={input.state}
+                    onChange={(e) => set("state", e.target.value)}
+                  />
+                </Field>
+                <Field guide="pincode" label="Pincode">
+                  <AdminInput
+                    value={input.pincode}
+                    inputMode="numeric"
+                    maxLength={6}
+                    onChange={(e) =>
+                      set("pincode", e.target.value.replace(/\D/g, ""))
+                    }
+                  />
+                </Field>
+              </div>
+              <Field guide="area" label="Area">
+                <AdminSelect
+                  value={input.area}
+                  onChange={(e) =>
+                    set("area", e.target.value as DprInput["area"])
+                  }
+                >
+                  {AREA_OPTIONS.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </AdminSelect>
+              </Field>
+              <Field guide="startFy" label="Shuru hone ka saal">
                 <NumberBox
-                  label="Byaaj (% saalana)"
-                  value={input.termLoanInterestPct}
+                  label="Shuru hone ka saal"
+                  value={input.startFy}
+                  onChange={(v) =>
+                    set("startFy", Math.round(v ?? new Date().getFullYear()))
+                  }
+                />
+              </Field>
+            </div>
+            <h3 className="mt-6 text-xs font-bold uppercase tracking-wide text-ds-text-muted">
+              Loan
+            </h3>
+            <div className="mt-2 grid gap-4 md:grid-cols-2">
+              <Field guide="sector" label="Kaam ka prakaar">
+                <AdminSelect
+                  value={sector}
+                  onChange={(e) => {
+                    const next = e.target.value as typeof sector;
+                    setSector(next);
+                    keepEligible(input.scheme, next);
+                  }}
+                >
+                  <option value="all">Sab</option>
+                  {allowedSectors.map((x) => (
+                    <option key={x} value={x}>
+                      {SECTOR_LABEL[x]}
+                    </option>
+                  ))}
+                </AdminSelect>
+              </Field>
+              <Field
+                guide="ownContributionPct"
+                label="Apna hissa / margin (%)"
+                help={`Khaali = yojana ka ${scheme?.ownContributionPct ?? 25}%`}
+              >
+                <NumberBox
+                  label="Apna hissa / margin (%)"
+                  nullable
+                  value={input.ownContributionPct}
                   onChange={(v) => {
-                    set("termLoanInterestPct", v ?? 0);
-                    set("ccInterestPct", v ?? 0);
+                    set("ownContributionPct", v);
+                    if (loanMode)
+                      fromLoans(
+                        bankTl,
+                        bankCc,
+                        v ?? scheme?.ownContributionPct ?? 25,
+                      );
                   }}
                   suffix="%"
                 />
               </Field>
-              <Field guide="tenureYears" label="Loan kitne saal mein">
-                <NumberBox
-                  label="Loan kitne saal mein"
-                  value={input.tenureYears}
-                  onChange={(v) => set("tenureYears", v ?? 5)}
-                  suffix="saal"
-                />
-              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field guide="termLoanInterestPct" label="Byaaj (% saalana)">
+                  <NumberBox
+                    label="Byaaj (% saalana)"
+                    value={input.termLoanInterestPct}
+                    onChange={(v) => {
+                      set("termLoanInterestPct", v ?? 0);
+                      set("ccInterestPct", v ?? 0);
+                    }}
+                    suffix="%"
+                  />
+                </Field>
+                <Field guide="tenureYears" label="Loan kitne saal mein">
+                  <NumberBox
+                    label="Loan kitne saal mein"
+                    value={input.tenureYears}
+                    onChange={(v) => set("tenureYears", v ?? 5)}
+                    suffix="saal"
+                  />
+                </Field>
+              </div>
+              <div className="rounded-ds-lg border border-dashed border-ds-border p-3 md:col-span-2">
+                <p className="text-xs font-bold text-ds-text-secondary">
+                  Seedha bank loan likhiye (agar pata hai)
+                </p>
+                <p className="mt-0.5 text-xs text-ds-text-muted">
+                  Jaise TL 262500 aur CC 175000: margin % ke saath project cost
+                  aur CC wala hissa neeche apne aap bhar jaayega. Rupees ya
+                  lakh, dono chalega.
+                </p>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  <Field guide="termLoanOverride" label="Term loan, bank se">
+                    <NumberBox
+                      label="Term loan, bank se"
+                      nullable
+                      value={bankTl}
+                      onChange={(v) => {
+                        setBankTl(v);
+                        fromLoans(v, bankCc, ownPct);
+                      }}
+                    />
+                  </Field>
+                  <Field guide="ccLimitOverride" label="CC, bank se">
+                    <NumberBox
+                      label="CC, bank se"
+                      nullable
+                      value={bankCc}
+                      onChange={(v) => {
+                        setBankCc(v);
+                        fromLoans(bankTl, v, ownPct);
+                      }}
+                    />
+                  </Field>
+                </div>
+              </div>
             </div>
           </div>
         </AdminCard>
