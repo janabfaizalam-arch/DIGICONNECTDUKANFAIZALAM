@@ -351,6 +351,12 @@ export function ProjectReportForm({
   const initialCost = id ? toLakh(buildDpr(initial).cost.total) : null;
   const [costLakh, setCostLakh] = useState<number | null>(initialCost ?? 10);
   const [moreOpen, setMoreOpen] = useState(false);
+  // Margin money as an amount ("1 lakh of 20"), the way DPRs are briefed.
+  const [marginLakh, setMarginLakh] = useState<number | null>(
+    initialCost !== null && initial.ownContributionPct !== null
+      ? Math.round(initialCost * initial.ownContributionPct * 1000) / 100000
+      : null,
+  );
 
   const report = useMemo(() => buildDpr(input), [input]);
   const scheme = useMemo(
@@ -416,7 +422,12 @@ export function ProjectReportForm({
     setLead({ socialCategory: next });
   }
 
-  const ownPct = input.ownContributionPct ?? scheme?.ownContributionPct ?? 25;
+  const costForMargin = lakhOf(costLakh ?? 0);
+  const marginTyped = marginLakh === null ? null : lakhOf(marginLakh);
+  const ownPct =
+    marginTyped !== null && costForMargin > 0
+      ? (marginTyped / costForMargin) * 100
+      : (input.ownContributionPct ?? scheme?.ownContributionPct ?? 25);
   const margin = ownPct / 100;
   const loanMode = bankTl !== null || bankCc !== null;
   /**
@@ -465,12 +476,18 @@ export function ProjectReportForm({
     if (wcL !== null && wcL >= costL)
       return `Working capital Rs. ${wcL.toFixed(2)} lakh, project cost Rs. ${costL.toFixed(2)} lakh se kam hona chahiye (baaki machinery hai). Box lakh mein hai: 4 lakh ke liye sirf 4 likhiye.`;
     if (costL !== costLakh) setCostLakh(costL);
+    if (marginTyped !== null && !(marginTyped < costL))
+      return "Margin money project cost se kam hona chahiye.";
     // Typed loans are kept to the rupee; the margin is then exactly the rest.
     const typedTl = loanMode ? Math.round(lakhOf(bankTl ?? 0) * 100000) : null;
     const typedCc = loanMode ? Math.round(lakhOf(bankCc ?? 0) * 100000) : null;
     const base: DprInput = {
       ...input,
       businessName: input.businessName.trim() || lead.name.trim(),
+      ownContributionPct:
+        marginTyped !== null
+          ? (marginTyped / costL) * 100
+          : input.ownContributionPct,
       // The bank DPR format: yearly equal instalments, no moratorium,
       // interest on the opening balance, subsidy kept in the TDR.
       bankFormat: true,
@@ -658,18 +675,67 @@ export function ProjectReportForm({
               />
             </Field>
             <Field
+              guide="ownContributionPct"
+              label="Margin money / apna hissa (Rs. lakh)"
+              help={
+                marginTyped !== null && costShown > 0
+                  ? `= project cost ka ${Math.round(ownPct * 100) / 100}%`
+                  : `Khaali = yojana ka ${scheme?.ownContributionPct ?? 25}% (Rs. ${((costShown * (scheme?.ownContributionPct ?? 25)) / 100).toFixed(2)} lakh)`
+              }
+            >
+              <NumberBox
+                label="Margin money / apna hissa (Rs. lakh)"
+                nullable
+                value={marginLakh}
+                onChange={(v) => {
+                  setMarginLakh(v);
+                  setBankTl(null);
+                  setBankCc(null);
+                }}
+                suffix="lakh"
+              />
+            </Field>
+            <Field
+              label="Isme TL wala hissa, margin sahit (Rs. lakh)"
+              help="Machinery / saaman. Bharte hi CC wala hissa = project cost − yeh"
+            >
+              <NumberBox
+                label="Isme TL wala hissa, margin sahit (Rs. lakh)"
+                nullable
+                value={
+                  wcShown === null
+                    ? null
+                    : Math.round((costShown - wcShown) * 100000) / 100000
+                }
+                onChange={(v) => {
+                  set(
+                    "workingCapitalOverride",
+                    v === null
+                      ? null
+                      : Math.max(
+                          0,
+                          Math.round((costShown - lakhOf(v)) * 100000),
+                        ),
+                  );
+                  setBankTl(null);
+                  setBankCc(null);
+                }}
+                suffix="lakh"
+              />
+            </Field>
+            <Field
               guide="workingCapitalOverride"
-              label="Isme CC / working capital wala hissa, margin sahit (Rs. lakh)"
+              label="Isme CC wala hissa, margin sahit (Rs. lakh)"
               help={
                 wcTooBig
                   ? "Working capital project cost se kam hona chahiye. Box lakh mein hai: 4 lakh ke liye sirf 4 likhiye."
                   : wcShown !== null && wcShown !== wcTyped
                     ? `Rupees mein likha tha; Rs. ${wcShown.toFixed(2)} lakh maana jaayega`
-                    : "Jaise 5 lakh project mein 1 lakh CC aur 4 lakh TL ho to yahan 1 likhiye. Khaali = business ke hisaab se apne aap"
+                    : "Jaise 20 lakh project mein 17 TL aur 3 CC ho to yahan 3. Khaali = business ke hisaab se apne aap"
               }
             >
               <NumberBox
-                label="Isme CC / working capital wala hissa, margin sahit (Rs. lakh)"
+                label="Isme CC wala hissa, margin sahit (Rs. lakh)"
                 nullable
                 value={wc === null ? null : toLakh(wc)}
                 onChange={(v) => {
@@ -709,7 +775,7 @@ export function ProjectReportForm({
                     {ccLakh.toFixed(2)} lakh
                   </p>
                   <p className="mt-0.5 text-xs text-ds-text-muted">
-                    Dono mein se {ownPct}% margin nikala: apna hissa Rs.{" "}
+                    Dono mein se {Math.round(ownPct * 100) / 100}% margin nikala: apna hissa Rs.{" "}
                     {(costShown * margin).toFixed(2)} lakh
                   </p>
                 </>
@@ -891,27 +957,6 @@ export function ProjectReportForm({
                     </option>
                   ))}
                 </AdminSelect>
-              </Field>
-              <Field
-                guide="ownContributionPct"
-                label="Apna hissa / margin (%)"
-                help={`Khaali = yojana ka ${scheme?.ownContributionPct ?? 25}%`}
-              >
-                <NumberBox
-                  label="Apna hissa / margin (%)"
-                  nullable
-                  value={input.ownContributionPct}
-                  onChange={(v) => {
-                    set("ownContributionPct", v);
-                    if (loanMode)
-                      fromLoans(
-                        bankTl,
-                        bankCc,
-                        v ?? scheme?.ownContributionPct ?? 25,
-                      );
-                  }}
-                  suffix="%"
-                />
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field guide="termLoanInterestPct" label="Byaaj (% saalana)">
