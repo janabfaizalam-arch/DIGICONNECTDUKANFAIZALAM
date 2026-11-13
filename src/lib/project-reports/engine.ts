@@ -108,7 +108,7 @@ export type Promoter = {
 export type DepreciationMethod = "auto" | "wdv" | "slm";
 export type TaxRegime = "new" | "old" | "manual";
 export type RepaymentMethod = "equal_principal" | "emi";
-export type RepaymentFrequency = "monthly" | "quarterly";
+export type RepaymentFrequency = "monthly" | "quarterly" | "yearly";
 
 export type DprInput = {
   /** The project template this DPR was started from, for its written sections. */
@@ -187,6 +187,14 @@ export type DprInput = {
   moratoriumMonths: number;
   repaymentMethod: RepaymentMethod;
   repaymentFrequency: RepaymentFrequency;
+  /**
+   * The simple format most bank DPRs for scheme loans use: yearly equal
+   * instalments with interest on the opening balance, the subsidy kept as
+   * a deposit for the whole projection, DSCR on term loan and CC interest
+   * averaged year by year, current liabilities without next year's
+   * instalments, and no tax in a proprietor's books.
+   */
+  bankFormat?: boolean;
   /** null takes the scheme's subvention. */
   interestSubventionPct: number | null;
   interestSubventionYears: number | null;
@@ -792,7 +800,7 @@ export function loanSchedule(
 ): MonthlyRow[] {
   const months = Math.max(1, Math.round(pos(input.tenureYears) * 12));
   const moratorium = Math.min(months - 1, Math.max(0, Math.round(pos(input.moratoriumMonths))));
-  const step = input.repaymentFrequency === "quarterly" ? 3 : 1;
+  const step = input.repaymentFrequency === "yearly" ? 12 : input.repaymentFrequency === "quarterly" ? 3 : 1;
   const rate = pos(input.termLoanInterestPct) / 100 / 12;
   const dueMonths: number[] = [];
   for (let m = moratorium + step; m <= months; m += step) dueMonths.push(m);
@@ -812,6 +820,8 @@ export function loanSchedule(
       const i = rate * step;
       instalment = (balance * i) / (1 - Math.pow(1 + i, -remaining));
     } else instalment = balance / remaining;
+    // Yearly instalments are fixed in round thousands, as banks write them (4,04,000); the last one clears the rest.
+    if (step === 12 && input.repaymentMethod !== "emi") instalment = Math.round(instalment / 1000) * 1000;
   };
   reprice(0);
 
@@ -943,7 +953,9 @@ export function buildDpr(input: DprInput): DprReport {
   const cost = projectCostOf(input, workingCapital);
   const means = meansOf(input, cost, scheme);
   const subsidy = means.subsidy;
-  const monthly = loanSchedule(input, means.termLoan, subsidy, means.subsidyLockInYears, means.subsidyInterestFree);
+  const bank = Boolean(input.bankFormat);
+  // In the bank format the subsidy stays in the TDR for the whole projection.
+  const monthly = bank ? loanSchedule(input, means.termLoan) : loanSchedule(input, means.termLoan, subsidy, means.subsidyLockInYears, means.subsidyInterestFree);
   const repayment = yearlyRepayment(input, monthly, means.termLoan);
   const pools = assetPools(input, cost);
   const method = bookDepreciationMethod(input);
@@ -957,7 +969,7 @@ export function buildDpr(input: DprInput): DprReport {
   const ccRate = pos(input.ccInterestPct) / 100;
 
   // Lock-in ends at the end of this year (index); the subsidy leaves the TDR then.
-  const lockInIndex = subsidy > 0 && means.subsidyLockInYears > 0 ? means.subsidyLockInYears - 1 : null;
+  const lockInIndex = !bank && subsidy > 0 && means.subsidyLockInYears > 0 ? means.subsidyLockInYears - 1 : null;
 
   const grossBlock = cost.fixedCapital + cost.landOutside;
   const contributed = means.ownContribution + cost.landOutside;
@@ -1035,7 +1047,7 @@ export function buildDpr(input: DprInput): DprReport {
       lossCarried -= setOff;
       assessable = taxable - setOff;
     }
-    const tax = input.taxRegime === "manual" ? (Math.max(0, pbt) * pos(input.taxPct)) / 100 : incomeTax(input.constitution, input.taxRegime === "old" ? "old" : "new", assessable);
+    const tax = bank && input.constitution === "proprietorship" ? 0 : input.taxRegime === "manual" ? (Math.max(0, pbt) * pos(input.taxPct)) / 100 : incomeTax(input.constitution, input.taxRegime === "old" ? "old" : "new", assessable);
     const pat = pbt - tax;
     const cashAccrual = pat + dep + prelimWo;
 
@@ -1089,12 +1101,15 @@ export function buildDpr(input: DprInput): DprReport {
     const netBlock = grossBlock - accDep;
     const assets = netBlock + cost.deposits + prelimLeft + subsidyInTdr + stock + b.debtors + cash;
     const currentAssets = stock + b.debtors + Math.max(0, cash);
-    const currentLiabilities = b.creditors + means.ccLimit + nextYearPrincipal + Math.max(0, -cash);
+    const currentLiabilities = b.creditors + means.ccLimit + (bank ? 0 : nextYearPrincipal) + Math.max(0, -cash);
     const tnw = contributed + reserves + subsidy - prelimLeft;
-    const debtService = tlInterestNet + loan.principal;
-    const dscr = debtService > 0 ? (cashAccrual + tlInterestNet) / debtService : null;
-    if (debtService > 0) {
-      dscrNumerator += cashAccrual + tlInterestNet;
+    // Bank format: "bank interest" is the term loan and CC interest together.
+    const ccInterestNet = ccInterest * (index < subventionYears ? 1 - subventionPct / 100 : 1);
+    const interestServiced = bank ? tlInterestNet + ccInterestNet : tlInterestNet;
+    const debtService = interestServiced + loan.principal;
+    const dscr = loan.principal > 0 || (!bank && debtService > 0) ? (cashAccrual + interestServiced) / debtService : null;
+    if (dscr !== null) {
+      dscrNumerator += cashAccrual + interestServiced;
       dscrDenominator += debtService;
     }
     const capitalEmployed = tnw + loan.closing + means.ccLimit + means.otherFunding;
@@ -1169,9 +1184,16 @@ export function buildDpr(input: DprInput): DprReport {
     prev = { rm: b.rawMaterialStock, wip: b.workInProgress, fg: b.finishedGoods, debtors: b.debtors, creditors: b.creditors };
   }
 
-  // Bank method: total cash available for debt service over total debt service.
   const serviced = rows.filter((r) => r.dscr !== null);
-  const averageDscr = dscrDenominator > 0 ? round(dscrNumerator / dscrDenominator) : null;
+  // Bank method: total cash available for debt service over total debt
+  // service; the bank format averages the yearly ratios instead.
+  const averageDscr = bank
+    ? serviced.length
+      ? round(serviced.reduce((s, r) => s + r.dscr!, 0) / serviced.length)
+      : null
+    : dscrDenominator > 0
+      ? round(dscrNumerator / dscrDenominator)
+      : null;
   const minimumDscr = serviced.length ? Math.min(...serviced.map((r) => r.dscr!)) : null;
   const breakEven = breakEvenOf(input, rows, subventionPct, subventionYears);
   const paybackYears = paybackOf(cost.total, rows);
