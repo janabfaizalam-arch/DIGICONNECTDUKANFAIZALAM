@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRight, Landmark, Wallet } from "lucide-react";
 
-import { PayoutRequestForm } from "@/components/ap/payout-request-form";
+import { WalletSpendOnlyNotice } from "@/components/ap/wallet-spend-only-notice";
 import { WalletLedgerClient } from "@/components/ap/wallet-ledger-client";
 import { GlassPanel, MetricCard, PageHeader } from "@/components/ap/ui";
 import { summarizePayouts, summarizeWalletLedger } from "@/lib/ap/finance";
@@ -101,14 +101,14 @@ export default async function APWalletPage() {
           </GlassPanel>
 
           <GlassPanel padding="md" className="lg:col-span-2">
-            <h2 className="mb-4 text-sm font-extrabold text-slate-900">Request payout</h2>
-            <PayoutRequestForm availableBalance={balance} />
+            <h2 className="mb-4 text-sm font-extrabold text-slate-900">Wallet ka istemaal</h2>
+            <WalletSpendOnlyNotice balance={formatINR(balance)} />
             <p className="mt-3 text-[11px] font-medium text-slate-400">
-              Minimum request ₹500. Pending requests must clear before a new request. Full history on{" "}
+              Pehle ki payout requests{" "}
               <Link href="/ap/payouts" className="font-bold text-indigo-700 hover:underline">
                 Payouts
-              </Link>
-              .
+              </Link>{" "}
+              par dikhti hain.
             </p>
           </GlassPanel>
         </div>

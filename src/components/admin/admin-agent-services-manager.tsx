@@ -444,7 +444,7 @@ export function AdminAgentServicesManager({
                   <p className="mt-1 font-mono text-xs text-slate-500">{service.slug}</p>
                   <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{service.description || "No description added."}</p>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
-                    <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">Fee {formatMoney(service.customer_fee)}</span>
+                    <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">Partner pays {formatMoney(service.customer_fee)}</span>
                     <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">Score {formatMoney(payoutForAgentService(service))}</span>
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{service.visibility_type.replace(/_/g, " ")}</span>
                     {service.category ? <span className="rounded-full bg-orange-50 px-3 py-1 text-orange-700">{service.category}</span> : null}
@@ -591,8 +591,16 @@ export function AdminAgentServicesManager({
 
             {activeTab === "fees" && (
               <div className="grid gap-3">
-                <label className="block text-xs font-bold text-slate-600">Customer Fee (Rs.)</label>
-                <Input value={draft.customer_fee} onChange={(event) => setDraft({ ...draft, customer_fee: event.target.value })} inputMode="decimal" placeholder="Customer fee" />
+                {/*
+                  The DC Partner is the buyer, so this is what the partner pays
+                  to apply -- not a price they have to charge their customer on.
+                  What they charge for their own work is theirs to decide.
+                */}
+                <label className="block text-xs font-bold text-slate-600">Partner Price (Rs.)</label>
+                <Input value={draft.customer_fee} onChange={(event) => setDraft({ ...draft, customer_fee: event.target.value })} inputMode="decimal" placeholder="Partner price" />
+                <p className="-mt-1 text-[11px] font-medium text-slate-500">
+                  Apply karte waqt DC Partner itna pay karega. Partner apne customer se kitna leta hai, wo uski marzi.
+                </p>
                 
                 <label className="block text-xs font-bold text-slate-600">Processing Time</label>
                 <Input value={draft.processing_time} onChange={(event) => setDraft({ ...draft, processing_time: event.target.value })} placeholder="Processing time (e.g. 3 Days)" />
@@ -602,7 +610,7 @@ export function AdminAgentServicesManager({
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="not_applicable">Not Applicable</SelectItem>
-                    <SelectItem value="included">Included in Customer Fee</SelectItem>
+                    <SelectItem value="included">Included in Partner Price</SelectItem>
                     <SelectItem value="extra">Extra / Paid Separately</SelectItem>
                   </SelectContent>
                 </Select>
@@ -618,6 +626,9 @@ export function AdminAgentServicesManager({
                 <Input value={draft.processing_fee} onChange={(event) => setDraft({ ...draft, processing_fee: event.target.value })} inputMode="decimal" placeholder="Processing fee" />
 
                 <label className="block text-xs font-bold text-slate-600">Score / Payout Type</label>
+                <p className="-mb-1 text-[11px] font-medium text-slate-500">
+                  Service complete hone par itna partner ke wallet mein add hota hai, aur agli application mein kat jata hai.
+                </p>
                 <Select value={draft.payout_type} onValueChange={(value: "fixed" | "percentage") => setDraft({ ...draft, payout_type: value })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -639,7 +650,7 @@ export function AdminAgentServicesManager({
                 )}
 
                 <div className="grid gap-2 rounded-2xl bg-blue-50 p-4 text-sm mt-2">
-                  <p className="font-bold text-slate-950">Partner Score preview</p>
+                  <p className="font-bold text-slate-950">Partner Score preview (wallet credit)</p>
                   <p className="text-2xl font-bold text-blue-700">{formatMoney(payoutPreview)}</p>
                 </div>
               </div>
@@ -859,7 +870,7 @@ export function AdminAgentServicesManager({
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-500">Price (Rs.)</label>
+                          <label className="block text-[10px] font-bold text-slate-500">Partner pays (Rs.)</label>
                           <input
                             type="number"
                             value={v.price}

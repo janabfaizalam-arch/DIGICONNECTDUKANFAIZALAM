@@ -243,14 +243,22 @@ describe("the signup path is actually wired up", () => {
     expect(route.indexOf("provisionPartnerAccount(")).toBeLessThan(route.indexOf(".update(updates)"));
   });
 
-  it("a self-signup cannot withdraw before KYC", () => {
-    // /api/ap/wallet gates payouts on kyc_status === "approved", so money
-    // cannot leave on an identity nobody has checked.
+  it("a self-signup lands as KYC pending", () => {
     const route = readSrc("src/app/api/admin/partner-applications/[id]/route.ts");
     expect(route).toContain('kycStatus: "pending"');
+  });
 
+  it("no partner can withdraw to a bank at all", () => {
+    /*
+      This used to be gated on KYC. It is now closed to everyone: the wallet is
+      what a partner buys services with, so what the platform pays back is spent
+      there and never leaves for a bank account. The refusal is on the server,
+      not just the button, because the old form is still open in tabs.
+    */
     const wallet = readSrc("src/app/api/ap/wallet/route.ts");
-    expect(wallet).toContain('kyc_status !== "approved"');
+    expect(wallet).toContain("410");
+    expect(wallet).not.toContain("debitPayout");
+    expect(wallet).not.toContain("dispatchPayout");
   });
 
   it("the public form cannot create a partner directly", () => {

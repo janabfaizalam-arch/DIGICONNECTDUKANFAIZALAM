@@ -120,10 +120,10 @@ export function EarningsPanel({ data, showTeamToggle = false, className }: Earni
             Collect payment
           </Link>
           <Link
-            href="/ap/payouts"
+            href="/ap/wallet"
             className="dcp-btn dcp-btn-quiet"
           >
-            Request payout
+            Wallet
           </Link>
           <Link
             href="/ap/commissions"

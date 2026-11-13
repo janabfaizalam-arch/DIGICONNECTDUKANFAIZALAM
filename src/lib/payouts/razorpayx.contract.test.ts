@@ -89,9 +89,18 @@ describe("payouts are off unless switched on", () => {
     }
   });
 
-  it("a failed dispatch leaves the request for an admin rather than failing it", () => {
-    expect(walletRoute).toContain("dispatchPayout");
-    expect(walletRoute).toContain("Payout request submitted successfully.");
+  it("nothing starts a payout any more", () => {
+    /*
+      The partner wallet is spend-only now: the score it holds pays for the next
+      application and does not go to a bank. So the partner route no longer
+      creates a payout, and nothing else dispatches one either. The RazorpayX
+      library below stays tested and fail-closed -- in-flight payouts still have
+      to be finished and reconciled by the admin screen, and turning automatic
+      payouts back on must not mean rebuilding them from scratch.
+    */
+    expect(walletRoute).toContain("410");
+    expect(walletRoute).not.toContain("dispatchPayout");
+    expect(walletRoute).not.toContain("debitPayout");
   });
 });
 
