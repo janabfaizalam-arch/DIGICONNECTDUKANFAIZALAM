@@ -960,3 +960,27 @@ export function applyTemplate(input: DprInput, templateId: string, projectCost: 
   const unit = trimToCost(compose(f, v), projectCost, buildTotal);
   return { ...unit, activity: input.activity && input.templateId === templateId ? input.activity : template.activity };
 }
+
+/**
+ * The bank DPR format: everything but land, building and deposits is one
+ * "Plant and machinery" line at 15% WDV (as the bank's own DPRs show it),
+ * repaid in yearly equal instalments without a moratorium, the subsidy held
+ * for the whole projection. The project cost does not change.
+ */
+export function asBankFormat(input: DprInput): DprInput {
+  const kept = new Set(["land", "building", "deposit"]);
+  const report = buildDpr({ ...input, bankFormat: true });
+  const machinery = report.cost.lines.filter((l) => !kept.has(l.kind)).reduce((s, l) => s + l.amount, 0);
+  const items = input.capitalItems.filter((i) => kept.has(i.kind));
+  if (machinery > 0) items.push({ kind: "machinery", description: "Plant and machinery (as per quotation)", quantity: 1, rate: Math.round(machinery) });
+  return {
+    ...input,
+    capitalItems: items,
+    contingencyPct: 0,
+    depreciationRates: { ...input.depreciationRates, machinery: 15 },
+    bankFormat: true,
+    moratoriumMonths: 0,
+    repaymentFrequency: "yearly",
+    repaymentMethod: "equal_principal",
+  };
+}

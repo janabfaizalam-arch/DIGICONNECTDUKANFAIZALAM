@@ -45,6 +45,7 @@ import {
 } from "@/lib/project-reports/field-guide";
 import {
   applyTemplate,
+  asBankFormat,
   templateById,
   TEMPLATES,
 } from "@/lib/project-reports/templates";
@@ -470,16 +471,24 @@ export function ProjectReportForm({
     const base: DprInput = {
       ...input,
       businessName: input.businessName.trim() || lead.name.trim(),
+      // The bank DPR format: yearly equal instalments, no moratorium,
+      // interest on the opening balance, subsidy kept in the TDR.
+      bankFormat: true,
+      moratoriumMonths: 0,
+      repaymentFrequency: "yearly",
+      repaymentMethod: "equal_principal",
       // Otherwise the loans follow the margin on both parts (engine default split).
       termLoanOverride: typedTl,
       ccLimitOverride: typedCc,
       workingCapitalOverride: wcL === null ? null : Math.round(wcL * 100000),
     };
-    return applyTemplate(
-      base,
-      template,
-      costL * 100000,
-      (i) => buildDpr(i).cost.total,
+    return asBankFormat(
+      applyTemplate(
+        base,
+        template,
+        costL * 100000,
+        (i) => buildDpr(i).cost.total,
+      ),
     );
   }
 

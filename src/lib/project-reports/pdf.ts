@@ -53,6 +53,8 @@ const ownFooted = (m: DprReport["means"]) => {
   const own = r(m.total) - r(m.termLoan) - r(m.ccLimit) - r(m.otherFunding);
   return own <= 0 ? L(m.ownContribution) : INR.format(own / 100);
 };
+/** A rupee figure rounded to what prints in lakh (two decimals), still in rupees. */
+const lakhRound = (value: number) => Math.round(value / 1000) * 1000;
 const Rs = (value: number) => (value < 0 ? `(${INR.format(-value)})` : INR.format(value));
 const ratio = (value: number | null) => (value === null || !Number.isFinite(value) ? "-" : value.toFixed(2));
 const roman = (n: number) => ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][n] ?? String(n + 1);
@@ -192,7 +194,7 @@ function glance(doc: Doc, input: DprInput, report: DprReport) {
     ["Project", schemeShort],
     ["D.S.C.R.", ratio(report.averageDscr)],
     [`Govt. Subsidy On Project${input.scheme === "none" ? "" : `    ${schemeShort}`}`, m.subsidy > 0 ? `${L(m.subsidy)} LACS (${Math.round(subsidyPct * 100) / 100}% on total Project Cost)` : "NOT APPLICABLE"],
-    ["Government Subsidy", m.subsidy > 0 ? `As per term loan annexure${m.subsidyLockInYears ? ` (adjusted against term loan after lock-in of ${m.subsidyLockInYears} years)` : ""}` : "NOT APPLICABLE"],
+    ["Government Subsidy", m.subsidy > 0 ? `As per term loan annexure${m.subsidyLockInYears && !input.bankFormat ? ` (adjusted against term loan after lock-in of ${m.subsidyLockInYears} years)` : ""}` : "NOT APPLICABLE"],
   ];
   items.forEach(([label, value], i) => {
     const y = doc.y;
@@ -261,8 +263,9 @@ function repaymentAndDepreciation(doc: Doc, input: DprInput, report: DprReport) 
     [
       { cells: ["Loan Amount Outstanding", ...rp.map((r) => L(r.opening))] },
       { cells: [`Interest @ ${input.termLoanInterestPct}% p.a.`, ...rp.map((r) => L(r.interest))] },
-      { cells: ["Total", ...rp.map((r) => L(r.opening + r.interest))], rule: true },
-      { cells: ["Less: Repayment", ...rp.map((r) => L(r.principal + r.interest))] },
+      // Totals of the printed (rounded) figures, so each column adds up as read.
+      { cells: ["Total", ...rp.map((r) => L(lakhRound(r.opening) + lakhRound(r.interest)))], rule: true },
+      { cells: ["Less: Repayment", ...rp.map((r) => L(lakhRound(r.principal) + lakhRound(r.interest)))] },
       ...(adj ? [{ cells: ["Less: Subsidy adjusted", ...rp.map((r) => L(r.subsidyAdjusted))] }] : []),
       { cells: ["Balance", ...rp.map((r) => L(r.closing))], bold: true, rule: true },
     ],
@@ -386,7 +389,7 @@ function profitability(doc: Doc, report: DprReport, f: ReturnType<typeof figures
 
 /* ── 7. Balance sheet ──────────────────────────────────────────────────── */
 
-function balanceSheet(doc: Doc, report: DprReport) {
+function balanceSheet(doc: Doc, report: DprReport, bank: boolean) {
   heading(doc, "PROJECTED BALANCE SHEET", "left");
   unit(doc);
   const y = report.years;
@@ -435,7 +438,7 @@ function balanceSheet(doc: Doc, report: DprReport) {
     { size: y.length > 6 ? 8.5 : 9.8, head: { cells: ["YEAR>>>>>>>>>>>>", "Opening", ...y.map((_, i) => roman(i))] } },
   );
   if (subsidy) {
-    doc.font(SERIF).fontSize(9).text("Government subsidy is held by the bank in a term deposit (TDR) and adjusted against the term loan after the lock-in period.", M, doc.y + 2, { width: width(doc) });
+    doc.font(SERIF).fontSize(9).text(bank ? "Government subsidy is held by the bank in a term deposit (TDR) for the period of the projection." : "Government subsidy is held by the bank in a term deposit (TDR) and adjusted against the term loan after the lock-in period.", M, doc.y + 2, { width: width(doc) });
   }
 }
 
@@ -477,7 +480,7 @@ function cashFlow(doc: Doc, report: DprReport) {
 
 /* ── 9. Current ratio ──────────────────────────────────────────────────── */
 
-function currentRatio(doc: Doc, report: DprReport) {
+function currentRatio(doc: Doc, report: DprReport, bank: boolean) {
   heading(doc, "CALCULATION OF CURRENT RATIO", "left");
   unit(doc);
   const y = report.years;
@@ -494,21 +497,21 @@ function currentRatio(doc: Doc, report: DprReport) {
     ],
     { size: 10, head: { cells: ["", ...y.map((_, i) => roman(i))] } },
   );
-  doc.font(SERIF).fontSize(9).text("Current liabilities include creditors, the working capital loan and term loan instalments due within the next year.", M, doc.y + 4, { width: width(doc) });
+  doc.font(SERIF).fontSize(9).text(bank ? "Current liabilities: working capital loan and other current liabilities (creditors)." : "Current liabilities include creditors, the working capital loan and term loan instalments due within the next year.", M, doc.y + 4, { width: width(doc) });
 }
 
 /* ── 10. DSCR ──────────────────────────────────────────────────────────── */
 
-function dscr(doc: Doc, report: DprReport) {
+function dscr(doc: Doc, report: DprReport, bank: boolean) {
   heading(doc, "CALCULATION OF DEBT SERVICE COVERAGE RATIO");
   unit(doc);
   const y = report.years;
-  // Interest counted is the term loan interest net of any subvention share,
-  // exactly as the engine's DSCR.
+  // Interest counted is net of any subvention share, exactly as the
+  // engine's DSCR: term loan interest, plus the CC interest in the bank format.
   const interest = y.map((r) => {
     const all = r.termLoanInterest + r.ccInterest;
     const share = all > 0 ? r.interestSubvention / all : 0;
-    return r.termLoanInterest * (1 - share);
+    return (r.termLoanInterest + (bank ? r.ccInterest : 0)) * (1 - share);
   });
   const available = y.map((r, i) => r.cashAccrual + interest[i]);
   const service = y.map((r, i) => interest[i] + r.principalRepaid);
@@ -527,7 +530,7 @@ function dscr(doc: Doc, report: DprReport) {
   );
   doc.moveDown(1.5);
   doc.font(SERIF_BOLD).fontSize(11).text(`Average Debt Service Coverage Ratio   =   ${ratio(report.averageDscr)}`, M, doc.y, { width: width(doc), align: "center" });
-  doc.font(SERIF).fontSize(9).text("Average DSCR = total of A over total of B for the repayment years.", M, doc.y + 6, { width: width(doc), align: "center" });
+  doc.font(SERIF).fontSize(9).text(bank ? "Average DSCR = average of the yearly ratios (C) for the repayment years." : "Average DSCR = total of A over total of B for the repayment years.", M, doc.y + 6, { width: width(doc), align: "center" });
 }
 
 /* ── Report ────────────────────────────────────────────────────────────── */
@@ -550,9 +553,9 @@ export async function renderProjectReportPdf(record: ProjectReportRecord) {
   page(() => salary(doc, input, report, f));
   page(() => tradingAccounts(doc, f));
   page(() => profitability(doc, report, f));
-  page(() => balanceSheet(doc, report));
+  page(() => balanceSheet(doc, report, Boolean(input.bankFormat)));
   page(() => cashFlow(doc, report));
-  page(() => currentRatio(doc, report));
-  page(() => dscr(doc, report));
+  page(() => currentRatio(doc, report, Boolean(input.bankFormat)));
+  page(() => dscr(doc, report, Boolean(input.bankFormat)));
   return buffer(doc);
 }
