@@ -72,6 +72,7 @@ describe("admin nav IA", () => {
       "work",
       "catalogue",
       "website",
+      "accountant",
       "money",
       "messages",
       "insight",
