@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   Building2,
@@ -23,6 +23,10 @@ import {
   type PublicApplicationPartnerType,
 } from "@/lib/ap/partner-type";
 import { DIGI_PARTNER_LOGIN_ROUTE } from "@/lib/auth/partner-access";
+import { isValidMobile } from "@/lib/partner-applications";
+
+import { clearDraft, loadDraft, saveDraft } from "./partner-application-draft";
+import { errorForField, firstError, type ApplicationFields } from "./partner-application-validation";
 
 /**
  * Applying to become a DC Partner.
@@ -37,6 +41,13 @@ import { DIGI_PARTNER_LOGIN_ROUTE } from "@/lib/auth/partner-access";
  * What is left is the shortest thing an admin can act on: who you are, how to
  * reach you, and where you are. Documents belong to KYC, which happens after
  * approval and before money moves.
+ *
+ * The questions were right; getting through them was not. Every mistake cost a
+ * round trip and came back naming one field, so three mistakes meant three
+ * submissions — and nothing moved the applicant to the field that was wrong,
+ * which on a phone is a red message about a box that is off the screen. The
+ * rules now run in the browser first, using the server's own validator rather
+ * than a second copy of it, and whatever is wrong gets focused.
  */
 
 const TYPE_ICONS: Record<PublicApplicationPartnerType, typeof Store> = {
@@ -44,18 +55,7 @@ const TYPE_ICONS: Record<PublicApplicationPartnerType, typeof Store> = {
   field_executive: Footprints,
 };
 
-type Form = {
-  fullName: string;
-  businessName: string;
-  partnerType: PublicApplicationPartnerType;
-  mobile: string;
-  whatsapp: string;
-  email: string;
-  address: string;
-  district: string;
-  state: string;
-  pin: string;
-};
+type Form = ApplicationFields;
 
 const EMPTY: Form = {
   fullName: "",
@@ -72,18 +72,90 @@ const EMPTY: Form = {
 
 const digits = (value: string, max: number) => value.replace(/\D/g, "").slice(0, max);
 
+/** What the applicant ends on: a code, and whether we already had one from them. */
+type Finished = { code: string | null; alreadyApplied: boolean };
+
 export function PartnerApplicationForm() {
   const { success, error: toastError } = useToast();
   const [isPending, startTransition] = useTransition();
   const [form, setForm] = useState<Form>(EMPTY);
-  const [fieldError, setFieldError] = useState<{ field: string; message: string } | null>(null);
-  const [submitted, setSubmitted] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<keyof Form, string>>>({});
+  const [finished, setFinished] = useState<Finished | null>(null);
   const [pinState, setPinState] = useState<"idle" | "looking" | "found" | "unknown">("idle");
+  const [restored, setRestored] = useState(false);
+
+  /* Focusing the field that is wrong needs a handle on it. */
+  const fieldRefs = useRef<Partial<Record<keyof Form, HTMLInputElement | null>>>({});
+  const bindRef = (key: keyof Form) => (el: HTMLInputElement | null) => {
+    fieldRefs.current[key] = el;
+  };
+
+  /*
+    Bring the applicant to the problem instead of describing it.
+
+    A toast that says "Enter a valid 10-digit mobile number" is no help when
+    the mobile box is three scrolls up.
+
+    The field is put in the UPPER third of the screen, not the middle. On a
+    phone the bottom half is spoken for: focusing an input raises the keyboard
+    over it, and a first-time visitor still has the cookie consent sheet
+    sitting there. Centring was tried first and did exactly that — the field
+    scrolled to the middle and landed behind the consent sheet. Geometry said
+    it was in the viewport; the applicant could not see it.
+  */
+  const REVEAL_FROM_TOP = 0.28;
+
+  const revealField = useCallback((field: keyof Form) => {
+    const el = fieldRefs.current[field];
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    const top = el.getBoundingClientRect().top + window.scrollY - window.innerHeight * REVEAL_FROM_TOP;
+    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+  }, []);
 
   function set<K extends keyof Form>(key: K, value: Form[K]) {
     setForm((current) => ({ ...current, [key]: value }));
-    if (fieldError?.field === key) setFieldError(null);
+    // Clear as they fix it; re-checked on blur and again on submit.
+    setErrors((current) => {
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
   }
+
+  /** Check one field as the applicant leaves it, with the server's own rules. */
+  function checkOnBlur(key: keyof Form) {
+    const message = errorForField(key, form);
+    setErrors((current) => {
+      if (!message) {
+        if (!current[key]) return current;
+        const next = { ...current };
+        delete next[key];
+        return next;
+      }
+      return { ...current, [key]: message };
+    });
+  }
+
+  /* ── Draft ────────────────────────────────────────────────────────────── */
+
+  useEffect(() => {
+    const draft = loadDraft(EMPTY);
+    if (draft) {
+      setForm(draft);
+      setRestored(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Nothing worth keeping until they have actually started.
+    if (form.fullName || form.mobile || form.businessName || form.pin) {
+      saveDraft(form);
+    }
+  }, [form]);
+
+  /* ── PIN lookup ───────────────────────────────────────────────────────── */
 
   /*
     Six digits, and the rest of the address fills itself.
@@ -94,14 +166,19 @@ export function PartnerApplicationForm() {
     was using it.
   */
   const pin = form.pin;
-  const lastLooked = useRef<string>("");
+  /*
+    Only a lookup that answered is remembered. This used to record the attempt
+    itself, so a PIN that failed on a dropped connection could never be tried
+    again — retyping the same six digits did nothing and the applicant was
+    stuck typing their district by hand.
+  */
+  const resolved = useRef<string>("");
   useEffect(() => {
     if (pin.length !== 6) {
       if (pin.length < 6) setPinState("idle");
       return;
     }
-    if (lastLooked.current === pin) return;
-    lastLooked.current = pin;
+    if (resolved.current === pin) return;
 
     let cancelled = false;
     setPinState("looking");
@@ -120,6 +197,7 @@ export function PartnerApplicationForm() {
           setPinState("unknown");
           return;
         }
+        resolved.current = pin;
         setPinState("found");
         setForm((current) => ({
           ...current,
@@ -136,8 +214,23 @@ export function PartnerApplicationForm() {
     };
   }, [pin]);
 
+  /* ── Submit ───────────────────────────────────────────────────────────── */
+
   function submit() {
-    setFieldError(null);
+    /*
+      Checked here first, so a typo costs nothing. The rules come from
+      `validatePartnerApplication`, the same function the route runs — the
+      server still has the final say, this only saves the trip.
+    */
+    const problem = firstError(form);
+    if (problem) {
+      setErrors((current) => ({ ...current, [problem.field]: problem.message }));
+      revealField(problem.field);
+      return;
+    }
+
+    setErrors({});
+
     startTransition(async () => {
       try {
         const response = await fetch("/api/partner-applications", {
@@ -153,11 +246,30 @@ export function PartnerApplicationForm() {
         };
 
         if (!response.ok || !result.ok) {
-          if (result.field) setFieldError({ field: result.field, message: result.error ?? "" });
+          /*
+            "You already have an application under review" used to be a red
+            toast and nothing else, while the reply carried the tracking code
+            the applicant needed. They were told to go away with no way to
+            follow it up. Now that answer ends the form properly.
+          */
+          if (response.status === 409 && result.trackingCode) {
+            clearDraft();
+            setFinished({ code: result.trackingCode, alreadyApplied: true });
+            return;
+          }
+
+          if (result.field) {
+            const field = result.field as keyof Form;
+            if (field in form) {
+              setErrors((current) => ({ ...current, [field]: result.error ?? "" }));
+              revealField(field);
+            }
+          }
           throw new Error(result.error ?? "Your application could not be submitted.");
         }
 
-        setSubmitted(result.trackingCode ?? null);
+        clearDraft();
+        setFinished({ code: result.trackingCode ?? null, alreadyApplied: false });
         success("Application submitted.");
       } catch (err) {
         toastError(err instanceof Error ? err.message : "Your application could not be submitted.");
@@ -165,36 +277,49 @@ export function PartnerApplicationForm() {
     });
   }
 
-  if (submitted) {
+  /* ── Done ─────────────────────────────────────────────────────────────── */
+
+  if (finished) {
     return (
       <div className="flex flex-col gap-5 text-center">
         <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" aria-hidden="true" />
         <div className="flex flex-col gap-1.5">
-          <h2 className="text-[22px] font-bold tracking-tight text-slate-900">Application received</h2>
+          <h2 className="text-[22px] font-bold tracking-tight text-slate-900">
+            {finished.alreadyApplied ? "You have already applied" : "Application received"}
+          </h2>
           <p className="mx-auto max-w-sm text-sm font-medium leading-relaxed text-slate-500">
-            We review every application and call you on the number you gave us. Keep this code — it is
-            how you check progress.
+            {finished.alreadyApplied
+              ? "Your earlier application is still with us. There is nothing more to send — here is the code to follow it."
+              : "We review every application and call you on the number you gave us. Keep this code — it is how you check progress."}
           </p>
         </div>
 
-        <div className="mx-auto flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3">
-          <span className="font-mono text-lg font-black tracking-wider text-slate-900">{submitted}</span>
-          <button
-            type="button"
-            onClick={() => {
-              void navigator.clipboard?.writeText(submitted);
-              success("Tracking code copied.");
-            }}
-            className="rounded-full p-1.5 text-slate-500 transition hover:bg-white hover:text-slate-900"
-            aria-label="Copy tracking code"
-          >
-            <Copy className="h-4 w-4" aria-hidden="true" />
-          </button>
-        </div>
+        {finished.code ? (
+          <div className="mx-auto flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3">
+            <span className="font-mono text-lg font-black tracking-wider text-slate-900">
+              {finished.code}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                void navigator.clipboard?.writeText(finished.code ?? "");
+                success("Tracking code copied.");
+              }}
+              className="rounded-full p-1.5 text-slate-500 transition hover:bg-white hover:text-slate-900"
+              aria-label="Copy tracking code"
+            >
+              <Copy className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Link
-            href={`/digi-partner/apply/status?code=${encodeURIComponent(submitted)}`}
+            href={
+              finished.code
+                ? `/digi-partner/apply/status?code=${encodeURIComponent(finished.code)}`
+                : "/digi-partner/apply/status"
+            }
             className="inline-flex h-11 items-center gap-2 rounded-full bg-slate-900 px-5 text-sm font-bold text-white transition hover:bg-slate-800"
           >
             <Search className="h-4 w-4" aria-hidden="true" />
@@ -211,17 +336,29 @@ export function PartnerApplicationForm() {
     );
   }
 
-  const errorFor = (field: keyof Form) => (fieldError?.field === field ? fieldError.message : null);
+  /* ── Form ─────────────────────────────────────────────────────────────── */
+
+  const errorFor = (field: keyof Form) => errors[field] ?? null;
   const isShop = form.partnerType === "business_partner";
 
   return (
     <form
       className="flex flex-col gap-6"
+      noValidate
       onSubmit={(event) => {
         event.preventDefault();
         submit();
       }}
     >
+      {restored ? (
+        <p
+          role="status"
+          className="rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-xs font-semibold text-blue-800"
+        >
+          We brought back what you had already filled in. Carry on from where you stopped.
+        </p>
+      ) : null}
+
       <section className="flex flex-col gap-3">
         <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
           How you want to partner
@@ -262,10 +399,12 @@ export function PartnerApplicationForm() {
 
       <section className="flex flex-col gap-4">
         <TextField
+          ref={bindRef("fullName")}
           label="Full name"
           icon={<UserRound className="h-4 w-4" />}
           value={form.fullName}
           onChange={(e) => set("fullName", e.target.value)}
+          onBlur={() => checkOnBlur("fullName")}
           error={errorFor("fullName")}
           autoComplete="name"
           disabled={isPending}
@@ -277,10 +416,12 @@ export function PartnerApplicationForm() {
         */}
         {isShop ? (
           <TextField
+            ref={bindRef("businessName")}
             label="Shop / business name"
             icon={<Building2 className="h-4 w-4" />}
             value={form.businessName}
             onChange={(e) => set("businessName", e.target.value)}
+            onBlur={() => checkOnBlur("businessName")}
             error={errorFor("businessName")}
             autoComplete="organization"
             disabled={isPending}
@@ -288,33 +429,42 @@ export function PartnerApplicationForm() {
         ) : null}
 
         <TextField
+          ref={bindRef("mobile")}
           label="Mobile number"
           prefix="+91"
+          type="tel"
           inputMode="numeric"
           value={form.mobile}
           onChange={(e) => set("mobile", digits(e.target.value, 10))}
+          onBlur={() => checkOnBlur("mobile")}
           error={errorFor("mobile")}
+          success={!errorFor("mobile") && isValidMobile(form.mobile)}
           hint="We call and WhatsApp you on this. It also becomes your login username."
           autoComplete="tel-national"
           disabled={isPending}
         />
 
         <TextField
+          ref={bindRef("whatsapp")}
           label="WhatsApp (optional)"
           icon={<MessageCircle className="h-4 w-4" />}
+          type="tel"
           inputMode="numeric"
           value={form.whatsapp}
           onChange={(e) => set("whatsapp", digits(e.target.value, 10))}
+          onBlur={() => checkOnBlur("whatsapp")}
           error={errorFor("whatsapp")}
           hint="Only if it is different from the number above."
           disabled={isPending}
         />
 
         <TextField
+          ref={bindRef("email")}
           label="Email (optional)"
           type="email"
           value={form.email}
           onChange={(e) => set("email", e.target.value)}
+          onBlur={() => checkOnBlur("email")}
           error={errorFor("email")}
           autoComplete="email"
           disabled={isPending}
@@ -327,11 +477,13 @@ export function PartnerApplicationForm() {
         </p>
 
         <TextField
+          ref={bindRef("pin")}
           label="PIN code"
           icon={<MapPin className="h-4 w-4" />}
           inputMode="numeric"
           value={form.pin}
           onChange={(e) => set("pin", digits(e.target.value, 6))}
+          onBlur={() => checkOnBlur("pin")}
           error={errorFor("pin")}
           success={pinState === "found"}
           hint={
@@ -354,12 +506,14 @@ export function PartnerApplicationForm() {
         {pinState === "unknown" ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField
+              ref={bindRef("district")}
               label="District / city"
               value={form.district}
               onChange={(e) => set("district", e.target.value)}
               disabled={isPending}
             />
             <TextField
+              ref={bindRef("state")}
               label="State"
               value={form.state}
               onChange={(e) => set("state", e.target.value)}
@@ -369,6 +523,7 @@ export function PartnerApplicationForm() {
         ) : null}
 
         <TextField
+          ref={bindRef("address")}
           label={isShop ? "Shop address (optional)" : "Address (optional)"}
           value={form.address}
           onChange={(e) => set("address", e.target.value)}

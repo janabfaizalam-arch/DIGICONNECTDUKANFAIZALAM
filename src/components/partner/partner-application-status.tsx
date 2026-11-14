@@ -26,7 +26,20 @@ const TONE: Record<PartnerApplicationStatus, { icon: typeof Clock; card: string;
 const MESSAGE: Record<PartnerApplicationStatus, string> = {
   pending: "We have your application and it is in the queue. We will reach out on WhatsApp once it is reviewed.",
   under_review: "Our team is going through your details right now. We will be in touch shortly.",
-  approved: "You are in. Sign in with the email you applied with — we have sent your password separately.",
+  /*
+   * This used to point the partner at their email address.
+   *
+   * Email is optional on the form, and it was never the login:
+   * `provisionPartnerAccount` makes the mobile number the username. An
+   * approved partner who left the email blank was being sent to sign in with
+   * something they had never given us.
+   *
+   * The password is not delivered automatically either — approving returns it
+   * once, to the admin, who passes it on when they call. Promising a message
+   * that nothing sends leaves the partner waiting for it.
+   */
+  approved:
+    "You are in. Sign in with your mobile number as the username, and the password our team gave you on the call. Not got it yet? Reply on WhatsApp and we will set it again.",
   rejected: "We could not take this application forward. You are welcome to apply again with updated details.",
 };
 
