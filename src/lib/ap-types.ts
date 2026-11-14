@@ -434,6 +434,18 @@ export type APListItem = AgencyPartner & {
   totalPaidCommission: number;
   customerCount: number;
   tier?: APTier | null;
+
+  /** Spendable wallet money right now. */
+  walletBalance?: number;
+  /** What the wallet has already paid towards applications. */
+  walletSpent?: number;
+  /** The most recent application and what it was for -- the real activity signal. */
+  lastApplicationAt?: string | null;
+  lastServiceName?: string | null;
+  /** Every service this partner has used, most-used first. */
+  servicesUsed?: { name: string; count: number }[];
+  /** Null for anyone who has not signed in since logins started being recorded. */
+  lastLoginAt?: string | null;
 };
 
 // ── Helper constants ───────────────────────────────────────────────────────

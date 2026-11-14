@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ExternalLink, FileSpreadsheet, UserPlus } from "lucide-react";
+import { ExternalLink, FileSpreadsheet, Printer, UserPlus } from "lucide-react";
 
 import { DIGI_PARTNER_LOGIN_ROUTE } from "@/lib/auth/partner-access";
 import {
   ADMIN_AGENCY_PARTNERS_NEW_ROUTE,
   adminAgencyPartnerExportPath,
+  adminAgencyPartnerPrintPath,
 } from "@/lib/admin/agency-partner-routes";
 import {
   filterAgencyPartners,
@@ -111,6 +112,8 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
   const rows = ordered.slice(from, to).map(toTableRow);
 
   const exportHref = adminAgencyPartnerExportPath({ q: query, type: typeFilter });
+  // Both carry the filters on screen, so printing what you see prints only that.
+  const printHref = adminAgencyPartnerPrintPath({ q: query, type: typeFilter });
   const totalCommissions = partners.reduce(
     (sum, ap) => sum + ap.pendingCommission + ap.totalPaidCommission,
     0,
@@ -143,6 +146,14 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
               <FileSpreadsheet className="h-4 w-4" />
               Download Excel
             </a>
+            <Link
+              href={printHref}
+              title={`Print a one-page-per-batch list of ${total} DC Partner${total === 1 ? "" : "s"} — number, opened, last work, services and wallet`}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-ds-border bg-ds-surface px-4 text-sm font-bold text-ds-text-secondary shadow-ds-sm transition hover:bg-ds-surface-sunken"
+            >
+              <Printer className="h-4 w-4 text-ds-primary" />
+              Print List
+            </Link>
             <Link
               href={ADMIN_AGENCY_PARTNERS_NEW_ROUTE}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ds-primary px-4 text-sm font-bold text-ds-text-inverted transition hover:bg-ds-primary-hover"

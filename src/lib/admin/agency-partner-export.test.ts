@@ -12,6 +12,7 @@ import {
   parseAgencyPartnerFilters,
 } from "./agency-partner-filters";
 import type { APListItem } from "@/lib/ap-types";
+import { readCode } from "@/lib/testing/source";
 
 function makePartner(overrides: Partial<APListItem> = {}): APListItem {
   return {
@@ -209,5 +210,98 @@ describe("DC Partner filters", () => {
       parseAgencyPartnerFilters({ q: "khan", type: "business_partner" }),
     );
     expect(filtered.map((ap) => ap.full_name)).toEqual(["Mohd Junaid Khan"]);
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Activity, services and wallet — and the printable sheet beside them
+   ───────────────────────────────────────────────────────────────────────── */
+
+describe("the columns that say whether a partner is still working", () => {
+  const headers = AGENCY_PARTNER_EXPORT_HEADERS;
+
+  it("carries the wallet balance", () => {
+    expect(headers).toContain("Wallet Balance (Rs)");
+  });
+
+  it("carries when they last applied and for what", () => {
+    expect(headers).toContain("Last Application");
+    expect(headers).toContain("Last Service Used");
+  });
+
+  it("carries every service they have used, and how many", () => {
+    expect(headers).toContain("Services Used");
+    expect(headers).toContain("Services Count");
+  });
+
+  it("carries the last login beside it, not instead of it", () => {
+    // last_login_at is blank for anyone who signed in before it was recorded,
+    // so on its own it would read as "never worked".
+    expect(headers).toContain("Last Login");
+    expect(headers.indexOf("Last Application")).toBeLessThan(headers.indexOf("Last Login"));
+  });
+
+  it("still carries when the partner opened", () => {
+    expect(headers).toContain("Registered On");
+  });
+});
+
+describe("the printable list", () => {
+  const print = readCode("src/app/admin/agency-partners/print/page.tsx");
+  const console_ = readCode("src/app/admin/agency-partners/page.tsx");
+  const routes = readCode("src/lib/admin/agency-partner-routes.ts");
+
+  it("is admin-only", () => {
+    expect(print).toContain("isAdminRole");
+    expect(print).toContain('redirect("/dashboard")');
+  });
+
+  it("leaves identity and bank details off the paper", () => {
+    // The workbook carries them because finance needs them and the download is
+    // audited. A printed sheet gets left on a desk.
+    for (const field of [
+      "aadhaar_number",
+      "pan_number",
+      "bank_account_number",
+      "bank_ifsc",
+      "upi_id",
+    ]) {
+      expect(print, `${field} must not be printed`).not.toContain(field);
+    }
+  });
+
+  it("prints what was asked for: number, opened, last work, services, wallet", () => {
+    expect(print).toContain("partner.mobile");
+    expect(print).toContain("partner.created_at");
+    expect(print).toContain("lastActivity(partner)");
+    expect(print).toContain("formatServicesUsed");
+    expect(print).toContain("partner.walletBalance");
+  });
+
+  it("honours the console's own filters, so it prints what is on screen", () => {
+    expect(print).toContain("parseAgencyPartnerFilters");
+    expect(print).toContain("filterAgencyPartners");
+    expect(routes).toContain("adminAgencyPartnerPrintPath");
+  });
+
+  it("is reachable from the console beside the Excel download", () => {
+    expect(console_).toContain("adminAgencyPartnerPrintPath");
+    expect(console_).toContain("Print List");
+  });
+
+  it("keeps the table header on every page", () => {
+    // Otherwise page three is twelve unlabelled columns.
+    expect(print).toContain("table-header-group");
+  });
+});
+
+describe("the login that fills Last Login", () => {
+  it("is recorded by the route the partner forms actually post to", () => {
+    // profiles.last_login_at was only written by /api/auth/ap/login, which the
+    // UI never calls, so the column was null for every partner.
+    const login = readCode("src/app/api/auth/agent-login/route.ts");
+    expect(login).toContain("last_login_at");
+    // After the access check: a refused login is not a login.
+    expect(login.indexOf("getAgentAccessStatus")).toBeLessThan(login.indexOf("last_login_at"));
   });
 });

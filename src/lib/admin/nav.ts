@@ -685,6 +685,7 @@ export const ADMIN_CHILD_ROUTES: { href: string; reachedFrom: string }[] = [
   { href: "/admin/services/new-v5", reachedFrom: "/admin/services" },
   { href: "/admin/service-builder/create", reachedFrom: "/admin/service-builder" },
   { href: "/admin/agency-partners/new", reachedFrom: ADMIN_DIGI_PARTNERS_ROUTE },
+  { href: "/admin/agency-partners/print", reachedFrom: `${ADMIN_DIGI_PARTNERS_ROUTE} — the Print List button` },
   { href: "/admin/agents", reachedFrom: `redirect → ${ADMIN_DIGI_PARTNERS_ROUTE}` },
   { href: "/admin/agents/new", reachedFrom: `redirect → ${ADMIN_DIGI_PARTNERS_ROUTE}/new` },
   { href: "/admin/cashback", reachedFrom: "redirect → /admin/wallet" },

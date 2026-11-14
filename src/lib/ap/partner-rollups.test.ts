@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildPartnerRollups,
+  formatServicesUsed,
   rollupFor,
   EMPTY_PARTNER_ROLLUP,
   type PartnerApplicationRow,
   type PartnerCommissionRow,
+  type PartnerLedgerRow,
 } from "./partner-rollups";
 
 /*
@@ -178,5 +180,185 @@ describe("buildPartnerRollups — scale", () => {
     const counted = [...rollups.values()].reduce((sum, r) => sum + r.totalApplications, 0);
 
     expect(counted).toBe(applications.length);
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Activity and wallet — what the admin list and the printed sheet report
+   ───────────────────────────────────────────────────────────────────────── */
+
+/*
+  A lifetime application count never falls, so it cannot answer "is this
+  partner still working?". These lock the three things that can: when they last
+  applied, what for, and what is in their wallet now.
+*/
+
+const applied = (
+  agency_partner_id: string,
+  created_at: string,
+  service_name: string | null,
+  status = "submitted",
+  wallet_amount = 0,
+): PartnerApplicationRow => ({
+  id: Math.random().toString(36).slice(2),
+  agency_partner_id,
+  status,
+  created_at,
+  service_name,
+  wallet_amount,
+});
+
+const ledgerEntry = (
+  agency_partner_id: string,
+  entry_type: string,
+  amount: number,
+): PartnerLedgerRow => ({ agency_partner_id, entry_type, amount });
+
+describe("buildPartnerRollups — last activity", () => {
+  it("reports the newest application whatever order the rows arrive in", () => {
+    const rollups = buildPartnerRollups(
+      [
+        applied("p1", "2026-03-01T10:00:00Z", "ITR Filing"),
+        applied("p1", "2026-11-09T09:30:00Z", "Driving Licence"),
+        applied("p1", "2026-07-15T12:00:00Z", "PAN Card"),
+      ],
+      [],
+    );
+
+    const rollup = rollupFor(rollups, "p1");
+    expect(rollup.lastApplicationAt).toBe("2026-11-09T09:30:00Z");
+    expect(rollup.lastServiceName).toBe("Driving Licence");
+  });
+
+  it("is null for a partner who has never applied", () => {
+    const rollups = buildPartnerRollups([applied("p1", "2026-03-01T10:00:00Z", "ITR")], []);
+    expect(rollupFor(rollups, "p2").lastApplicationAt).toBeNull();
+    expect(rollupFor(rollups, "p2").lastServiceName).toBeNull();
+  });
+
+  it("survives a row with no date rather than reporting it as the latest", () => {
+    const rollups = buildPartnerRollups(
+      [
+        applied("p1", "2026-05-01T10:00:00Z", "ITR Filing"),
+        { id: "x", agency_partner_id: "p1", status: "submitted", created_at: null, service_name: "Ghost" },
+      ],
+      [],
+    );
+    expect(rollupFor(rollups, "p1").lastApplicationAt).toBe("2026-05-01T10:00:00Z");
+    expect(rollupFor(rollups, "p1").lastServiceName).toBe("ITR Filing");
+  });
+});
+
+describe("buildPartnerRollups — services used", () => {
+  it("counts each service and puts the most-used first", () => {
+    const rollups = buildPartnerRollups(
+      [
+        applied("p1", "2026-01-01T00:00:00Z", "ITR Filing"),
+        applied("p1", "2026-01-02T00:00:00Z", "ITR Filing"),
+        applied("p1", "2026-01-03T00:00:00Z", "ITR Filing"),
+        applied("p1", "2026-01-04T00:00:00Z", "Driving Licence"),
+      ],
+      [],
+    );
+
+    expect(rollupFor(rollups, "p1").servicesUsed).toEqual([
+      { name: "ITR Filing", count: 3 },
+      { name: "Driving Licence", count: 1 },
+    ]);
+  });
+
+  it("keeps each partner's services to themselves", () => {
+    // The blank rollup used to be spread from a shared constant; a shared
+    // array would have collected every partner's services into one list.
+    const rollups = buildPartnerRollups(
+      [
+        applied("p1", "2026-01-01T00:00:00Z", "ITR Filing"),
+        applied("p2", "2026-01-02T00:00:00Z", "PAN Card"),
+      ],
+      [],
+    );
+
+    expect(rollupFor(rollups, "p1").servicesUsed).toEqual([{ name: "ITR Filing", count: 1 }]);
+    expect(rollupFor(rollups, "p2").servicesUsed).toEqual([{ name: "PAN Card", count: 1 }]);
+    expect(EMPTY_PARTNER_ROLLUP.servicesUsed).toEqual([]);
+  });
+
+  it("ignores an application with no service name instead of counting a blank", () => {
+    const rollups = buildPartnerRollups(
+      [applied("p1", "2026-01-01T00:00:00Z", null), applied("p1", "2026-01-02T00:00:00Z", "  ")],
+      [],
+    );
+    expect(rollupFor(rollups, "p1").servicesUsed).toEqual([]);
+    expect(rollupFor(rollups, "p1").totalApplications).toBe(2);
+  });
+});
+
+describe("buildPartnerRollups — wallet balance", () => {
+  it("folds the ledger the same way the partner's own wallet screen does", () => {
+    const rollups = buildPartnerRollups(
+      [],
+      [],
+      [
+        ledgerEntry("p1", "commission_credit", 25),
+        ledgerEntry("p1", "commission_credit", 25),
+        ledgerEntry("p1", "application_spend", 25),
+      ],
+    );
+    expect(rollupFor(rollups, "p1").walletBalance).toBe(25);
+  });
+
+  it("counts a spend as a debit, so the list cannot overstate what a partner has", () => {
+    const rollups = buildPartnerRollups(
+      [],
+      [],
+      [ledgerEntry("p1", "manual_credit", 500), ledgerEntry("p1", "application_spend", 100)],
+    );
+    expect(rollupFor(rollups, "p1").walletBalance).toBe(400);
+  });
+
+  it("is zero for a partner with no ledger at all", () => {
+    const rollups = buildPartnerRollups([applied("p1", "2026-01-01T00:00:00Z", "ITR")], []);
+    expect(rollupFor(rollups, "p1").walletBalance).toBe(0);
+  });
+
+  it("totals what the wallet has paid towards applications", () => {
+    const rollups = buildPartnerRollups(
+      [
+        applied("p1", "2026-01-01T00:00:00Z", "ITR Filing", "completed", 25),
+        applied("p1", "2026-01-02T00:00:00Z", "ITR Filing", "completed", 75),
+      ],
+      [],
+    );
+    expect(rollupFor(rollups, "p1").walletSpent).toBe(100);
+  });
+
+  it("skips a ledger row with no partner rather than bucketing it under a phantom", () => {
+    const rollups = buildPartnerRollups([], [], [
+      { agency_partner_id: null, entry_type: "manual_credit", amount: 999 },
+    ]);
+    expect(rollups.size).toBe(0);
+  });
+});
+
+describe("formatServicesUsed", () => {
+  it("reads as something a person can scan", () => {
+    expect(
+      formatServicesUsed([
+        { name: "ITR Filing", count: 3 },
+        { name: "Driving Licence", count: 1 },
+      ]),
+    ).toBe("ITR Filing x3, Driving Licence x1");
+  });
+
+  it("is empty when nothing has been used, not a dash", () => {
+    expect(formatServicesUsed([])).toBe("");
+  });
+
+  it("caps a long list and says how many were left out", () => {
+    const many = Array.from({ length: 9 }, (_, i) => ({ name: `Service ${i + 1}`, count: 1 }));
+    const text = formatServicesUsed(many, 4);
+    expect(text).toContain("Service 1 x1");
+    expect(text).toContain("+5 more");
+    expect(text).not.toContain("Service 6");
   });
 });
