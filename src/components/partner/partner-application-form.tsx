@@ -94,15 +94,23 @@ export function PartnerApplicationForm() {
     Bring the applicant to the problem instead of describing it.
 
     A toast that says "Enter a valid 10-digit mobile number" is no help when
-    the mobile box is three scrolls up. `preventScroll` then an explicit
-    `scrollIntoView` so the field lands in the middle of the screen rather
-    than jammed under the keyboard.
+    the mobile box is three scrolls up.
+
+    The field is put in the UPPER third of the screen, not the middle. On a
+    phone the bottom half is spoken for: focusing an input raises the keyboard
+    over it, and a first-time visitor still has the cookie consent sheet
+    sitting there. Centring was tried first and did exactly that — the field
+    scrolled to the middle and landed behind the consent sheet. Geometry said
+    it was in the viewport; the applicant could not see it.
   */
+  const REVEAL_FROM_TOP = 0.28;
+
   const revealField = useCallback((field: keyof Form) => {
     const el = fieldRefs.current[field];
     if (!el) return;
     el.focus({ preventScroll: true });
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const top = el.getBoundingClientRect().top + window.scrollY - window.innerHeight * REVEAL_FROM_TOP;
+    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
   }, []);
 
   function set<K extends keyof Form>(key: K, value: Form[K]) {

@@ -115,8 +115,14 @@ describe("the application form", () => {
   it("brings the applicant to the field that is wrong", () => {
     // A red message about a box three scrolls up is not an error message.
     expect(form).toContain("revealField");
-    expect(form).toContain("scrollIntoView");
     expect(form).toContain("preventScroll: true");
+    /*
+      Upper third, not centre. Checked in a real browser at phone size: with
+      `block: "center"` the field scrolled behind the cookie consent sheet,
+      and on a focused input the keyboard takes the same half of the screen.
+    */
+    expect(form).toContain("REVEAL_FROM_TOP");
+    expect(form).not.toContain('block: "center"');
   });
 
   it("focuses the field the server rejected too", () => {
