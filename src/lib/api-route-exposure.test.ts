@@ -54,6 +54,11 @@ const KNOWN_UNAUTHENTICATED_WRITES = [
   // Auth endpoints themselves — they run before a session can exist.
   "auth/admin/login",
   "auth/ap/login",
+  // The DC Partner login the UI actually posts to. Its only service-role write
+  // is stamping profiles.last_login_at on the user who has just authenticated
+  // and passed the access check — no row is created and nothing else is
+  // touched, so a caller who fails the password gains nothing.
+  "auth/agent-login",
 
   // Public capture surfaces — anonymous visitors are the intended callers.
   "crm/event",

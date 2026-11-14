@@ -178,6 +178,33 @@ export async function POST(request: Request) {
       return jsonError(message, 403, { code: access.reason });
     }
 
+    /*
+      Record the sign-in.
+
+      `profiles.last_login_at` existed and was written by /api/auth/ap/login,
+      which nothing in the UI calls — the partner login forms post here. So the
+      column was null for every single partner, and the admin console had no way
+      to tell a partner who stopped working from one who never started.
+
+      After the access check, so a refused login does not count as one. A failed
+      write is logged and no more: it must not keep a partner who typed the
+      right password out of their panel.
+    */
+    const supabaseAdmin = getSupabaseAdmin();
+    if (supabaseAdmin) {
+      const { error: loginStampError } = await supabaseAdmin
+        .from("profiles")
+        .update({ last_login_at: new Date().toISOString() })
+        .eq("id", data.user.id);
+
+      if (loginStampError) {
+        console.error("[agent-login] Could not record last_login_at.", {
+          userId: data.user.id,
+          error: loginStampError.message,
+        });
+      }
+    }
+
     const response = NextResponse.json({
       message: "DC Partner login successful.",
       destination: "/ap/dashboard",

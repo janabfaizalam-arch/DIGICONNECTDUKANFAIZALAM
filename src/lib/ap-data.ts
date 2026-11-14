@@ -21,6 +21,7 @@ import {
   rollupFor,
   type PartnerApplicationRow,
   type PartnerCommissionRow,
+  type PartnerLedgerRow,
 } from "@/lib/ap/partner-rollups";
 
 /** The chainable shape `readAllRows` needs; the client's own generics do not
@@ -126,31 +127,47 @@ export async function getAdminAgencyPartnerList(): Promise<APListItem[]> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [];
 
-  const [partnersResult, applications, commissions] = await Promise.all([
+  const [partnersResult, applications, commissions, ledger] = await Promise.all([
     supabase
       .from("agency_partners")
       .select("*, agency_partner_tiers(*)")
       .order("created_at", { ascending: false }),
+    /*
+      `created_at` and `service_name` are read so the list can say when a
+      partner last did any work and what it was. Without them the only answer
+      to "is this partner active?" is a lifetime count, which never falls.
+    */
     readAllRows<PartnerApplicationRow>(
       "applications",
-      "id, agency_partner_id, status",
+      "id, agency_partner_id, status, created_at, service_name, wallet_amount",
       (query) => query.not("agency_partner_id", "is", null),
     ),
     readAllRows<PartnerCommissionRow>(
       "ap_commissions",
       "agency_partner_id, calculated_amount, status",
     ),
+    readAllRows<PartnerLedgerRow>(
+      "ap_wallet_ledger",
+      "agency_partner_id, amount, entry_type",
+      (query) => query.not("agency_partner_id", "is", null),
+    ),
   ]);
 
   if (partnersResult.error) return [];
 
   // One pass over each table instead of one pass per partner.
-  const rollups = buildPartnerRollups(applications, commissions);
+  const rollups = buildPartnerRollups(applications, commissions, ledger);
 
-  return ((partnersResult.data ?? []) as Record<string, unknown>[]).map((row) => {
+  const partnerRows = (partnersResult.data ?? []) as Record<string, unknown>[];
+  const lastLogins = await readLastLoginByUserId(
+    partnerRows.map((row) => String(row.user_id ?? "")).filter(Boolean),
+  );
+
+  return partnerRows.map((row) => {
     const apId = String(row.id);
     const rollup = rollupFor(rollups, apId);
     const tier = row.agency_partner_tiers as AgencyPartner["tier"] ?? null;
+    const lastLoginAt = lastLogins.get(String(row.user_id ?? "")) ?? null;
 
     return {
       ...row,
@@ -160,9 +177,53 @@ export async function getAdminAgencyPartnerList(): Promise<APListItem[]> {
       completedApplications: rollup.completedApplications,
       pendingCommission: rollup.pendingCommission,
       totalPaidCommission: rollup.totalPaidCommission,
+      walletBalance: rollup.walletBalance,
+      walletSpent: rollup.walletSpent,
+      lastApplicationAt: rollup.lastApplicationAt,
+      lastServiceName: rollup.lastServiceName,
+      servicesUsed: rollup.servicesUsed,
+      lastLoginAt,
       customerCount: 0, // calculated separately if needed
     } as unknown as APListItem;
   });
+}
+
+/**
+ * When each of these users last signed in.
+ *
+ * Read in chunks because a PostgREST `in` list goes into the URL, and a few
+ * hundred UUIDs is enough to be refused for an over-long request line.
+ *
+ * It comes back empty for anyone who has not logged in since the partner login
+ * started recording it, which is not the same as "never logged in" -- the
+ * caller should fall back to the last application rather than call them idle.
+ */
+async function readLastLoginByUserId(userIds: string[]): Promise<Map<string, string | null>> {
+  const found = new Map<string, string | null>();
+  const supabase = getSupabaseAdmin();
+  if (!supabase || userIds.length === 0) return found;
+
+  const unique = [...new Set(userIds)];
+  const CHUNK = 200;
+
+  for (let from = 0; from < unique.length; from += CHUNK) {
+    const chunk = unique.slice(from, from + CHUNK);
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, last_login_at")
+      .in("id", chunk);
+
+    if (error) {
+      console.error("[ap-data] last_login read failed", { error: error.message });
+      continue;
+    }
+
+    for (const row of (data ?? []) as { id: string; last_login_at: string | null }[]) {
+      found.set(String(row.id), row.last_login_at ?? null);
+    }
+  }
+
+  return found;
 }
 
 // ── AP Dashboard Stats ─────────────────────────────────────────────────────

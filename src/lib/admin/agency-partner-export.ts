@@ -18,6 +18,7 @@ import {
   type APStatus,
 } from "@/lib/ap-types";
 import { partnerTypeDisplayLabel } from "@/lib/ap/partner-type";
+import { formatServicesUsed } from "@/lib/ap/partner-rollups";
 
 export const AGENCY_PARTNER_EXPORT_SHEET_NAME = "DC Partners";
 
@@ -126,6 +127,32 @@ export const AGENCY_PARTNER_EXPORT_COLUMNS: ExportColumn[] = [
     width: 24,
     value: (ap) => amount(ap.pendingCommission) + amount(ap.totalPaidCommission),
   },
+
+  /*
+    Activity and money in hand.
+
+    A lifetime application count never falls, so it cannot answer "is this
+    partner still working?". The last application date can, and the services
+    column says what they actually sell rather than what they were onboarded
+    for. `Last Login` is blank for anyone who has not signed in since the
+    login route started recording it -- blank here means unknown, not never,
+    which is why `Last Application` sits beside it.
+  */
+  { header: "Wallet Balance (Rs)", width: 20, value: (ap) => amount(ap.walletBalance) },
+  { header: "Wallet Spent (Rs)", width: 20, value: (ap) => amount(ap.walletSpent) },
+  { header: "Last Application", width: 18, value: (ap) => isoDateTime(ap.lastApplicationAt) },
+  { header: "Last Service Used", width: 30, value: (ap) => text(ap.lastServiceName) },
+  {
+    header: "Services Count",
+    width: 16,
+    value: (ap) => amount(ap.servicesUsed?.length ?? 0),
+  },
+  {
+    header: "Services Used",
+    width: 54,
+    value: (ap) => formatServicesUsed(ap.servicesUsed ?? [], 12),
+  },
+  { header: "Last Login", width: 18, value: (ap) => isoDateTime(ap.lastLoginAt) },
 
   // Team / profile
   { header: "Department", width: 18, value: (ap) => text(ap.department) },
