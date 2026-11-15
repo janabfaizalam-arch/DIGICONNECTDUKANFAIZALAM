@@ -1037,7 +1037,7 @@ These block specific phases. They are listed in the order they are needed.
 |---|---|---|---|
 | 1 | `employee` role grants full admin through three alias layers | ~~Critical~~ → **High** | Phase 0, isolated PR, tested in TS and SQL. **Narrowed by Phase 0A:** `employee`, `team` and `processor` are rejected by the CHECK on both tables; only `super_admin` and `staff` are writable |
 | 2 | Removing aliases silently demotes live rows to `customer` | ~~Critical~~ → **Low** | **Discharged by Phase 0A:** 0 live rows carry any aliasing value, in any of the three sources |
-| 2a | Migrations declare `profiles.role` as an enum; production has `text` + a different CHECK, so the RLS test database is unrepresentative | **Medium-high** | Phase 0A §5 — reconcile before Phase 0's tests are written |
+| 2a | ~~Migrations declare `profiles.role` as an enum; production has `text`~~ | ~~Medium-high~~ → **WITHDRAWN** | The claim was wrong. A scratch replay of all 134 migrations produces production's exact schema. See Phase 0A §5 |
 | 2b | 22 accounts resolve to `customer` by fallback; a missing identity row is indistinguishable from a customer | **Medium** | Phase 0A §6 — make the two distinguishable before employees exist |
 | 3 | Leave policy below statutory floor | **Critical** | Phase 0b; `hr_policies` with `legal_basis`; no hardcoded rules |
 | 4 | Payroll built on a disputed wage definition | **High** | Block Phase 5 on legal sign-off |

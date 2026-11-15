@@ -19,10 +19,12 @@ rows" as a **Critical** risk. The data says otherwise: the alias set is unused i
 production, so removing it demotes nobody. **That risk drops to Low.** §7 corrects the
 audit accordingly.
 
-Two findings move the other way, and one is new and material: **production's `profiles.role`
-column does not match what the migrations declare**, which means the RLS integration suite
-— which replays migrations onto a fresh database — has been testing a different column type
-from the one that actually ships. See §5.
+One further finding stands: 22 accounts resolve to `customer` purely by fallback, which is
+harmless today and is not harmless once employees exist. See §6.
+
+**A second finding in the first version of this report — a claimed schema drift on
+`profiles.role` — was wrong and has been withdrawn.** §5 records what it said, why it was
+wrong, and the replay that disproved it.
 
 ---
 
@@ -164,30 +166,46 @@ source of admin truth that any role audit must read from code, not from the data
 
 ---
 
-## 5. New finding — schema drift between migrations and production
+## 5. ~~New finding — schema drift~~ — **WITHDRAWN: this finding was wrong**
 
-| | Migrations declare | Production has |
-|---|---|---|
-| `profiles.role` | `public.app_role` (enum) | **`text` + CHECK** |
-| `users.role` | `text` + CHECK (5 values) | `text` + CHECK (**6** values) |
-| `app_role` enum | backs `profiles.role` | **still exists, backs nothing** |
-| `agency_partner` | not an enum label | **is in both CHECKs** |
+This section originally claimed that production's `profiles.role` is `text` while the
+migrations declare it as the `app_role` enum, and concluded that the RLS integration suite
+had been testing a column type that does not ship.
 
-The `app_role` enum survives with its five labels (`super_admin, admin, agent, customer,
-staff`) but no longer types either column. `agency_partner` — the value 47 production rows
-actually use — is **not** an enum label at all; it exists only in the CHECK.
+**That is incorrect.** It was withdrawn on 15 November 2026 after the migrations were
+replayed onto a scratch PostgreSQL 16 — the verification that should have been done before
+the claim was published.
 
-**Why this matters beyond tidiness:** `src/lib/security/rls.integration.test.ts` builds its
-test database by replaying `supabase/migrations` in order. That database therefore has
-`profiles.role` as an **enum** while production has it as **text with a different
-constraint**. Any Phase 0 test asserting what can and cannot be stored in that column would
-be testing the wrong schema — including the exact assertion the role repair most needs
-("an `employee` value must be rejected").
+The error: only `20260430080000_create_profiles.sql` was read, which does declare the enum.
+The chain was not followed. `20260518120000_three_role_security_hardening.sql` converts
+**both** columns to `text`, and `20260527163000_fix_profiles_role_constraint.sql` creates
+the six-value CHECK on both. The migrations have been producing production's exact schema
+all along.
 
-**This must be reconciled before Phase 0's tests are written**, or the tests will pass
-against a database that does not exist.
+Replay of all 134 migrations from `supabase/tests/supabase-stub.sql`, zero failing
+statements, compared against the production catalogue read in §2:
 
----
+| | Replayed from migrations | Production | Match |
+|---|---|---|:--:|
+| `profiles.role` | `text` NOT NULL default `'customer'::text` | same | yes |
+| `users.role` | `text` NOT NULL default `'customer'::text` | same | yes |
+| `profiles_role_check` | 6 values | same 6 | yes |
+| `users_role_check` | 6 values | same 6 | yes |
+| `app_role` enum labels | `super_admin, admin, agent, customer, staff` | same | yes |
+| `current_app_role()` | byte-identical | — | yes |
+| `is_staff_role()` | absent | absent | yes |
+| guard triggers | both present | both present | yes |
+
+**Consequences of the withdrawal:**
+
+- The RLS integration suite **is** representative. It always was.
+- Remediation **Step 1 ("reconcile the schema drift") has nothing to do and is dropped.**
+  The plan in §9 is four steps on paper and three in practice.
+- Nothing else in this report depends on it. The §3 distributions, the §4 alias analysis
+  and the §6 reconciliation were each measured directly and are unaffected.
+
+The `app_role` enum does still exist while backing neither column — that part was accurate.
+It is harmless and out of scope; leave it, or retire it deliberately in its own change.
 
 ## 6. Identity-table reconciliation
 
@@ -221,7 +239,7 @@ denied their own attendance and payslips with no error explaining why. Phase 0 s
 |---|---|---|---|
 | #2 — removing aliases silently demotes live rows | **Critical** | **Low** | 0 live rows carry any aliasing value, in any of the three sources |
 | #1 — `employee` role grants full admin | **Critical** | **High** (narrower) | `employee`, `team`, `processor` are rejected by the CHECK on both tables; only `super_admin` and `staff` are writable, and writing either needs the service role or an existing admin (guard trigger) |
-| — | — | **New: Medium-high** | Migration/production schema drift on `profiles.role` (§5) makes the RLS test database unrepresentative |
+| ~~Migration/production schema drift on `profiles.role`~~ | ~~Medium-high~~ | **WITHDRAWN** | §5 — the claim was wrong; the migrations do produce production's schema, proven by replay |
 | — | — | **New: Medium** | 22 accounts resolve to `customer` by fallback; "missing identity" is indistinguishable from "customer" (§6) |
 
 The audit's §4.3 instruction — *"query production for the live distribution … only then
@@ -258,15 +276,10 @@ removing in the same change so the next reader is not misled.
 The data permits a safer sequence than the audit assumed, because there is nothing to
 migrate. Four steps, each independently revertible.
 
-### Step 1 — Reconcile the schema drift *(no behaviour change)*
+### Step 1 — ~~Reconcile the schema drift~~ **(dropped — there is no drift)**
 
-Bring `supabase/migrations` into agreement with production so the RLS test database is
-representative: record that `profiles.role` is `text` with the six-value CHECK, and decide
-the `app_role` enum's fate (it backs nothing — either drop it or document it as retired).
-
-**Why first:** every later step's test depends on the test database matching production.
-**Risk:** low. **Verification:** replay migrations on a scratch database and diff the
-resulting `profiles.role` type and constraint against the catalogue output in §2.
+Withdrawn with §5. The migrations already produce production's schema, so there is nothing
+to reconcile and no migration history to rewrite. The plan is three steps, not four.
 
 ### Step 2 — Narrow the CHECK constraints *(defence in depth, no behaviour change)*
 
