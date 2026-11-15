@@ -28,6 +28,31 @@
 -- removes the aliases, not before.
 --
 --
+-- FAIL CLOSED
+--
+-- This migration drops two constraints. Dropping a constraint that is not the
+-- one you think it is, on a schema that is not the one you think it is, is how
+-- a column ends up protected by nothing at all. So every assumption is checked
+-- first and an unexpected answer aborts rather than proceeds:
+--
+--   * both tables exist
+--   * both `role` columns exist, are `text`, and are NOT NULL
+--   * both CHECK constraints exist under their expected names
+--   * each admits exactly the six values this migration expects to replace
+--
+-- The constraint check reads the value set out of the rendered definition and
+-- compares it as a set, so it does not depend on how a given PostgreSQL
+-- version chooses to print `ARRAY[...]` versus `'{...}'::text[]`.
+--
+-- One state is explicitly *not* a failure: a constraint already carrying the
+-- four target values is this migration having run before. That table is left
+-- alone with a notice, so a re-run is a no-op rather than an error.
+--
+-- Everything that must not change between the check and the swap — the
+-- columns, the constraints, the row counts — is verified while holding the
+-- lock, not before taking it.
+--
+--
 -- OPERATIONAL SAFETY
 --
 -- This migration takes ACCESS EXCLUSIVE on `profiles` and `users`. Those are
@@ -55,57 +80,55 @@
 --
 -- Every failure path rolls the transaction back and leaves the original
 -- six-value constraints and every row exactly as they were.
---
--- Concurrency: the tables are locked before the counts are taken, so no
--- session can insert a `staff` row between the check and the constraint
--- swap. `add constraint` would validate every existing row under its own
--- lock in any case — the explicit lock is what makes the error message below
--- trustworthy rather than a race.
 
 do $$
 declare
-  has_profiles boolean;
-  has_users boolean;
-  bad_profiles bigint := 0;
-  bad_users bigint := 0;
   retired constant text[] := array['super_admin', 'staff'];
+  expect_before constant text[] := array['admin', 'agency_partner', 'agent', 'customer', 'staff', 'super_admin'];
   keep constant text[] := array['admin', 'agency_partner', 'agent', 'customer'];
   note constant text :=
     'Roles actually in use. super_admin and staff were removed on 2026-11-15: both promoted to admin via current_app_role() and neither had a single row. employee is added only when those aliases are removed.';
+
+  -- Words that belong to the SQL of a rendered CHECK, not to its value set.
+  noise constant text[] := array['role', 'any', 'array', 'check', 'text', 'character', 'varying'];
+
+  tbl text;
+  con text;
+  definition text;
+  found_values text[];
+  skip_table boolean;
+  to_narrow text[] := array[]::text[];
+  bad_profiles bigint := 0;
+  bad_users bigint := 0;
+  col_type text;
+  col_nullable text;
 begin
   -- Transaction-local: reverts when this transaction ends, whether it commits
   -- or rolls back, so the migration runner's connection is unaffected
   -- afterwards. `true` is the is_local flag — the set_config equivalent of
   -- SET LOCAL, which works here whether or not the caller opened an explicit
-  -- transaction block.
+  -- transaction block. Set first, so even the precondition reads are bounded.
   perform set_config('lock_timeout', '3s', true);
   perform set_config('statement_timeout', '30s', true);
   perform set_config('idle_in_transaction_session_timeout', '15s', true);
 
-  select exists (
-    select 1 from information_schema.tables
-    where table_schema = 'public' and table_name = 'profiles'
-  ) into has_profiles;
+  -- ── Precondition 1: both tables exist ────────────────────────────────────
+  foreach tbl in array array['profiles', 'users'] loop
+    if not exists (
+      select 1 from information_schema.tables
+      where table_schema = 'public' and table_name = tbl
+    ) then
+      raise exception using
+        errcode = 'undefined_table',
+        message = format('narrow_role_check_constraints: public.%I does not exist', tbl),
+        hint = 'This migration expects both public.profiles and public.users. Nothing was changed.';
+    end if;
+  end loop;
 
-  select exists (
-    select 1 from information_schema.tables
-    where table_schema = 'public' and table_name = 'users'
-  ) into has_users;
-
-  if not has_profiles and not has_users then
-    raise notice 'narrow_role_check_constraints: neither table present, nothing to do';
-    return;
-  end if;
-
-  -- Hold the tables still for the rest of this transaction, so the counts
-  -- below cannot go stale before the constraints are replaced.
+  -- ── Take the locks before verifying anything that could change ───────────
   begin
-    if has_profiles then
-      execute 'lock table public.profiles in access exclusive mode';
-    end if;
-    if has_users then
-      execute 'lock table public.users in access exclusive mode';
-    end if;
+    execute 'lock table public.profiles in access exclusive mode';
+    execute 'lock table public.users in access exclusive mode';
   exception
     when lock_not_available then
       raise exception using
@@ -114,20 +137,110 @@ begin
         hint = 'Another transaction holds a conflicting lock. Nothing was changed. Re-run when the database is quiet, or find the blocker in pg_stat_activity.';
   end;
 
-  if has_profiles then
-    execute 'select count(*) from public.profiles where lower(role) = any($1)'
-      into bad_profiles using retired;
+  foreach tbl in array array['profiles', 'users'] loop
+    con := tbl || '_role_check';
+    skip_table := false;
+
+    -- ── Precondition 2: the role column is text NOT NULL ───────────────────
+    col_type := null;
+    col_nullable := null;
+
+    select data_type, is_nullable into col_type, col_nullable
+    from information_schema.columns
+    where table_schema = 'public' and table_name = tbl and column_name = 'role';
+
+    if col_type is null then
+      raise exception using
+        errcode = 'undefined_column',
+        message = format('narrow_role_check_constraints: public.%I has no "role" column', tbl),
+        hint = 'Nothing was changed.';
+    end if;
+
+    if col_type is distinct from 'text' then
+      raise exception using
+        errcode = 'datatype_mismatch',
+        message = format(
+          'narrow_role_check_constraints: public.%I.role is %s, expected text',
+          tbl, col_type
+        ),
+        hint = 'The constraint this migration replaces is written for a text column. Nothing was changed.';
+    end if;
+
+    if col_nullable <> 'NO' then
+      raise exception using
+        errcode = 'datatype_mismatch',
+        message = format('narrow_role_check_constraints: public.%I.role is nullable, expected NOT NULL', tbl),
+        hint = 'A nullable role column would let a row escape the constraint entirely. Nothing was changed.';
+    end if;
+
+    -- ── Precondition 3: the expected CHECK constraint is there ─────────────
+    select pg_get_constraintdef(c.oid) into definition
+    from pg_constraint c
+    where c.conrelid = format('public.%I', tbl)::regclass
+      and c.conname = con
+      and c.contype = 'c';
+
+    if definition is null then
+      raise exception using
+        errcode = 'undefined_object',
+        message = format(
+          'narrow_role_check_constraints: no CHECK constraint named %I on public.%I',
+          con, tbl
+        ),
+        hint = format(
+          'Expected the constraint this migration replaces. Present CHECK constraints: %s. It may have been renamed or already dropped — resolve deliberately. Nothing was changed.',
+          coalesce((
+            select string_agg(c2.conname, ', ' order by c2.conname)
+            from pg_constraint c2
+            where c2.conrelid = format('public.%I', tbl)::regclass and c2.contype = 'c'
+          ), '(none)')
+        );
+    end if;
+
+    -- The value set, read out of the rendered definition so this does not
+    -- depend on whether the server prints ARRAY['a'::text, ...] or
+    -- '{a,b}'::text[]. Both render the values as bare words once the SQL
+    -- vocabulary is removed.
+    select array_agg(distinct w order by w) into found_values
+    from regexp_matches(lower(definition), '[a-z_]{3,}', 'g') as m(parts)
+    cross join lateral unnest(parts) as w
+    where w <> all (noise);
+
+    if found_values @> keep and keep @> found_values then
+      -- Already the target set: this migration has run before.
+      raise notice 'narrow_role_check_constraints: public.% already narrowed, leaving it alone', tbl;
+      skip_table := true;
+    elsif not (found_values @> expect_before and expect_before @> found_values) then
+      raise exception using
+        errcode = 'invalid_table_definition',
+        message = format(
+          'narrow_role_check_constraints: %I on public.%I admits {%s}, expected {%s}',
+          con, tbl, array_to_string(found_values, ', '), array_to_string(expect_before, ', ')
+        ),
+        hint = 'The constraint is not the one this migration was written to replace. Someone has changed it. Resolve deliberately. Nothing was changed.';
+    end if;
+
+    if not skip_table then
+      to_narrow := to_narrow || tbl;
+    end if;
+  end loop;
+
+  if cardinality(to_narrow) = 0 then
+    raise notice 'narrow_role_check_constraints: both constraints already narrowed, nothing to do';
+    return;
   end if;
 
-  if has_users then
-    execute 'select count(*) from public.users where lower(role) = any($1)'
-      into bad_users using retired;
-  end if;
-
+  -- ── Precondition 4: no row still carries a retired role ──────────────────
+  -- Counted under the lock, so it cannot go stale before the swap below.
   -- Refuse loudly rather than dropping a constraint we then cannot re-add, or
-  -- worse, leaving a row stranded outside any constraint. If this fires, the
-  -- rows must be resolved deliberately — a `staff` row is an administrator by
-  -- another name and deciding its real role is not this migration's call.
+  -- worse, leaving a row stranded outside any constraint. A `staff` row is an
+  -- administrator by another name and deciding its real role is not this
+  -- migration's call.
+  execute 'select count(*) from public.profiles where lower(role) = any($1)'
+    into bad_profiles using retired;
+  execute 'select count(*) from public.users where lower(role) = any($1)'
+    into bad_users using retired;
+
   if bad_profiles > 0 or bad_users > 0 then
     raise exception using
       errcode = 'check_violation',
@@ -138,24 +251,18 @@ begin
       hint = 'Each such row is promoted to admin by current_app_role(). Decide its real role and update it, then re-run this migration.';
   end if;
 
-  if has_profiles then
-    alter table public.profiles drop constraint if exists profiles_role_check;
+  -- ── Swap ─────────────────────────────────────────────────────────────────
+  foreach tbl in array to_narrow loop
+    con := tbl || '_role_check';
+    execute format('alter table public.%I drop constraint %I', tbl, con);
     execute format(
-      'alter table public.profiles add constraint profiles_role_check check (role = any (%L))',
-      keep
+      'alter table public.%I add constraint %I check (role = any (%L))',
+      tbl, con, keep
     );
-    execute format('comment on constraint profiles_role_check on public.profiles is %L', note);
-  end if;
+    execute format('comment on constraint %I on public.%I is %L', con, tbl, note);
+  end loop;
 
-  if has_users then
-    alter table public.users drop constraint if exists users_role_check;
-    execute format(
-      'alter table public.users add constraint users_role_check check (role = any (%L))',
-      keep
-    );
-    execute format('comment on constraint users_role_check on public.users is %L', note);
-  end if;
-
-  raise notice 'narrow_role_check_constraints: role constraints narrowed to %', array_to_string(keep, ', ');
+  raise notice 'narrow_role_check_constraints: narrowed % to %',
+    array_to_string(to_narrow, ', '), array_to_string(keep, ', ');
 end
 $$;

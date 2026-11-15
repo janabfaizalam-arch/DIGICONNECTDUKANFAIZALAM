@@ -17,7 +17,7 @@
 import { execFileSync } from "child_process";
 import { readdirSync, readFileSync } from "fs";
 import { join } from "path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 const adminUrl = process.env.RLS_TEST_DATABASE_URL;
 const root = process.cwd();
@@ -309,6 +309,79 @@ insert into storage.objects (bucket_id, name) values
         }
       });
     }
+
+    /**
+     * The migration drops two constraints, so it refuses to run against a
+     * schema it does not recognise — dropping a constraint that is not the one
+     * you think it is leaves the column protected by nothing at all.
+     *
+     * Each case rebuilds the constraint it broke, so the cases are independent
+     * and the shared database is left as the replay produced it.
+     */
+    describe("fails closed on an unrecognised schema", () => {
+      const MIGRATION = "supabase/migrations/20261115120000_narrow_role_check_constraints.sql";
+      const SIX = "'super_admin','admin','staff','customer','agent','agency_partner'";
+      const FOUR = "'admin','agency_partner','agent','customer'";
+
+      /** Run the migration as the CLI does — one transaction — and return its error. */
+      const applyMigration = () => {
+        try {
+          psql(dbUrl(dbName), `begin;\n${readFileText(MIGRATION)}\nrollback;`);
+          return null;
+        } catch (error) {
+          return (error as { stderr?: string }).stderr ?? String(error);
+        }
+      };
+
+      /** Put `profiles_role_check` back the way the replay left it. */
+      const restore = () => {
+        psql(
+          dbUrl(dbName),
+          `alter table public.profiles drop constraint if exists profiles_role_check;
+           alter table public.profiles drop constraint if exists profiles_role_chk_v2;
+           alter table public.profiles add constraint profiles_role_check check (role = any (array[${FOUR}]));`,
+        );
+      };
+
+      afterEach(restore);
+
+      it("refuses when the constraint has been dropped", () => {
+        psql(dbUrl(dbName), "alter table public.profiles drop constraint profiles_role_check;");
+
+        expect(applyMigration()).toMatch(/no CHECK constraint named profiles_role_check/);
+      });
+
+      it("refuses when the constraint has been renamed, and says what it found", () => {
+        psql(
+          dbUrl(dbName),
+          "alter table public.profiles rename constraint profiles_role_check to profiles_role_chk_v2;",
+        );
+
+        const error = applyMigration();
+        expect(error).toMatch(/no CHECK constraint named profiles_role_check/);
+        // The hint lists what is actually there, so the operator can see where
+        // it went rather than guessing.
+        expect(error).toMatch(/profiles_role_chk_v2/);
+      });
+
+      it("refuses when the constraint admits a different set of values", () => {
+        psql(
+          dbUrl(dbName),
+          `alter table public.profiles drop constraint profiles_role_check;
+           alter table public.profiles add constraint profiles_role_check
+             check (role = any (array[${SIX},'employee']));`,
+        );
+
+        const error = applyMigration();
+        expect(error).toMatch(/admits \{[^}]*employee[^}]*\}/);
+        expect(error).toMatch(/not the one this migration was written to replace/);
+      });
+
+      it("treats an already-narrowed constraint as done, not as an error", () => {
+        // The replay left both constraints narrowed, so this is the live state.
+        expect(applyMigration()).toBeNull();
+      });
+    });
 
     it("leaves current_app_role() alone — the aliases are removed separately", () => {
       // This migration narrows what can be stored; it does not change how a
