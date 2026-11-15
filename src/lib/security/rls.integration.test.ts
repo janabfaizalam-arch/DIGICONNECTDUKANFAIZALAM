@@ -248,6 +248,82 @@ insert into storage.objects (bucket_id, name) values
       expect(result).toEqual({ ok: true, out: "agent" });
     });
   });
+
+  /* ───────────────────────────────────────────────────────────────────────
+     The role columns admit only roles that exist
+     ─────────────────────────────────────────────────────────────────────── */
+
+  describe("role CHECK constraints", () => {
+    /**
+     * `super_admin` and `staff` were removed from both constraints on
+     * 2026-11-15. Both were promoted to full `admin` by `current_app_role()`
+     * and by the alias sets in `src/lib/auth.ts` and
+     * `src/lib/crm/permissions-core.ts`, and a production audit found zero
+     * rows using either — so the column could hold a value that silently
+     * conferred administrator rights under a name that does not say "admin".
+     *
+     * These run as the service role rather than through `as()`: a constraint
+     * is checked after RLS, so an anon or authenticated caller would be
+     * refused by the policy first and never reach it.
+     */
+    const RETIRED = ["super_admin", "staff"];
+    const PROMOTED_BUT_NEVER_STORABLE = ["team", "employee", "processor"];
+    const LIVE = ["admin", "agency_partner", "agent", "customer"];
+
+    /** Try the value in a rolled-back transaction; true when it was accepted. */
+    const accepts = (table: "profiles" | "users", role: string) => {
+      const id = "99999999-9999-4999-8999-999999999999";
+      try {
+        psql(
+          dbUrl(dbName),
+          `begin;
+           insert into auth.users (id, email, raw_app_meta_data) values ('${id}', 'probe@example.test', '{}');
+           insert into public.${table} (id, email, role) values ('${id}', 'probe@example.test', '${role}');
+           rollback;`,
+        );
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    for (const table of ["profiles", "users"] as const) {
+      it(`public.${table} still accepts every role actually in use`, () => {
+        for (const role of LIVE) {
+          expect(accepts(table, role), `${table}.role = ${role}`).toBe(true);
+        }
+      });
+
+      it(`public.${table} refuses the retired admin-promoting roles`, () => {
+        for (const role of RETIRED) {
+          expect(accepts(table, role), `${table}.role = ${role}`).toBe(false);
+        }
+      });
+
+      it(`public.${table} refuses the alias names that were never storable`, () => {
+        // These three promote to admin in current_app_role() but have never
+        // been in either constraint. Pinned so a future widening cannot let
+        // one in while the alias still exists.
+        for (const role of PROMOTED_BUT_NEVER_STORABLE) {
+          expect(accepts(table, role), `${table}.role = ${role}`).toBe(false);
+        }
+      });
+    }
+
+    it("leaves current_app_role() alone — the aliases are removed separately", () => {
+      // This migration narrows what can be stored; it does not change how a
+      // stored value resolves. Removing the aliases is its own change, and
+      // this assertion fails the day someone folds the two together.
+      const definition = psql(
+        dbUrl(dbName),
+        `select pg_get_functiondef(p.oid) from pg_proc p
+           join pg_namespace n on n.oid = p.pronamespace
+          where n.nspname = 'public' and p.proname = 'current_app_role';`,
+      );
+
+      expect(definition).toContain("'super_admin', 'staff', 'team', 'employee', 'processor'");
+    });
+  });
 });
 
 function readFileText(rel: string) {
