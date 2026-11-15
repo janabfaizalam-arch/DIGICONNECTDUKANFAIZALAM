@@ -276,9 +276,12 @@ gaining it, but losing it without warning. The `20260519133000` migration conver
 known rows to `admin`, but that was eighteen months ago and the enum still accepts `staff`.
 
 **Required before any HRMS role work (Phase 0):**
-1. Query production for the live distribution of `profiles.role`, `users.role` and
-   `auth.users.raw_app_meta_data->>'role'`. Count every distinct value. *This is a read,
-   and it is the one production interaction this audit recommends.*
+1. ~~Query production for the live distribution~~ — **done, 15 November 2026. See
+   `HRMS_PHASE0A_ROLE_DISTRIBUTION.md`.** Result: **zero** live rows carry an aliasing
+   value in `profiles.role`, `users.role` or `app_metadata`, so removing the aliases
+   demotes nobody. Phase 0A also found that `employee`, `team` and `processor` cannot be
+   stored at all — the CHECK constraint on both tables rejects them — which narrows this
+   finding from Critical to High and supplies a safer four-step plan than the one below.
 2. Only then remove the aliases, in all three layers in one change, with the RLS
    integration test extended to prove an `employee` row is **not** an admin.
 3. Keep `super_admin` mapped to admin if and only if the query shows live rows using it.
@@ -1032,8 +1035,10 @@ These block specific phases. They are listed in the order they are needed.
 
 | # | Risk | Severity | Mitigation |
 |---|---|---|---|
-| 1 | `employee` role grants full admin through three alias layers | **Critical** | Phase 0, isolated PR, tested in TS and SQL |
-| 2 | Removing aliases silently demotes live rows to `customer` | **Critical** | Measure production first; migrate explicitly |
+| 1 | `employee` role grants full admin through three alias layers | ~~Critical~~ → **High** | Phase 0, isolated PR, tested in TS and SQL. **Narrowed by Phase 0A:** `employee`, `team` and `processor` are rejected by the CHECK on both tables; only `super_admin` and `staff` are writable |
+| 2 | Removing aliases silently demotes live rows to `customer` | ~~Critical~~ → **Low** | **Discharged by Phase 0A:** 0 live rows carry any aliasing value, in any of the three sources |
+| 2a | Migrations declare `profiles.role` as an enum; production has `text` + a different CHECK, so the RLS test database is unrepresentative | **Medium-high** | Phase 0A §5 — reconcile before Phase 0's tests are written |
+| 2b | 22 accounts resolve to `customer` by fallback; a missing identity row is indistinguishable from a customer | **Medium** | Phase 0A §6 — make the two distinguishable before employees exist |
 | 3 | Leave policy below statutory floor | **Critical** | Phase 0b; `hr_policies` with `legal_basis`; no hardcoded rules |
 | 4 | Payroll built on a disputed wage definition | **High** | Block Phase 5 on legal sign-off |
 | 5 | Six-week timeline vs 16 modules | **High** | §10.3 — attendance/leave live 1 Jan, payroll in Feb |
