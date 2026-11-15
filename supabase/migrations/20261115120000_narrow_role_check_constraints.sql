@@ -5,7 +5,7 @@
 --   super_admin, admin, staff, customer, agent, agency_partner
 --
 -- Two of them — `super_admin` and `staff` — are promoted to full `admin` by
--- `public.current_app_role()` below, and by the matching alias sets in
+-- `public.current_app_role()`, and by the matching alias sets in
 -- `src/lib/auth.ts` and `src/lib/crm/permissions-core.ts`. So the column can
 -- hold a value that silently confers administrator rights under a name that
 -- does not say "admin".
@@ -27,13 +27,40 @@
 -- storable — the opposite of the intent. It is added in the same change that
 -- removes the aliases, not before.
 --
--- Concurrency: both tables are locked ACCESS EXCLUSIVE before the counts are
--- taken, so no session can insert a `staff` row between the check and the
--- constraint. The `add constraint` would in any case validate every existing
--- row under its own ACCESS EXCLUSIVE lock and fail if one violated — the
--- explicit lock is what makes the error message below trustworthy rather than
--- a race. Migrations run in a transaction, so a failure here rolls the whole
--- file back and leaves the old constraints in place.
+--
+-- OPERATIONAL SAFETY
+--
+-- This migration takes ACCESS EXCLUSIVE on `profiles` and `users`. Those are
+-- the two tables every authenticated request reads to resolve a role, so a
+-- lock held here blocks the whole site, and a lock *waited for* here queues
+-- every reader behind us.
+--
+-- Three bounds, all transaction-local so nothing leaks into the session that
+-- runs the rest of the migrations:
+--
+--   lock_timeout       3s   — give up rather than queue behind a long
+--                             transaction. Postgres queues conflicting lock
+--                             requests in order, so waiting on ACCESS
+--                             EXCLUSIVE stalls every later reader too; failing
+--                             fast is strictly kinder than waiting.
+--   statement_timeout  30s  — caps the whole block. Deliberately well above
+--                             lock_timeout so a contended lock fails with the
+--                             clearer lock error rather than being cut off
+--                             first. The work itself is two constraint
+--                             validations over ~460 rows each.
+--   idle_in_transaction_session_timeout 15s
+--                           — if the runner dies mid-migration, the backend
+--                             releases the locks instead of holding the site
+--                             down until someone notices.
+--
+-- Every failure path rolls the transaction back and leaves the original
+-- six-value constraints and every row exactly as they were.
+--
+-- Concurrency: the tables are locked before the counts are taken, so no
+-- session can insert a `staff` row between the check and the constraint
+-- swap. `add constraint` would validate every existing row under its own
+-- lock in any case — the explicit lock is what makes the error message below
+-- trustworthy rather than a race.
 
 do $$
 declare
@@ -43,7 +70,18 @@ declare
   bad_users bigint := 0;
   retired constant text[] := array['super_admin', 'staff'];
   keep constant text[] := array['admin', 'agency_partner', 'agent', 'customer'];
+  note constant text :=
+    'Roles actually in use. super_admin and staff were removed on 2026-11-15: both promoted to admin via current_app_role() and neither had a single row. employee is added only when those aliases are removed.';
 begin
+  -- Transaction-local: reverts when this transaction ends, whether it commits
+  -- or rolls back, so the migration runner's connection is unaffected
+  -- afterwards. `true` is the is_local flag — the set_config equivalent of
+  -- SET LOCAL, which works here whether or not the caller opened an explicit
+  -- transaction block.
+  perform set_config('lock_timeout', '3s', true);
+  perform set_config('statement_timeout', '30s', true);
+  perform set_config('idle_in_transaction_session_timeout', '15s', true);
+
   select exists (
     select 1 from information_schema.tables
     where table_schema = 'public' and table_name = 'profiles'
@@ -61,23 +99,29 @@ begin
 
   -- Hold the tables still for the rest of this transaction, so the counts
   -- below cannot go stale before the constraints are replaced.
-  if has_profiles then
-    execute 'lock table public.profiles in access exclusive mode';
-  end if;
-  if has_users then
-    execute 'lock table public.users in access exclusive mode';
-  end if;
+  begin
+    if has_profiles then
+      execute 'lock table public.profiles in access exclusive mode';
+    end if;
+    if has_users then
+      execute 'lock table public.users in access exclusive mode';
+    end if;
+  exception
+    when lock_not_available then
+      raise exception using
+        errcode = 'lock_not_available',
+        message = 'narrow_role_check_constraints: could not lock public.profiles / public.users within 3s',
+        hint = 'Another transaction holds a conflicting lock. Nothing was changed. Re-run when the database is quiet, or find the blocker in pg_stat_activity.';
+  end;
 
   if has_profiles then
-    execute format(
-      'select count(*) from public.profiles where lower(role) = any($1)'
-    ) into bad_profiles using retired;
+    execute 'select count(*) from public.profiles where lower(role) = any($1)'
+      into bad_profiles using retired;
   end if;
 
   if has_users then
-    execute format(
-      'select count(*) from public.users where lower(role) = any($1)'
-    ) into bad_users using retired;
+    execute 'select count(*) from public.users where lower(role) = any($1)'
+      into bad_users using retired;
   end if;
 
   -- Refuse loudly rather than dropping a constraint we then cannot re-add, or
@@ -100,6 +144,7 @@ begin
       'alter table public.profiles add constraint profiles_role_check check (role = any (%L))',
       keep
     );
+    execute format('comment on constraint profiles_role_check on public.profiles is %L', note);
   end if;
 
   if has_users then
@@ -108,14 +153,9 @@ begin
       'alter table public.users add constraint users_role_check check (role = any (%L))',
       keep
     );
+    execute format('comment on constraint users_role_check on public.users is %L', note);
   end if;
 
   raise notice 'narrow_role_check_constraints: role constraints narrowed to %', array_to_string(keep, ', ');
 end
 $$;
-
-comment on constraint profiles_role_check on public.profiles is
-  'Roles actually in use. super_admin and staff were removed on 2026-11-15: both promoted to admin via current_app_role() and neither had a single row. employee is added only when those aliases are removed.';
-
-comment on constraint users_role_check on public.users is
-  'Roles actually in use. super_admin and staff were removed on 2026-11-15: both promoted to admin via current_app_role() and neither had a single row. employee is added only when those aliases are removed.';
