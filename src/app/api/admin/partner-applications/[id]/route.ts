@@ -4,10 +4,10 @@ import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { provisionPartnerAccount } from "@/lib/ap/provision-partner";
 import {
   canTransitionApplication,
-  generateTemporaryPassword,
   isPartnerApplicationStatus,
   type PartnerApplicationStatus,
 } from "@/lib/partner-applications";
+import { defaultPartnerPassword } from "@/lib/ap/default-credentials";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -82,7 +82,23 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   let username: string | null = null;
 
   if (nextStatus === "approved") {
-    temporaryPassword = generateTemporaryPassword();
+    /*
+      The partner's own number, not a random string.
+
+      A twelve-character password read down a phone line gets misheard and the
+      partner rings back; their mobile number does not. `Dc@` in front supplies
+      the upper, lower and symbol classes Supabase demands, which a bare number
+      has none of. It is a starting password, not a secret -- the account is
+      flagged `must_change_password` below and the panel asks for a real one on
+      every sign-in until they set it.
+    */
+    temporaryPassword = defaultPartnerPassword(application.mobile);
+    if (!temporaryPassword) {
+      return jsonError(
+        "This application has no usable mobile number, so no login can be created for it.",
+        400,
+      );
+    }
 
     // Provision before recording the decision, so a failure here leaves the
     // application reviewable rather than marked approved with no account

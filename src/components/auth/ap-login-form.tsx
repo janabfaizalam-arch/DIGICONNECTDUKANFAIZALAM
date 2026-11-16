@@ -5,6 +5,7 @@ import { Lock, UserRound, ArrowUpRight, Info } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { useToast } from "@/components/providers/toast-provider";
+import { rearmPasswordPrompt } from "@/components/ap/password-setup-prompt";
 import { AuthButton, AuthHeading, GlassCard, TextField } from "@/components/auth/ui";
 import { postJson } from "@/components/auth/ui/request";
 import { trackLogin } from "@/lib/google-analytics";
@@ -51,6 +52,9 @@ export function ApLoginForm({ customerSignedIn = false }: { customerSignedIn?: b
       });
 
       if (agent.ok) {
+        // A "later" from an earlier session must not silence the password
+        // prompt for this one.
+        rearmPasswordPrompt();
         trackLogin("agent_email");
         toastSuccess("Agent workspace ready!");
         setDone(true);

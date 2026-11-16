@@ -1,5 +1,6 @@
 import { ApContentShell } from "@/components/ap/ap-content-shell";
 import { APPanelNav } from "@/components/ap/ap-panel-nav";
+import { PasswordSetupPrompt } from "@/components/ap/password-setup-prompt";
 import { ScoreVisibilityProvider } from "@/components/ap/score-visibility";
 import { getAgencyPartnerByUserId } from "@/lib/ap-data";
 import { canManagePartnerTeam } from "@/lib/ap/partner-type";
@@ -17,6 +18,13 @@ export default async function APLayout({ children }: { children: React.ReactNode
   const user = await getCurrentUser();
   const partner = user ? await getAgencyPartnerByUserId(user.id) : null;
   const canManageTeam = canManagePartnerTeam(partner?.partner_type);
+  /*
+    Every partner starts on a password made from their own mobile number, so
+    the ask to replace it belongs above every screen rather than on one of
+    them — the partner is as likely to land on Applications as on Dashboard.
+    The record is already loaded here, so this costs no extra query.
+  */
+  const mustChangePassword = Boolean(partner?.must_change_password);
 
   return (
     // data-dcp scopes the panel's design system (see globals.css). Everything
@@ -26,6 +34,7 @@ export default async function APLayout({ children }: { children: React.ReactNode
       {/* Score is off everywhere until the partner switches it on, so the
           switch lives above every screen rather than on one of them. */}
       <ScoreVisibilityProvider>
+      <PasswordSetupPrompt mustChange={mustChangePassword} />
       <APPanelNav canManageTeam={canManageTeam} />
       {/*
         One nav, not two. The panel used to carry a permanently open sidebar on

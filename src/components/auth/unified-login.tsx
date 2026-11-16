@@ -1,6 +1,7 @@
 "use client";
 
 import { type FormEvent, useEffect, useState, useTransition, forwardRef } from "react";
+import { rearmPasswordPrompt } from "@/components/ap/password-setup-prompt";
 import Image from "@/components/ui/safe-image";
 import Link from "next/link";
 import {
@@ -521,6 +522,8 @@ export function UnifiedLoginExperience({
       const result = await response.json().catch(() => ({}));
 
       if (response.ok) {
+        // Same here: every sign-in re-arms the password prompt.
+        rearmPasswordPrompt();
         trackLogin("agent_email");
         toastSuccess("Agent workspace ready!");
         window.location.assign(result.destination || "/ap/dashboard");

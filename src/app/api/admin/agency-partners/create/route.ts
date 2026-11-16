@@ -4,16 +4,23 @@ import { z } from "zod";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { DIGI_PARTNER_TYPE_VALUES, normalizePartnerType } from "@/lib/ap/partner-type";
 import { agencyInternalEmail } from "@/lib/auth/phone";
+import { defaultPartnerPassword, defaultPartnerUsername } from "@/lib/ap/default-credentials";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
 const schema = z.object({
   fullName: z.string().trim().min(2).max(120),
-  username: z.string().trim().min(3).max(64).regex(/^[a-zA-Z0-9._-]+$/),
+  /*
+    Both optional now: left blank they are derived from the mobile number, so
+    an admin filling this in a hurry still creates an account the partner can
+    be told about in one sentence. An admin who types something gets what
+    they typed.
+  */
+  username: z.string().trim().min(3).max(64).regex(/^[a-zA-Z0-9._-]+$/).optional().or(z.literal("")),
   mobile: z.string().trim().min(10).max(20),
   email: z.string().email().optional().or(z.literal("")),
-  temporaryPassword: z.string().min(8).max(128),
+  temporaryPassword: z.string().min(8).max(128).optional().or(z.literal("")),
   partnerCode: z.string().trim().min(2).max(40).optional(),
   partnerType: z.string().trim().optional(),
   commissionType: z.enum(["fixed", "percentage"]).default("fixed"),
@@ -30,7 +37,25 @@ export async function POST(request: Request) {
 
   try {
     const body = schema.parse(await request.json());
-    const username = body.username.trim().toLowerCase();
+
+    const derivedUsername = defaultPartnerUsername(body.mobile);
+    const derivedPassword = defaultPartnerPassword(body.mobile);
+
+    const username = (body.username?.trim().toLowerCase() || derivedUsername || "").trim();
+    if (!username) {
+      return NextResponse.json(
+        { error: "Enter a valid 10-digit mobile number, or a username to sign in with." },
+        { status: 400 },
+      );
+    }
+
+    const temporaryPassword = body.temporaryPassword?.trim() || derivedPassword;
+    if (!temporaryPassword) {
+      return NextResponse.json(
+        { error: "Enter a valid 10-digit mobile number, or a starting password." },
+        { status: 400 },
+      );
+    }
     // Stored verbatim, this is what login has to match a partner on. Casing an
     // admin happened to type is not part of the address, so fold it here
     // rather than leaving every lookup to work around it.
@@ -56,7 +81,7 @@ export async function POST(request: Request) {
     const email = agencyInternalEmail(username);
     const { data: created, error } = await supabase.auth.admin.createUser({
       email,
-      password: body.temporaryPassword,
+      password: temporaryPassword,
       email_confirm: true,
       user_metadata: {
         full_name: body.fullName,

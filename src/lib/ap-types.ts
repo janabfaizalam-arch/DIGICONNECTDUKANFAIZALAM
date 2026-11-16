@@ -55,6 +55,15 @@ export type AgencyPartner = {
   user_id: string;
   partner_code: string;
 
+  /** What the partner types at /ap/login. It is their mobile number. */
+  username?: string | null;
+  /**
+   * True while the partner is still on the password we gave them, which is
+   * built from their own mobile number and therefore guessable. Cleared when
+   * they set one of their own.
+   */
+  must_change_password?: boolean | null;
+
   // Personal / Business
   full_name: string;
   business_name: string | null;
