@@ -27,6 +27,7 @@ import {
   type PartnerTableRow,
 } from "./agency-partners-table";
 import { PartnerFilters } from "./partner-filters";
+import { ResetCredentialsButton } from "./reset-credentials-button";
 
 export const dynamic = "force-dynamic";
 
@@ -154,6 +155,7 @@ export default async function AdminAgencyPartnersPage({ searchParams }: AdminAPP
               <Printer className="h-4 w-4 text-ds-primary" />
               Print List
             </Link>
+            <ResetCredentialsButton partnerCount={partners.length} />
             <Link
               href={ADMIN_AGENCY_PARTNERS_NEW_ROUTE}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ds-primary px-4 text-sm font-bold text-ds-text-inverted transition hover:bg-ds-primary-hover"

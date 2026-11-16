@@ -4,6 +4,7 @@ import { type FormEvent, useState, useTransition } from "react";
 import Link from "next/link";
 import { CheckCircle2, UserPlus } from "lucide-react";
 
+import { defaultPartnerPassword } from "@/lib/ap/default-credentials";
 import { useToast } from "@/components/providers/toast-provider";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -56,14 +57,19 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
     const password = String(formData.get("password") ?? "");
     const commissionValue = Number(formData.get("commissionValue") ?? 0);
 
-    if (!fullName || !username || !mobile || !partnerCode || !password) {
-      const msg = "Name, Username, Mobile, Partner Code, and Temporary Password are required.";
+    /*
+      Username and password are derived from the mobile number when left
+      blank, so neither is required any more. The mobile number is, because
+      without it there is nothing to derive them from.
+    */
+    if (!fullName || !mobile || !partnerCode) {
+      const msg = "Name, Mobile and Partner Code are required.";
       setFormError(msg);
       toastError(msg);
       return;
     }
 
-    if (!/^[a-z0-9._-]{3,64}$/.test(username)) {
+    if (username && !/^[a-z0-9._-]{3,64}$/.test(username)) {
       const msg = "Username: 3-64 chars, letters/numbers/._- only.";
       setFormError(msg);
       toastError(msg);
@@ -77,8 +83,8 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
       return;
     }
 
-    if (password.length < 8) {
-      const msg = "Temporary password must be at least 8 characters.";
+    if (password && password.length < 8) {
+      const msg = "Starting password must be at least 8 characters, or leave it blank.";
       setFormError(msg);
       toastError(msg);
       return;
@@ -174,16 +180,30 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
                 />
               </label>
               <label className="grid gap-1">
-                <span className="text-xs font-bold text-slate-700">Username *</span>
-                <Input name="username" placeholder="ap1001" autoComplete="off" required />
+                <span className="text-xs font-bold text-slate-700">Username</span>
+                <Input
+                  name="username"
+                  placeholder={mobile.length === 10 ? mobile : "Khaali chhodiye — mobile number ban jayega"}
+                  autoComplete="off"
+                />
               </label>
               <label className="grid gap-1">
                 <span className="text-xs font-bold text-slate-700">Email (optional)</span>
                 <Input name="email" placeholder="partner@business.com" type="email" />
               </label>
               <label className="grid gap-1">
-                <span className="text-xs font-bold text-slate-700">Temporary Password *</span>
-                <Input name="password" placeholder="Min 8 chars — must change on first login" type="password" minLength={8} required />
+                <span className="text-xs font-bold text-slate-700">Starting password</span>
+                <Input
+                  name="password"
+                  placeholder={defaultPartnerPassword(mobile) ?? "Khaali chhodiye — number se ban jayega"}
+                  type="text"
+                  autoComplete="off"
+                />
+                <span className="text-[11px] font-medium text-slate-500">
+                  {defaultPartnerPassword(mobile)
+                    ? `Khaali chhodne par ${defaultPartnerPassword(mobile)} rahega — partner ko login par naya banane ko kaha jayega.`
+                    : "Khaali chhodiye to partner ke mobile number se ban jayega."}
+                </span>
               </label>
               <label className="grid gap-1">
                 <span className="text-xs font-bold text-slate-700">KYC Status</span>

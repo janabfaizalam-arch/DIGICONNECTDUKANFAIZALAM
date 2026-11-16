@@ -15,6 +15,17 @@ const schema = z.object({
   password: z.string().min(6).max(128),
 });
 
+/*
+  A partner who still has the password we gave them is sent to the panel, not
+  to the password screen.
+
+  This used to redirect straight to /ap/change-password, which is a wall: a
+  partner standing at a counter with a customer in front of them could not get
+  to the work until they had invented a password. The panel asks instead, on
+  every sign-in, and keeps asking until they set one -- see
+  components/ap/password-setup-prompt.tsx. `mustChangePassword` is still
+  reported so a caller can act on it.
+*/
 export async function POST(request: Request) {
   const ipRate = checkRateLimit(`ap-login:${getClientIp(request) ?? "unknown"}`, 10, 60_000);
   if (!ipRate.ok) return rateLimitResponse(ipRate.retryAfter);
@@ -63,7 +74,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         ok: true,
-        redirectTo: mustChange ? "/ap/change-password" : "/ap/dashboard",
+        redirectTo: "/ap/dashboard",
         mustChangePassword: mustChange,
       });
     }
@@ -127,7 +138,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      redirectTo: mustChange ? "/ap/change-password" : "/ap/dashboard",
+      redirectTo: "/ap/dashboard",
       mustChangePassword: mustChange,
     });
   } catch (error) {
