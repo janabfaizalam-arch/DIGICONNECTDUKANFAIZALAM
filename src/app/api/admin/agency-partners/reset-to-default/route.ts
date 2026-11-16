@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { logAuditEvent } from "@/lib/ap-audit";
 import { defaultPartnerPassword, defaultPartnerUsername } from "@/lib/ap/default-credentials";
+import { pickNumberOwner, type PartnerRow } from "@/lib/ap/number-owner";
 import { getCurrentUser, getCurrentUserRole, isAdminRole } from "@/lib/auth";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -39,6 +40,79 @@ function jsonError(message: string, status: number) {
   return NextResponse.json({ ok: false, error: message }, { status });
 }
 
+/**
+ * Take the number back off the records that should not hold it.
+ *
+ * Runs at the top of every slice rather than once, because the record holding
+ * a number and the record that should hold it can fall in different slices --
+ * and the winner's uniqueness check has to find the number free by the time it
+ * is reached, whichever order that happens in. Clearing a username that is
+ * already null is a no-op, so repeating it costs nothing.
+ *
+ * Returns the ids that must not be given the number, so the main pass can skip
+ * them with a reason rather than silently.
+ */
+async function freeDuplicateNumbers(
+  supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+): Promise<{ notOwner: Set<string>; ownerOf: Map<string, string> }> {
+  const notOwner = new Set<string>();
+  const ownerOf = new Map<string, string>();
+
+  const { data } = await supabase
+    .from("agency_partners")
+    .select("id, user_id, mobile, username, full_name, status, created_at")
+    .limit(5000);
+
+  const rows = (data ?? []) as PartnerRow[];
+
+  const byMobile = new Map<string, PartnerRow[]>();
+  for (const row of rows) {
+    const mobile = defaultPartnerUsername(row.mobile);
+    if (!mobile) continue;
+    const group = byMobile.get(mobile);
+    if (group) group.push(row);
+    else byMobile.set(mobile, [row]);
+  }
+
+  const contested = [...byMobile.entries()].filter(([, group]) => group.length > 1);
+  if (contested.length === 0) return { notOwner, ownerOf };
+
+  // Only the contested rows need an application count, so this stays small
+  // however many partners there are.
+  const applications = new Map<string, number>();
+  const contestedIds = contested.flatMap(([, group]) => group.map((row) => row.id));
+
+  const { data: apps } = await supabase
+    .from("applications")
+    .select("agency_partner_id")
+    .in("agency_partner_id", contestedIds);
+
+  for (const row of (apps ?? []) as { agency_partner_id: string | null }[]) {
+    const id = String(row.agency_partner_id ?? "");
+    if (id) applications.set(id, (applications.get(id) ?? 0) + 1);
+  }
+
+  for (const [mobile, group] of contested) {
+    const owner = pickNumberOwner(group, applications);
+    ownerOf.set(mobile, owner.id);
+
+    for (const row of group) {
+      if (row.id === owner.id) continue;
+      notOwner.add(row.id);
+
+      // Only touch a record that is actually holding the number.
+      if (row.username !== mobile) continue;
+
+      await supabase.from("agency_partners").update({ username: null }).eq("id", row.id);
+      if (row.user_id) {
+        await supabase.from("profiles").update({ username: null }).eq("id", row.user_id);
+      }
+    }
+  }
+
+  return { notOwner, ownerOf };
+}
+
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   const role = await getCurrentUserRole(user);
@@ -60,6 +134,12 @@ export async function POST(request: Request) {
   const { count: total } = await supabase
     .from("agency_partners")
     .select("id", { count: "exact", head: true });
+
+  /*
+    Settle the shared numbers before assigning any, so that a record which
+    should not own a number is not standing in the way of the one that should.
+  */
+  const { notOwner } = await freeDuplicateNumbers(supabase);
 
   const { data: partners, error } = await supabase
     .from("agency_partners")
@@ -87,6 +167,14 @@ export async function POST(request: Request) {
 
     if (!partner.user_id) {
       skipped.push({ partner: label, reason: "No login account attached to this partner." });
+      continue;
+    }
+
+    if (notOwner.has(String(partner.id))) {
+      skipped.push({
+        partner: label,
+        reason: `Another record for ${username} does the work, so it holds the number login.`,
+      });
       continue;
     }
 
