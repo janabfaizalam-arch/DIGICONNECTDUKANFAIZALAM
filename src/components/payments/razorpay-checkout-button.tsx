@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/loading";
 import { trackPurchase as trackGooglePurchase } from "@/lib/google-analytics";
 import { trackPurchase } from "@/lib/meta-pixel";
+import { getCheckoutRazorpayKey } from "@/lib/razorpay-client";
 
 type RazorpaySuccessResponse = {
   razorpay_payment_id: string;
@@ -68,6 +69,7 @@ type CreateOrderResponse = {
   walletUsed?: number;
   rewardUsed?: number;
   finalPayable?: number;
+  key_id?: string;
 };
 
 type CreateOrderRequestBody = {
@@ -182,11 +184,6 @@ export function RazorpayCheckoutButton({
       return;
     }
 
-    if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
-      toastError("Razorpay public key is missing.");
-      return;
-    }
-
     if (!window.Razorpay || !isScriptReady) {
       toastError("Payment checkout is still loading. Please try again.");
       return;
@@ -261,8 +258,13 @@ export function RazorpayCheckoutButton({
       console.log("Final Payable", finalPayable);
       console.log("Razorpay Order Amount", order.amount);
 
+      const razorpayKey = await getCheckoutRazorpayKey(order.key_id);
+      if (!razorpayKey) {
+        throw new Error("Razorpay public key is missing. Contact support.");
+      }
+
       const razorpayOptions = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: razorpayKey,
         amount: order.amount,
         currency: order.currency,
         name: "DigiConnect Dukan",

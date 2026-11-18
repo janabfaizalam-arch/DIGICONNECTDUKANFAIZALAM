@@ -143,23 +143,19 @@ describe("who decides the price", () => {
 describe("where the payment key comes from", () => {
   const order = readCode("src/app/api/print/payment/create-order/route.ts");
 
-  it("reads the publishable key the way every other payment on this site does", () => {
+  it("resolves the publishable key dynamically without frontend NEXT_PUBLIC dependency", () => {
     /*
-      I invented a `key_id` field on the order response and required it. The
-      route has never returned one, so a counter that was configured perfectly
-      well told its customer "Payment is not configured for this counter."
+      The site has moved away from build-time NEXT_PUBLIC_RAZORPAY_KEY_ID
+      to dynamic server-side retrieval via getCheckoutRazorpayKey.
     */
-    expect(flow).toContain("process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID");
-    expect(flow).not.toContain("order.key_id");
+    expect(flow).not.toContain("process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID");
+    expect(flow).toContain("getCheckoutRazorpayKey");
   });
 
-  it("expects only the fields the order route actually returns", () => {
-    // The guard against repeating that mistake: what the client reads must
-    // be something the server sends.
-    for (const field of ["order_id", "amount", "currency"]) {
+  it("expects all required fields that the order route returns", () => {
+    for (const field of ["order_id", "amount", "currency", "key_id"]) {
       expect(order, `create-order does not return ${field}`).toContain(`${field}:`);
     }
-    expect(order).not.toContain("key_id");
   });
 
   it("reads the amount as a number whatever type the SDK hands back", () => {

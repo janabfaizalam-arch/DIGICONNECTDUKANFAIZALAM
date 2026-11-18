@@ -16,6 +16,7 @@ import { creditReportRequestSchema, type CreditReportRequestInput } from "@/lib/
 import { CREDIT_PACKAGES, TEST_MODE } from "@/lib/credit/constants";
 import { CreditScoreCard } from "./credit-score-card";
 import type { CreditScoreResult } from "@/lib/credit/types";
+import { getCheckoutRazorpayKey } from "@/lib/razorpay-client";
 
 interface RazorpayPaymentResponse {
   razorpay_payment_id: string;
@@ -148,8 +149,9 @@ export function CreditScoreForm({ onSuccess }: CreditScoreFormProps) {
       }
 
       // 3. Launch Razorpay payment options
+      const key = await getCheckoutRazorpayKey(orderData.key_id);
       const options = {
-        key: orderData.key_id,
+        key,
         amount: orderData.amount,
         currency: orderData.currency,
         name: "DigiConnect Dukan",

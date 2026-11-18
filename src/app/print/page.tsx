@@ -14,6 +14,7 @@ import {
   FileCheck
 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
+import { getCheckoutRazorpayKey } from "@/lib/razorpay-client";
 
 // Pricing rates in INR
 const RATES = {
@@ -210,8 +211,13 @@ export default function PrintPage() {
       }
 
       // Step 3: Launch Razorpay Modal
+      const razorpayKey = await getCheckoutRazorpayKey(orderData.key_id);
+      if (!razorpayKey) {
+        throw new Error("Razorpay public key is missing. Contact support.");
+      }
+
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
+        key: razorpayKey,
         amount: orderData.amount,
         currency: orderData.currency,
         name: "DigiConnect Dukan",

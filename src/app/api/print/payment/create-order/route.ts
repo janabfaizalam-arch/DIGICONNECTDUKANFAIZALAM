@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getRazorpayClient } from "@/lib/razorpay";
+import { getRazorpayClient, getRazorpayKeyId } from "@/lib/razorpay";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
@@ -88,6 +88,7 @@ export async function POST(request: Request) {
       currency: order.currency,
       job_id: job.id,
       job_number: job.job_number,
+      key_id: getRazorpayKeyId(),
     });
   } catch (error) {
     console.error("[print/create-order] Error in order creation route:", error);

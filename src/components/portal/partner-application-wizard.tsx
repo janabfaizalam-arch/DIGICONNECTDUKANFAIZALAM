@@ -23,6 +23,7 @@ import { PaymentLinkQr } from "@/components/ap/payment-link-qr";
 import { cn } from "@/lib/utils";
 import { servicesData } from "@/lib/services-data";
 import { useWizardLayoutMetrics } from "@/lib/layout/use-wizard-layout-metrics";
+import { getCheckoutRazorpayKey } from "@/lib/razorpay-client";
 
 // ─── Category icon map ────────────────────────────────────────────────────────
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -405,6 +406,7 @@ export function PartnerApplicationWizard({
     amount: number;
     currency: string;
     applicationIds: string[];
+    keyId?: string;
   } | null>(null);
   const [isPreparing, setIsPreparing] = useState(false);
   const [prepareError, setPrepareError] = useState<string | null>(null);
@@ -935,6 +937,7 @@ export function PartnerApplicationWizard({
         amount: Number(orderData.amount ?? 0),
         currency: orderData.currency ?? "INR",
         applicationIds: orderData.application_ids as string[],
+        keyId: orderData.key_id,
       });
 
       const linkRes = await fetch("/api/payment-links/generate", {
@@ -977,77 +980,86 @@ export function PartnerApplicationWizard({
    * creates one both open the same checkout, verify the same way, and finalise
    * the same applications.
    */
-  const openRazorpayCheckout = useCallback((orderData: {
+  const openRazorpayCheckout = useCallback(async (orderData: {
     order_id: string;
     amount: number;
     currency?: string;
     application_id?: string;
     application_ids?: string[];
+    key_id?: string;
   }) => {
-    const rzpOptions = {
-      key:         process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-      amount:      orderData.amount,         // ← AUTHORITATIVE — from server, never frontend
-      currency:    orderData.currency ?? "INR",
-      name:        "DigiConnect Dukan",
-      description: cartItems.map(i => i.service.title).join(", "),
-      order_id:    orderData.order_id,
-      prefill: { name: customer.name, contact: customer.mobile },
-      theme: { color: "#2563eb" },
-      handler: async (payRes: Record<string, unknown>) => {
-        payLog("PAYMENT_DONE", { paymentId: payRes.razorpay_payment_id, orderId: payRes.razorpay_order_id, stage: "SUCCESS" });
-        try {
-          // Verify signature
-          payLog("VERIFY", { applicationIds: orderData.application_ids, stage: "START" });
-          const verRes  = await fetch("/api/verify-payment", {
-            method:  "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              ...payRes,
-              application_id:  orderData.application_id,
-              application_ids: orderData.application_ids,
-            }),
-          });
-          const verData = await verRes.json();
-          payLog("VERIFY", { status: verRes.status, success: verData.success, cashback: verData.cashback, stage: "DONE" });
+    try {
+      const razorpayKey = await getCheckoutRazorpayKey(orderData.key_id);
+      if (!razorpayKey) {
+        throw new Error("Razorpay key is not configured. Contact support.");
+      }
 
-          if (!verRes.ok || !verData.success) {
-            throw new Error(verData.error ?? verData.message ?? `Verification failed (HTTP ${verRes.status})`);
+      const rzpOptions = {
+        key:         razorpayKey,
+        amount:      orderData.amount,         // ← AUTHORITATIVE — from server, never frontend
+        currency:    orderData.currency ?? "INR",
+        name:        "DigiConnect Dukan",
+        description: cartItems.map(i => i.service.title).join(", "),
+        order_id:    orderData.order_id,
+        prefill: { name: customer.name, contact: customer.mobile },
+        theme: { color: "#2563eb" },
+        handler: async (payRes: Record<string, unknown>) => {
+          payLog("PAYMENT_DONE", { paymentId: payRes.razorpay_payment_id, orderId: payRes.razorpay_order_id, stage: "SUCCESS" });
+          try {
+            // Verify signature
+            payLog("VERIFY", { applicationIds: orderData.application_ids, stage: "START" });
+            const verRes  = await fetch("/api/verify-payment", {
+              method:  "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                ...payRes,
+                application_id:  orderData.application_id,
+                application_ids: orderData.application_ids,
+              }),
+            });
+            const verData = await verRes.json();
+            payLog("VERIFY", { status: verRes.status, success: verData.success, cashback: verData.cashback, stage: "DONE" });
+
+            if (!verRes.ok || !verData.success) {
+              throw new Error(verData.error ?? verData.message ?? `Verification failed (HTTP ${verRes.status})`);
+            }
+
+            // Finalize applications
+            payLog("FINALIZE", { applicationIds: orderData.application_ids, stage: "START" });
+            await handleFinalSubmit(
+              { ...payRes, amount_paise: orderData.amount },
+              orderData.application_ids as string[],
+            );
+            payLog("FINALIZE", { stage: "COMPLETED" });
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : "Verification failed.";
+            setPaymentError(msg);
+            toastError(msg);
+            setIsSubmitting(false);
           }
-
-          // Finalize applications
-          payLog("FINALIZE", { applicationIds: orderData.application_ids, stage: "START" });
-          await handleFinalSubmit(
-            { ...payRes, amount_paise: orderData.amount },
-            orderData.application_ids as string[],
-          );
-          payLog("FINALIZE", { stage: "COMPLETED" });
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : "Verification failed.";
-          setPaymentError(msg);
-          toastError(msg);
-          setIsSubmitting(false);
-        }
-      },
-      modal: {
-        ondismiss: () => {
-          payLog("RAZORPAY_OPEN", { stage: "CANCELLED" });
-          toastError("Payment cancelled.");
-          setIsSubmitting(false);
         },
-      },
-    };
+        modal: {
+          ondismiss: () => {
+            payLog("RAZORPAY_OPEN", { stage: "CANCELLED" });
+            toastError("Payment cancelled.");
+            setIsSubmitting(false);
+          },
+        },
+      };
 
-    const rzp = new (window as any).Razorpay(rzpOptions);
-    rzp.open();
-    payLog("RAZORPAY_OPEN", { stage: "OPENED" });
+      const rzp = new (window as any).Razorpay(rzpOptions);
+      rzp.open();
+      payLog("RAZORPAY_OPEN", { stage: "OPENED" });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to open payment checkout.";
+      setPaymentError(msg);
+      toastError(msg);
+      setIsSubmitting(false);
+    }
   }, [cartItems, customer, handleFinalSubmit, toastError]);
 
   // ── Razorpay checkout — server is SOLE source of amount ──────────────────
   const triggerRazorpayCheckout = useCallback(async () => {
-    if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
-      const msg = "Razorpay key is not configured. Contact support.";
-      setPaymentError(msg); toastError(msg); return;
-    }
     setIsSubmitting(true);
     setPaymentError(null);
 
@@ -1067,12 +1079,13 @@ export function PartnerApplicationWizard({
       if (preparedOrder?.orderId) {
         clearTimeout(timeoutId);
         payLog("RAZORPAY_OPEN", { orderId: preparedOrder.orderId, stage: "REUSE_PREPARED" });
-        openRazorpayCheckout({
+        await openRazorpayCheckout({
           order_id: preparedOrder.orderId,
           amount: preparedOrder.amount,
           currency: preparedOrder.currency,
           application_id: preparedOrder.applicationIds[0],
           application_ids: preparedOrder.applicationIds,
+          key_id: preparedOrder.keyId,
         });
         return;
       }
@@ -1137,7 +1150,7 @@ export function PartnerApplicationWizard({
 
       payLog("RAZORPAY_OPEN", { orderId: orderData.order_id, amountPaise: orderData.amount, amountINR: orderData.amount / 100, stage: "INITIALIZE" });
 
-      openRazorpayCheckout(orderData);
+      await openRazorpayCheckout(orderData);
     } catch (e: any) {
       clearTimeout(timeoutId);
       let errMsg = "Payment initialisation error.";

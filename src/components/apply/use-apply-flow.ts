@@ -32,6 +32,7 @@ import {
   type SuccessDetails,
 } from "@/components/apply/shared";
 import { useWizardLayoutMetrics } from "@/lib/layout/use-wizard-layout-metrics";
+import { getCheckoutRazorpayKey } from "@/lib/razorpay-client";
 
 /**
  * Everything the apply flow does, separated from everything it looks like.
@@ -675,10 +676,6 @@ export function useApplyFlow({
 
   // Razorpay checkout
   const triggerRazorpayCheckout = useCallback(async () => {
-    if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
-      const msg = "Razorpay key is not configured. Contact support.";
-      setPaymentError(msg); toastError(msg); return;
-    }
     setIsSubmitting(true);
     setPaymentError(null);
 
@@ -741,8 +738,13 @@ export function useApplyFlow({
 
       payLog("RAZORPAY_OPEN", { orderId: orderData.order_id, amountPaise: orderData.amount, amountINR: orderData.amount / 100, stage: "INITIALIZE" });
 
+      const razorpayKey = await getCheckoutRazorpayKey(orderData.key_id);
+      if (!razorpayKey) {
+        throw new Error("Razorpay key is not configured. Contact support.");
+      }
+
       const rzpOptions = {
-        key:         process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key:         razorpayKey,
         amount:      orderData.amount,
         currency:    orderData.currency ?? "INR",
         name:        "DigiConnect Dukan",

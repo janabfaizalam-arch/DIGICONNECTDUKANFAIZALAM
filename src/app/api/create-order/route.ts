@@ -613,6 +613,7 @@ export async function POST(request: Request) {
             walletUsed: walletRedeemAmount,
             rewardUsed: walletRedeemAmount,
             finalPayable: freshPayableAmount,
+            key_id: getRazorpayKeyId(),
             message: "Mock order created successfully in Local Test Mode.",
           });
         }
@@ -979,6 +980,7 @@ export async function POST(request: Request) {
       walletUsed,
       rewardUsed,
       finalPayable,
+      key_id: getRazorpayKeyId(),
     });
   } catch (error) {
     const status = getRazorpayErrorStatus(error);

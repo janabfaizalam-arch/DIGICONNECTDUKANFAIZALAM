@@ -53,6 +53,7 @@ import { toPrintableImage } from "@/lib/print/printable-image";
 import { quote } from "@/lib/print/smart-pricing";
 import type { PrintRates } from "@/lib/print/stations";
 import { cn } from "@/lib/utils";
+import { getCheckoutRazorpayKey } from "@/lib/razorpay-client";
 
 /**
  * DigiConnect Smart Print, from the customer's side.
@@ -554,12 +555,13 @@ export function SmartPrintFlow({ station }: { station: SmartStationView }) {
         amount?: number;
         currency?: string;
         error?: string;
+        key_id?: string;
       };
       if (!orderResponse.ok || !order.order_id) {
         throw new Error(order.error || "Payment could not be started.");
       }
 
-      const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      const key = await getCheckoutRazorpayKey(order.key_id).catch(() => null);
       if (!key) throw new Error("Online payment abhi chalu nahi hai — aap desk par pay at the desk kar sakte hain.");
 
       setBusy(null);
