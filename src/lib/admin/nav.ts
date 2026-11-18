@@ -47,6 +47,7 @@ import {
   LifeBuoy,
   ListChecks,
   MessageSquare,
+  MessagesSquare,
   Newspaper,
   Percent,
   Printer,
@@ -417,6 +418,13 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
     blurb: "What the system sends, and whether it arrived.",
     icon: MessageSquare,
     items: [
+      {
+        href: "/admin/whatsapp-inbox",
+        label: "WhatsApp Inbox",
+        description: "Customer WhatsApp chats, live inbound messages and replies",
+        icon: MessagesSquare,
+        emphasis: true,
+      },
       {
         href: "/admin/communications",
         label: "WhatsApp Outbox",

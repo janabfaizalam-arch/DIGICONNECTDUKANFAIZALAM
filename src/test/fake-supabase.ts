@@ -87,8 +87,16 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count?: numb
     this.filters.push((row) => String(row[column] ?? "") >= String(value));
     return this;
   }
+  gt(column: string, value: string | number) {
+    this.filters.push((row) => Number(row[column] ?? 0) > Number(value));
+    return this;
+  }
   lte(column: string, value: string | number) {
     this.filters.push((row) => String(row[column] ?? "") <= String(value));
+    return this;
+  }
+  lt(column: string, value: string | number) {
+    this.filters.push((row) => Number(row[column] ?? 0) < Number(value));
     return this;
   }
   not(column: string, operator: string, value: unknown) {
@@ -136,17 +144,30 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count?: numb
     this.filters.push((row) => re.test(String(row[column] ?? "")));
     return this;
   }
-  /** PostgREST `or` with `col.eq.value` terms only. */
+  /** PostgREST `or` with `col.eq.value` or `col.ilike.%val%` terms. */
   or(expression: string) {
     const terms = expression.split(",").map((term) => {
       const [column, operator, ...rest] = term.split(".");
-      if (operator !== "eq") throw new Error(`fake or() supports eq only, got ${term}`);
-      return { column, value: rest.join(".") };
+      const val = rest.join(".");
+      return { column, operator, value: val };
     });
-    this.filters.push((row) => terms.some((t) => String(row[t.column]) === t.value));
+    this.filters.push((row) =>
+      terms.some((t) => {
+        if (t.operator === "ilike") {
+          const re = new RegExp(`^${t.value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*")}$`, "i");
+          return re.test(String(row[t.column] ?? ""));
+        }
+        return String(row[t.column]) === t.value;
+      }),
+    );
     return this;
   }
-  order() {
+  private orderCol: string | null = null;
+  private orderAsc = true;
+
+  order(column: string, opts?: { ascending?: boolean }) {
+    this.orderCol = column;
+    this.orderAsc = opts?.ascending !== false;
     return this;
   }
   range() {
@@ -173,14 +194,42 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count?: numb
   }
 
   private matching() {
-    const rows = this.db.tables[this.table];
-    return rows.filter((row) => this.filters.every((f) => f(row)));
+    const rows = this.db.tables[this.table] || [];
+    let matched = rows.filter((row) => this.filters.every((f) => f(row)));
+    if (this.orderCol) {
+      const col = this.orderCol;
+      const asc = this.orderAsc;
+      matched = matched.slice().sort((a, b) => {
+        const valA = a[col];
+        const valB = b[col];
+        if (valA === valB) return 0;
+        if (valA == null) return asc ? -1 : 1;
+        if (valB == null) return asc ? 1 : -1;
+        return asc ? (valA < valB ? -1 : 1) : (valA > valB ? -1 : 1);
+      });
+    }
+    return matched;
   }
 
   private execute(): { data: unknown; error: unknown; count?: number } {
     if (this.countOnly) return { data: null, error: null, count: this.matching().length };
     let result: Row[];
     if (this.op === "insert") {
+      const existingRows = this.db.tables[this.table] || [];
+      for (const row of this.payload) {
+        if (this.table === "whatsapp_messages" && row.idempotency_key && existingRows.some((r) => r.idempotency_key === row.idempotency_key)) {
+          return { data: null, error: { code: "23505", message: "duplicate key value violates unique constraint idx_whatsapp_messages_idempotency_key" } };
+        }
+        if (this.table === "whatsapp_messages" && row.meta_message_id && existingRows.some((r) => r.meta_message_id === row.meta_message_id)) {
+          return { data: null, error: { code: "23505", message: "duplicate key value violates unique constraint whatsapp_messages_meta_msg_id_idx" } };
+        }
+        if (this.table === "whatsapp_message_events" && row.meta_message_id && row.event_type && existingRows.some((r) => r.meta_message_id === row.meta_message_id && r.event_type === row.event_type)) {
+          return { data: null, error: { code: "23505", message: "duplicate key value violates unique constraint whatsapp_message_events_dedupe_key" } };
+        }
+        if (this.table === "whatsapp_conversations" && row.wa_id && existingRows.some((r) => r.wa_id === row.wa_id)) {
+          return { data: null, error: { code: "23505", message: "duplicate key value violates unique constraint whatsapp_conversations_wa_id_key" } };
+        }
+      }
       this.db.tables[this.table].push(...this.payload);
       result = this.payload;
     } else if (this.op === "upsert") {

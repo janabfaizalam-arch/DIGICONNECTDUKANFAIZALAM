@@ -28,6 +28,7 @@ import { AdminBreadcrumbs } from "@/components/admin/admin-breadcrumbs";
 import { AdminGlobalSearch } from "@/components/admin/admin-global-search";
 import { AdminNotificationsBell } from "@/components/admin/admin-notifications-bell";
 import { AdminWorkspaceSwitch } from "@/components/admin/admin-workspace-switch";
+import { useWhatsAppInboxRealtime } from "@/components/admin/whatsapp-inbox/use-whatsapp-inbox-realtime";
 import { DigiConnectLoader } from "@/components/ui/digiconnect-loader";
 import { LogoutButton } from "@/components/auth/logout-button";
 import {
@@ -59,10 +60,12 @@ function AdminNav({
   groups,
   collapsed,
   onNavigate,
+  whatsAppUnreadCount = 0,
 }: {
   groups: AdminNavGroup[];
   collapsed?: boolean;
   onNavigate?: () => void;
+  whatsAppUnreadCount?: number;
 }) {
   const pathname = usePathname() || "/admin";
   const [loadingHref, setLoadingHref] = useState<string | null>(null);
@@ -156,6 +159,8 @@ function AdminNav({
                 {group.items.map((item) => {
                   const active = isAdminNavActive(pathname, item.href);
                   const Icon = item.icon;
+                  const isWhatsAppInbox = item.href === "/admin/whatsapp-inbox";
+                  const badgeCount = isWhatsAppInbox && whatsAppUnreadCount > 0 ? whatsAppUnreadCount : null;
 
                   return (
                     <li key={item.href}>
@@ -186,7 +191,7 @@ function AdminNav({
                         ) : null}
                         <span
                           className={cn(
-                            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition",
+                            "relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition",
                             active
                               ? "text-white"
                               : "bg-[var(--dc-ink)]/5 text-[var(--dc-blue-mid)] group-hover:bg-[var(--dc-ink)]/8",
@@ -198,9 +203,17 @@ function AdminNav({
                           ) : (
                             <Icon className="h-[15px] w-[15px]" aria-hidden="true" />
                           )}
+                          {collapsed && badgeCount ? (
+                            <span
+                              className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[9px] font-bold text-white shadow-xs"
+                              aria-label={`${badgeCount} unread WhatsApp messages`}
+                            >
+                              {badgeCount > 99 ? "99+" : badgeCount}
+                            </span>
+                          ) : null}
                         </span>
                         {!collapsed ? (
-                          <span className="min-w-0 flex-1">
+                          <span className="flex min-w-0 flex-1 items-center justify-between gap-1.5">
                             <span
                               className={cn(
                                 "block truncate text-[13px] leading-tight",
@@ -209,9 +222,17 @@ function AdminNav({
                             >
                               {item.label}
                             </span>
+                            {badgeCount ? (
+                              <span
+                                className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[10px] font-bold text-white shadow-xs shrink-0"
+                                aria-label={`${badgeCount} unread WhatsApp messages`}
+                              >
+                                {badgeCount > 99 ? "99+" : badgeCount}
+                              </span>
+                            ) : null}
                           </span>
                         ) : null}
-                        {!collapsed && item.emphasis ? (
+                        {!collapsed && item.emphasis && !badgeCount ? (
                           <span
                             className="h-1.5 w-1.5 shrink-0 rounded-full"
                             style={{ background: "var(--dc-grad-flame)" }}
@@ -247,6 +268,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   // Half-built screens are listed on the workspace home with a label, never
   // offered here as though they worked.
   const groups = navigableGroups(workspace);
+  const { unreadCount: whatsAppUnreadCount } = useWhatsAppInboxRealtime();
 
   useEffect(() => {
     try {
@@ -328,7 +350,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto pb-3">
-              <AdminNav groups={groups} collapsed={collapsed} />
+              <AdminNav groups={groups} collapsed={collapsed} whatsAppUnreadCount={whatsAppUnreadCount} />
             </div>
           </div>
 
@@ -393,7 +415,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto">
-                  <AdminNav groups={groups} onNavigate={() => setMobileOpen(false)} />
+                  <AdminNav
+                    groups={groups}
+                    onNavigate={() => setMobileOpen(false)}
+                    whatsAppUnreadCount={whatsAppUnreadCount}
+                  />
                 </div>
 
                 <div className="space-y-1.5 border-t border-[var(--dc-ink)]/8 pt-3">

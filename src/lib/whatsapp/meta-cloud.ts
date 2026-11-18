@@ -282,6 +282,8 @@ export type MetaStatusEvent = {
   timestamp: string | null;
   errorCode: string | null;
   errorMessage: string | null;
+  recipientId?: string | null;
+  raw?: Record<string, unknown>;
 };
 
 export type MetaInboundMessage = {
@@ -298,6 +300,18 @@ export type MetaInboundMessage = {
   timestamp: string | null;
   /** The phone number ID it was sent to. */
   toPhoneNumberId: string | null;
+  /** Media attachment details when Meta includes them. */
+  mediaId?: string | null;
+  mimeType?: string | null;
+  filename?: string | null;
+  /** WhatsApp Flow response (nfm_reply) if interactive flow submission. */
+  flowResponse?: {
+    name: string | null;
+    responseJson: string | null;
+    body: string | null;
+  } | null;
+  /** Sanitized safe metadata without credentials. */
+  rawPayloadSafe?: Record<string, unknown> | null;
 };
 
 type ChangeValue = {
@@ -337,7 +351,7 @@ export function parseMetaStatusEvents(payload: unknown): MetaStatusEvent[] {
       };
       if (typeof s?.id !== "string" || typeof s.status !== "string") continue;
       const error = Array.isArray(s.errors) ? s.errors[0] : undefined;
-      events.push({
+      const event: MetaStatusEvent = {
         messageId: s.id,
         status: s.status,
         timestamp: typeof s.timestamp === "string" ? s.timestamp : null,
@@ -345,7 +359,14 @@ export function parseMetaStatusEvents(payload: unknown): MetaStatusEvent[] {
         errorMessage: error
           ? [error.title, error.message, error.error_data?.details].filter((v) => typeof v === "string").join(" — ") || null
           : null,
-      });
+      };
+      const recipientId = typeof (raw as { recipient_id?: unknown })?.recipient_id === "string"
+        ? String((raw as { recipient_id?: unknown }).recipient_id)
+        : null;
+      if (recipientId) {
+        event.recipientId = recipientId;
+      }
+      events.push(event);
     }
   }
   return events;
@@ -355,7 +376,7 @@ function str(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-/** Every inbound customer message (`messages[]`) in a webhook, flattened to what the CRM needs. */
+/** Every inbound customer message (`messages[]`) in a webhook, flattened to what the CRM and Inbox need. */
 export function parseMetaInboundMessages(payload: unknown): MetaInboundMessage[] {
   const out: MetaInboundMessage[] = [];
   for (const value of webhookChangeValues(payload)) {
@@ -364,22 +385,62 @@ export function parseMetaInboundMessages(payload: unknown): MetaInboundMessage[]
     for (const raw of value.messages.slice(0, 100)) {
       const m = raw as Record<string, unknown> & {
         text?: { body?: unknown };
-        button?: { text?: unknown };
-        interactive?: { button_reply?: { title?: unknown }; list_reply?: { title?: unknown } };
+        button?: { text?: unknown; payload?: unknown };
+        interactive?: {
+          type?: unknown;
+          button_reply?: { id?: unknown; title?: unknown };
+          list_reply?: { id?: unknown; title?: unknown };
+          nfm_reply?: { name?: unknown; body?: unknown; response_json?: unknown };
+        };
       };
       const id = str(m?.id);
       const from = str(m?.from);
       if (!id || !from) continue;
       const type = str(m.type) ?? "unknown";
-      const media = m[type] as { caption?: unknown; filename?: unknown } | undefined;
+      const media = m[type] as
+        | { id?: unknown; mime_type?: unknown; caption?: unknown; filename?: unknown; sha256?: unknown }
+        | undefined;
+      const mediaId = str(media?.id);
+      const mimeType = str(media?.mime_type);
+      const filename = str(media?.filename);
+      const caption = str(media?.caption);
+
+      const nfm = m.interactive?.nfm_reply;
+      const flowResponse = nfm
+        ? {
+            name: str(nfm.name),
+            responseJson: str(nfm.response_json),
+            body: str(nfm.body),
+          }
+        : null;
+
       const text =
         str(m.text?.body) ??
         str(m.button?.text) ??
         str(m.interactive?.button_reply?.title) ??
         str(m.interactive?.list_reply?.title) ??
-        str(media?.caption) ??
-        str(media?.filename);
+        caption ??
+        (filename ? `[Document: ${filename}]` : null) ??
+        (flowResponse?.body || (flowResponse?.name ? `[Flow Submission: ${flowResponse.name}]` : null)) ??
+        (type === "image" ? "[Image]" : null) ??
+        (type === "audio" ? "[Voice message]" : null) ??
+        (type === "video" ? "[Video]" : null) ??
+        (type === "document" ? "[Document]" : null) ??
+        (type === "sticker" ? "[Sticker]" : null);
+
       const contact = contacts.find((c) => str(c?.wa_id) === from) ?? contacts[0];
+
+      const rawPayloadSafe: Record<string, unknown> = {
+        messageId: id,
+        from,
+        type,
+        timestamp: str(m.timestamp),
+      };
+      if (mediaId) rawPayloadSafe.mediaId = mediaId;
+      if (mimeType) rawPayloadSafe.mimeType = mimeType;
+      if (filename) rawPayloadSafe.filename = filename;
+      if (flowResponse) rawPayloadSafe.flowResponse = flowResponse;
+
       out.push({
         messageId: id,
         from,
@@ -388,6 +449,11 @@ export function parseMetaInboundMessages(payload: unknown): MetaInboundMessage[]
         text: text ? text.slice(0, 2000) : null,
         timestamp: str(m.timestamp),
         toPhoneNumberId: str(value.metadata?.phone_number_id),
+        mediaId,
+        mimeType,
+        filename,
+        flowResponse,
+        rawPayloadSafe,
       });
     }
   }

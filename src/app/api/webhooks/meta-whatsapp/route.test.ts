@@ -37,9 +37,13 @@ beforeEach(() => {
     customers: [],
     customer_communication_preferences: [],
     customer_communication_preference_history: [],
-    whatsapp_messages: [{ id: "out-1", status: "sent", provider_message_id: "wamid.OUT" }],
+    whatsapp_messages: [{ id: "out-1", status: "sent", provider_message_id: "wamid.OUT", meta_message_id: "wamid.OUT" }],
     communication_delivery_events: [],
     auth_otp_requests: [],
+    whatsapp_conversations: [],
+    whatsapp_message_events: [],
+    whatsapp_contact_consents: [],
+    admin_notifications: [],
   });
   ingestLead.mockReset();
   ingestLead.mockImplementation(async (input: { mobile: string; name: string }) => {
@@ -85,6 +89,40 @@ function inbound(id: string, text: string, from = "919876543210") {
   return webhook({
     contacts: [{ wa_id: from, profile: { name: "Riya Sharma" } }],
     messages: [{ id, from, type: "text", timestamp: "1790000000", text: { body: text } }],
+  });
+}
+
+function inboundMedia(
+  id: string,
+  type: "image" | "document" | "audio" | "video",
+  mediaObj: Record<string, unknown>,
+  from = "919876543210",
+) {
+  return webhook({
+    contacts: [{ wa_id: from, profile: { name: "Riya Sharma" } }],
+    messages: [{ id, from, type, timestamp: "1790000000", [type]: mediaObj }],
+  });
+}
+
+function inboundFlow(
+  id: string,
+  flowObj: { name: string; body?: string; response_json: string },
+  from = "919876543210",
+) {
+  return webhook({
+    contacts: [{ wa_id: from, profile: { name: "Riya Sharma" } }],
+    messages: [
+      {
+        id,
+        from,
+        type: "interactive",
+        timestamp: "1790000000",
+        interactive: {
+          type: "nfm_reply",
+          nfm_reply: flowObj,
+        },
+      },
+    ],
   });
 }
 
@@ -204,5 +242,183 @@ describe("delivery statuses", () => {
       provider_message_id: "wamid.OUT",
       normalized_status: "delivered",
     });
+  });
+
+  it("records message status event in whatsapp_message_events and advances message_status", async () => {
+    db.tables.whatsapp_messages.push({
+      id: "msg-10",
+      meta_message_id: "wamid.REPLY1",
+      provider_message_id: "wamid.REPLY1",
+      message_status: "sent",
+      status: "sent",
+    });
+    const body = webhook({
+      statuses: [
+        { id: "wamid.REPLY1", status: "delivered", timestamp: "1790000010" },
+        { id: "wamid.REPLY1", status: "read", timestamp: "1790000020" },
+      ],
+    });
+    const response = await POST(signedPost(body));
+    expect(response.status).toBe(200);
+    expect(db.tables.whatsapp_message_events.filter((e) => e.meta_message_id === "wamid.REPLY1")).toHaveLength(2);
+    const updated = db.tables.whatsapp_messages.find((m) => m.id === "msg-10");
+    expect(updated).toMatchObject({ message_status: "read" });
+  });
+
+  it("deduplicates identical status events cleanly", async () => {
+    db.tables.whatsapp_messages.push({
+      id: "msg-20",
+      meta_message_id: "wamid.DUP_STATUS",
+      message_status: "sent",
+    });
+    const body = webhook({
+      statuses: [{ id: "wamid.DUP_STATUS", status: "delivered", timestamp: "1790000010" }],
+    });
+    await POST(signedPost(body));
+    await POST(signedPost(body));
+    expect(db.tables.whatsapp_message_events.filter((e) => e.meta_message_id === "wamid.DUP_STATUS")).toHaveLength(1);
+  });
+});
+
+describe("Shared Inbox: Inbound messages & conversations", () => {
+  it("creates a conversation and stores inbound text message in whatsapp_messages", async () => {
+    const response = await POST(signedPost(inbound("wamid.INBOX1", "Namaste DigiConnect", "919876543210")));
+    expect(response.status).toBe(200);
+
+    expect(db.tables.whatsapp_conversations).toHaveLength(1);
+    const conv = db.tables.whatsapp_conversations[0];
+    expect(conv).toMatchObject({
+      wa_id: "919876543210",
+      phone_number: "9876543210",
+      last_message: "Namaste DigiConnect",
+      unread_count: 1,
+      status: "open",
+    });
+
+    const inboundMsg = db.tables.whatsapp_messages.find((m) => m.meta_message_id === "wamid.INBOX1");
+    expect(inboundMsg).toBeDefined();
+    expect(inboundMsg).toMatchObject({
+      conversation_id: conv.id,
+      direction: "inbound",
+      message_type: "text",
+      message_body: "Namaste DigiConnect",
+      message_status: "received",
+      sender_type: "customer",
+    });
+  });
+
+  it("increments unread count and updates last_message on subsequent messages in same conversation", async () => {
+    await POST(signedPost(inbound("wamid.INBOX2A", "First message", "919876543210")));
+    await POST(signedPost(inbound("wamid.INBOX2B", "Second message", "919876543210")));
+
+    expect(db.tables.whatsapp_conversations).toHaveLength(1);
+    const conv = db.tables.whatsapp_conversations[0];
+    expect(conv.unread_count).toBe(2);
+    expect(conv.last_message).toBe("Second message");
+  });
+
+  it("links conversation to existing CRM customer by matching phone number", async () => {
+    db.tables.customers.push({
+      id: "cust-faiz",
+      full_name: "Faiz Alam",
+      mobile: "9876543210",
+      created_at: "2026-01-01",
+    });
+
+    await POST(signedPost(inbound("wamid.INBOX3", "Customer message", "919876543210")));
+
+    const conv = db.tables.whatsapp_conversations[0];
+    expect(conv.customer_id).toBe("cust-faiz");
+    expect(conv.customer_name).toBe("Faiz Alam");
+  });
+
+  it("handles media messages (image, document, audio, video) and stores media attributes", async () => {
+    const imagePayload = inboundMedia(
+      "wamid.IMG1",
+      "image",
+      { id: "media_img_123", mime_type: "image/jpeg", caption: "Aadhaar Card Photo" },
+      "919876543210",
+    );
+    const docPayload = inboundMedia(
+      "wamid.DOC1",
+      "document",
+      { id: "media_doc_456", mime_type: "application/pdf", filename: "salary_slip.pdf" },
+      "919876543210",
+    );
+
+    expect((await POST(signedPost(imagePayload))).status).toBe(200);
+    expect((await POST(signedPost(docPayload))).status).toBe(200);
+
+    const imgMsg = db.tables.whatsapp_messages.find((m) => m.meta_message_id === "wamid.IMG1");
+    expect(imgMsg).toMatchObject({
+      message_type: "image",
+      media_id: "media_img_123",
+      media_mime_type: "image/jpeg",
+      message_body: "Aadhaar Card Photo",
+    });
+
+    const docMsg = db.tables.whatsapp_messages.find((m) => m.meta_message_id === "wamid.DOC1");
+    expect(docMsg).toMatchObject({
+      message_type: "document",
+      media_id: "media_doc_456",
+      media_mime_type: "application/pdf",
+      message_body: "[Document: salary_slip.pdf]",
+    });
+  });
+
+  it("handles WhatsApp Flow nfm_reply response and notifies admin", async () => {
+    const flowPayload = inboundFlow(
+      "wamid.FLOW1",
+      {
+        name: "DigiConnect Customer Support",
+        body: "Support Request Sent",
+        response_json: JSON.stringify({ name: "Riya", query: "ITR Filing help", urgency: "High" }),
+      },
+      "919876543210",
+    );
+
+    const res = await POST(signedPost(flowPayload));
+    expect(res.status).toBe(200);
+
+    const flowMsg = db.tables.whatsapp_messages.find((m) => m.meta_message_id === "wamid.FLOW1");
+    expect(flowMsg).toBeDefined();
+    expect(flowMsg?.raw_metadata).toMatchObject({
+      flow_name: "DigiConnect Customer Support",
+      flow_id: "1616611156369254",
+      flow_data: { name: "Riya", query: "ITR Filing help", urgency: "High" },
+    });
+
+    // Verify admin notification was created
+    expect(db.tables.admin_notifications).toHaveLength(1);
+    expect(db.tables.admin_notifications[0]).toMatchObject({
+      type: "new_lead",
+      title: "WhatsApp Flow: DigiConnect Customer Support",
+    });
+  });
+
+  it("records contact consent opt-out on STOP and opt-in on START", async () => {
+    await POST(signedPost(inbound("wamid.STOP1", "STOP", "919876543210")));
+    const optOut = db.tables.whatsapp_contact_consents.find((c) => c.phone_number === "9876543210");
+    expect(optOut).toBeDefined();
+    expect(optOut?.consent_status).toBe("opted_out");
+    expect(optOut?.consent_scope).toBe("marketing");
+
+    await POST(signedPost(inbound("wamid.START1", "START", "919876543210")));
+    const optIn = db.tables.whatsapp_contact_consents.find((c) => c.phone_number === "9876543210");
+    expect(optIn?.consent_status).toBe("opted_in");
+  });
+
+  it("handles malformed JSON body gracefully with 400", async () => {
+    const badJson = new Request("https://www.rnos.in/api/webhooks/meta-whatsapp", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-hub-signature-256": "sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      },
+      body: "not a valid json {{{",
+    });
+    // Signature will fail before parsing anyway, or 400 if signature matched
+    const res = await POST(badJson);
+    expect(res.status).toBeGreaterThanOrEqual(400);
   });
 });

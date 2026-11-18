@@ -6,6 +6,7 @@ import { secretsEqual } from "@/lib/communications/secrets";
 import { recordInboundWhatsAppMessage } from "@/lib/crm/whatsapp-inbound";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { parseMetaInboundMessages, parseMetaStatusEvents, verifyMetaSignature } from "@/lib/whatsapp/meta-cloud";
+import { recordInboundInboxMessage, recordSharedInboxStatusEvent } from "@/lib/whatsapp/inbox-storage";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -78,7 +79,13 @@ export async function POST(request: Request) {
       errorCode: event.errorCode,
       errorMessage: event.errorMessage,
     });
-    if (result.outboxUpdated || result.otpDeliveryMetaUpdated) statusesUpdated += 1;
+
+    // Shared Inbox: track event deduplication and advance message status
+    const inboxStatusResult = await recordSharedInboxStatusEvent(event);
+    const inboxUpdated = "messageUpdated" in inboxStatusResult && Boolean(inboxStatusResult.messageUpdated);
+    if (result.outboxUpdated || result.otpDeliveryMetaUpdated || inboxUpdated) {
+      statusesUpdated += 1;
+    }
   }
 
   const inbound = parseMetaInboundMessages(payload).filter(
@@ -87,9 +94,16 @@ export async function POST(request: Request) {
   const outcomes: Record<string, number> = {};
   let failed = 0;
   for (const message of inbound) {
+    // 1. Existing CRM lead pipeline & timeline activity
     const outcome = await recordInboundWhatsAppMessage(message);
     outcomes[outcome.status] = (outcomes[outcome.status] ?? 0) + 1;
     if (outcome.status === "error") failed += 1;
+
+    // 2. Shared Inbox conversation & message persistence
+    const inboxOutcome = await recordInboundInboxMessage(message);
+    if (!inboxOutcome.ok && inboxOutcome.status === "error") {
+      failed += 1;
+    }
   }
 
   if (statuses.length || inbound.length) {
