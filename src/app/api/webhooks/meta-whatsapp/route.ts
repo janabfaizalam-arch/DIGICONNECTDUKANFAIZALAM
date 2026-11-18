@@ -68,6 +68,12 @@ export async function POST(request: Request) {
 
   // Only our own number — another number on the same WABA is not this app's traffic.
   const ownPhoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID?.trim() || null;
+  const ownWabaId = process.env.META_WHATSAPP_WABA_ID?.trim() || null;
+
+  // Known Phone Number / WABA IDs for DigiConnect Dukan (resilient to environment variable or Meta ID format differences)
+  const KNOWN_PHONE_NUMBER_IDS = new Set(
+    ["1303931342795977", "1500996433093294", ownPhoneNumberId, ownWabaId].filter(Boolean),
+  );
 
   const statuses = parseMetaStatusEvents(payload);
   let statusesUpdated = 0;
@@ -88,9 +94,20 @@ export async function POST(request: Request) {
     }
   }
 
-  const inbound = parseMetaInboundMessages(payload).filter(
-    (message) => !ownPhoneNumberId || !message.toPhoneNumberId || message.toPhoneNumberId === ownPhoneNumberId,
-  );
+  const allInbound = parseMetaInboundMessages(payload);
+  const inbound = allInbound.filter((message) => {
+    if (!message.toPhoneNumberId) return true;
+    if (KNOWN_PHONE_NUMBER_IDS.has(message.toPhoneNumberId)) return true;
+    if (!ownPhoneNumberId) return true;
+    return false;
+  });
+
+  console.info("[meta-webhook] received", {
+    statusesCount: statuses.length,
+    inboundTotal: allInbound.length,
+    inboundAccepted: inbound.length,
+    recipientPhoneIds: allInbound.map((m) => m.toPhoneNumberId),
+  });
   const outcomes: Record<string, number> = {};
   let failed = 0;
   for (const message of inbound) {

@@ -155,7 +155,12 @@ export async function recordInboundInboxMessage(
 
     if (rpcErr) {
       // Fallback to direct update if RPC is unavailable (e.g. mock test environment)
-      await supabase.from("whatsapp_conversations").update(patch).eq("id", conversationId);
+      const { error: updateErr } = await supabase.from("whatsapp_conversations").update(patch).eq("id", conversationId);
+      if (updateErr && String(updateErr.message).includes("last_message")) {
+        delete patch.last_message;
+        patch.last_message_preview = displayBody.slice(0, 1000);
+        await supabase.from("whatsapp_conversations").update(patch).eq("id", conversationId);
+      }
     } else if (customerId && !existingConv.customer_id) {
       await supabase
         .from("whatsapp_conversations")
@@ -164,7 +169,7 @@ export async function recordInboundInboxMessage(
     }
   } else {
     // Create new conversation
-    const newConvRow = {
+    const newConvRow: Record<string, unknown> = {
       wa_id: message.from,
       phone_number: localMobile || message.from,
       customer_id: customerId,
@@ -177,13 +182,32 @@ export async function recordInboundInboxMessage(
       updated_at: now,
     };
 
-    const { data: createdConv, error: convErr } = await supabase
+    let { data: createdConv, error: convErr } = await supabase
       .from("whatsapp_conversations")
       .insert(newConvRow)
       .select("id")
       .single();
 
+    if (convErr && String(convErr.message).includes("last_message")) {
+      // Schema resilience fallback: table has last_message_preview instead of last_message
+      delete newConvRow.last_message;
+      newConvRow.last_message_preview = displayBody.slice(0, 1000);
+      const retry = await supabase
+        .from("whatsapp_conversations")
+        .insert(newConvRow)
+        .select("id")
+        .single();
+      createdConv = retry.data;
+      convErr = retry.error;
+    }
+
     if (convErr || !createdConv?.id) {
+      console.error("[inbox-storage] Failed to insert new conversation", {
+        error: convErr?.message,
+        code: convErr?.code,
+        details: convErr?.details,
+        wa_id: message.from,
+      });
       // In case of concurrent race condition on wa_id unique key, fetch it
       const { data: fallbackConv } = await supabase
         .from("whatsapp_conversations")
@@ -255,6 +279,12 @@ export async function recordInboundInboxMessage(
     .single();
 
   if (msgErr || !insertedMsg?.id) {
+    console.error("[inbox-storage] Failed to insert whatsapp_messages", {
+      error: msgErr?.message,
+      code: msgErr?.code,
+      details: msgErr?.details,
+      meta_message_id: message.messageId,
+    });
     // If concurrent webhook delivery already inserted this exact meta_message_id, skip gracefully
     if (msgErr && (msgErr.code === "23505" || String(msgErr.message).includes("unique constraint") || String(msgErr.message).includes("duplicate key"))) {
       return { ok: true, status: "duplicate", conversationId, messageId: message.messageId };
