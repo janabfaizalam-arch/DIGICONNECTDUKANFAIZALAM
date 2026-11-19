@@ -89,12 +89,17 @@ export type SyncResult = {
   unmatched: number;
 };
 
+/**
+ * Only a captured payment is money in the account. An `authorized` payment is a
+ * hold that lapses if it is never captured, so it must not reconcile an
+ * application to paid.
+ */
 function isRecoverableRazorpayStatus(status: string | null | undefined) {
-  return status === "captured" || status === "authorized";
+  return status === "captured";
 }
 
 function paymentStatusFromRazorpay(status: string | null | undefined) {
-  if (status === "captured" || status === "authorized") return "verified";
+  if (status === "captured") return "verified";
   if (status === "failed") return "failed";
   return "pending";
 }
@@ -155,9 +160,20 @@ async function logReconciliation(
   });
 }
 
+/** Razorpay ids are safe alphanumerics; anything else never reaches a query filter. */
+function safeRazorpayId(value: string | null | undefined) {
+  const id = String(value ?? "").trim();
+  return /^[a-zA-Z0-9_-]{1,64}$/.test(id) ? id : "";
+}
+
 async function findMatches(supabase: SupabaseAdmin, payment: RazorpayPayment) {
-  const paymentId = payment.id;
-  const orderId = payment.order_id ?? "";
+  const paymentId = safeRazorpayId(payment.id);
+  const orderId = safeRazorpayId(payment.order_id);
+
+  if (!paymentId) {
+    return { applications: [] as ApplicationMatch[], payments: [] as PaymentMatch[] };
+  }
+
   const applicationFilter = orderId
     ? `razorpay_payment_id.eq.${paymentId},razorpay_order_id.eq.${orderId}`
     : `razorpay_payment_id.eq.${paymentId}`;

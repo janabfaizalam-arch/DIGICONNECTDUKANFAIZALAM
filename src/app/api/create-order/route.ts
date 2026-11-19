@@ -894,6 +894,22 @@ export async function POST(request: Request) {
       return jsonError("A service or application is required to create a payment order.", 400, "order_target_required");
     }
 
+    /*
+      Orders are created on the live merchant account, so no anonymous caller
+      may reach Razorpay. The branches above authenticate service and
+      application orders; this covers a bare { amount } body, which fell
+      straight through to orders.create with no session at all.
+    */
+    if (!orderUserId) {
+      const user = await getCurrentUser();
+
+      if (!user) {
+        return jsonError("Please login to create a Razorpay order.", 401);
+      }
+
+      orderUserId = user.id;
+    }
+
     if (!Number.isFinite(amount) || amount < 100) {
       return jsonError("Amount must be at least 100 paise.", 400);
     }

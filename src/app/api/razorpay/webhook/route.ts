@@ -1,11 +1,14 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 
+import { getRazorpayClient } from "@/lib/razorpay";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
-  settleApplicationPayment,
-  type PaymentStatus,
-} from "@/lib/payments/settle-application-payment";
+  completeCreditPayment,
+  completePrintPayment,
+} from "@/lib/payments/complete-non-application-payment";
+import { mapPaymentStatus, safeRazorpayId } from "@/lib/payments/razorpay-events";
+import { settleApplicationPayment } from "@/lib/payments/settle-application-payment";
 
 type RazorpayPaymentEntity = {
   id?: string;
@@ -43,16 +46,22 @@ function verifyWebhookSignature(body: string, signature: string, secret: string)
   return left.length === right.length && crypto.timingSafeEqual(left, right);
 }
 
-function mapPaymentStatus(event: string | undefined, razorpayStatus: string | undefined): PaymentStatus {
-  if (event === "payment.failed" || razorpayStatus === "failed") {
-    return "failed";
-  }
+/** Live status straight from Razorpay; null when it cannot be reached. */
+async function fetchLivePaymentStatus(paymentId: string): Promise<string | null> {
+  const razorpay = getRazorpayClient();
 
-  if (event === "payment.captured" || razorpayStatus === "captured" || razorpayStatus === "authorized") {
-    return "verified";
-  }
+  if (!razorpay) return null;
 
-  return "pending";
+  try {
+    const live = (await razorpay.payments.fetch(paymentId)) as { status?: string };
+    return String(live.status ?? "") || null;
+  } catch (error) {
+    console.warn("[razorpay/webhook] Razorpay payment lookup failed", {
+      paymentId,
+      message: error instanceof Error ? error.message : "Unknown Razorpay error",
+    });
+    return null;
+  }
 }
 
 export async function POST(request: Request) {
@@ -208,10 +217,42 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true });
   }
 
-  const status = mapPaymentStatus(payload.event, payment.status);
-  const paymentMatchFilter = payment.order_id
-    ? `razorpay_payment_id.eq.${payment.id},razorpay_order_id.eq.${payment.order_id}`
-    : `razorpay_payment_id.eq.${payment.id}`;
+  const paymentId = safeRazorpayId(payment.id);
+  const orderId = safeRazorpayId(payment.order_id);
+
+  if (!paymentId) {
+    console.error("[razorpay/webhook] Refusing to act on an implausible payment id:", payment.id);
+    return NextResponse.json({ received: true });
+  }
+
+  let status = mapPaymentStatus(payload.event, payment.status);
+  let razorpayStatus = payment.status ?? null;
+
+  /*
+    Auto-capture lands moments after authorization, and which events a merchant
+    subscribes to is a dashboard setting this code cannot see. So when an
+    authorization arrives, ask Razorpay what the payment is now rather than
+    waiting for a `payment.captured` that may never be delivered -- and if it is
+    still only authorized, leave it unpaid.
+  */
+  if (status === "pending" && payment.status === "authorized") {
+    const live = await fetchLivePaymentStatus(paymentId);
+
+    if (live === "captured") {
+      status = "verified";
+      razorpayStatus = live;
+    } else {
+      console.warn("[razorpay/webhook] Payment is authorized but not captured — not marking it paid", {
+        paymentId,
+        orderId,
+        liveStatus: live,
+      });
+    }
+  }
+
+  const paymentMatchFilter = orderId
+    ? `razorpay_payment_id.eq.${paymentId},razorpay_order_id.eq.${orderId}`
+    : `razorpay_payment_id.eq.${paymentId}`;
 
   // A verified payment is terminal. Razorpay can deliver a `payment.failed` for an
   // abandoned first attempt after the retry succeeded, and re-deliver events out of
@@ -220,9 +261,9 @@ export async function POST(request: Request) {
     .from("payments")
     .update({
       status,
-      razorpay_order_id: payment.order_id ?? null,
-      razorpay_payment_id: payment.id,
-      razorpay_status: payment.status ?? null,
+      razorpay_order_id: orderId,
+      razorpay_payment_id: paymentId,
+      razorpay_status: razorpayStatus,
       payment_method: payment.method ?? null,
       ...(status === "verified" ? { paid_at: paidAt } : {}),
       updated_at: new Date().toISOString(),
@@ -239,14 +280,41 @@ export async function POST(request: Request) {
     new Set((updatedPayments ?? []).map((row) => row.application_id).filter(Boolean)),
   );
 
-  await settleApplicationPayment(
+  if (!applicationIds.length) {
+    /*
+      Not an application payment. Credit reports and print jobs keep their own
+      tables, so nothing above matches them and they used to be left stranded
+      whenever the browser never came back from checkout: a paid credit report
+      stuck at payment_pending with no bureau call, a paid print job never
+      queued.
+    */
+    const handled =
+      status === "verified" && orderId
+        ? [
+            await completeCreditPayment({ orderId, paymentId, source: "webhook" }),
+            await completePrintPayment({ orderId, paymentId, paidAt, source: "webhook" }),
+          ].some((outcome) => outcome.handled)
+        : false;
+
+    return NextResponse.json({ received: true, handled });
+  }
+
+  const settlement = await settleApplicationPayment(
     supabase,
     applicationIds,
     status,
-    { id: payment.id, orderId: payment.order_id ?? null, method: payment.method ?? null },
+    { id: paymentId, orderId, method: payment.method ?? null },
     paidAt,
     "[razorpay/webhook]",
   );
+
+  if (settlement.failures.length) {
+    console.error("[razorpay/webhook] Settled with retryable failures", {
+      paymentId,
+      orderId,
+      failures: settlement.failures,
+    });
+  }
 
   return NextResponse.json({ received: true });
 }

@@ -3,33 +3,12 @@ import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
 import { calculateWalletRedeemBreakdown } from "@/lib/reward-rules";
-import { getRazorpayKeySecret } from "@/lib/razorpay";
+import { getRazorpayClient, getRazorpayKeySecret } from "@/lib/razorpay";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { redeemWalletForApplication } from "@/lib/wallet";
-import { createWalletIfMissing, processRewardsOnPaymentVerified } from "@/lib/rewards-wallet";
+import { createWalletIfMissing } from "@/lib/rewards-wallet";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
-import { scheduleCrmSync, scheduleCrmSyncMany } from "@/lib/crmSync";
-import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
-import { createInvoiceForApplication } from "@/lib/crm";
-import { createCommissionForApplication } from "@/lib/ap-commission-engine";
-import { markPaymentLinksPaid } from "@/lib/payments/mark-payment-links-paid";
-
-type ApplicationRow = {
-  id: string;
-  user_id: string | null;
-  customer_id: string | null;
-  customer_email: string | null;
-  customer_mobile: string | null;
-  customer_details: Record<string, unknown> | null;
-  service_name: string | null;
-  amount: number | null;
-  total_amount: number | null;
-  wallet_redeemed_amount: number | null;
-  fresh_payable_amount: number | null;
-  razorpay_order_id: string | null;
-  payment_status: string | null;
-  status: string | null;
-};
+import { rupeesToPaise } from "@/lib/payments/application-source";
+import { settleApplicationPayment } from "@/lib/payments/settle-application-payment";
 
 type VerifyPaymentBody = {
   razorpay_payment_id?: string;
@@ -56,6 +35,45 @@ function timingSafeEqualHex(a: string, b: string) {
   }
 
   return crypto.timingSafeEqual(left, right);
+}
+
+/**
+ * Confirm with Razorpay that the payment really was captured, for the amount we
+ * expect. A signature proves only that the payment belongs to this order; it
+ * says nothing about whether the money actually moved.
+ *
+ * Fails open when Razorpay cannot be reached: the order was created server-side
+ * at a server-computed price, so the signature already pins the amount. A
+ * reachable API reporting a real mismatch fails closed.
+ */
+async function assertPaymentCaptured(paymentId: string, expectedPaise: number) {
+  const razorpay = getRazorpayClient();
+
+  if (!razorpay) {
+    return { ok: true as const };
+  }
+
+  try {
+    const payment = (await razorpay.payments.fetch(paymentId)) as { amount?: number | string; status?: string };
+    const paidPaise = Number(payment.amount ?? 0);
+    const status = String(payment.status ?? "");
+
+    if (status !== "captured") {
+      return { ok: false as const, reason: "not_captured" as const, status, paidPaise };
+    }
+
+    if (expectedPaise > 0 && paidPaise !== expectedPaise) {
+      return { ok: false as const, reason: "amount_mismatch" as const, status, paidPaise };
+    }
+
+    return { ok: true as const };
+  } catch (error) {
+    console.warn("[razorpay/verify-payment] Razorpay payment lookup failed, continuing on signature alone", {
+      paymentId,
+      message: error instanceof Error ? error.message : "Unknown Razorpay error",
+    });
+    return { ok: true as const };
+  }
 }
 
 function devInfo(message: string, details?: Record<string, unknown>) {
@@ -136,6 +154,16 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdmin();
 
     if (!supabase) {
+      /*
+        Local convenience only. In production a missing service-role key must
+        never read back as a successful payment: the webhook is the fallback and
+        an operator needs to see this fail.
+      */
+      if (process.env.NODE_ENV === "production") {
+        console.error("[razorpay/verify-payment] Supabase admin client missing in production", { orderId, paymentId });
+        return jsonError("Payment received, but it could not be recorded. Our team will confirm it shortly.", 500);
+      }
+
       console.info("[razorpay/verify-payment] Supabase admin client missing - bypassing database updates in offline test mode", {
         orderId,
         paymentId,
@@ -184,12 +212,31 @@ export async function POST(request: Request) {
     const serviceAmount = applications.reduce((total, application) => total + Number(application.total_amount ?? application.amount ?? 0), 0);
     const walletRedeemedAmount = applications.reduce((total, application) => total + Number(application.wallet_redeemed_amount ?? 0), 0);
     const freshPayableAmount = applications.reduce((total, application) => total + Number(application.fresh_payable_amount ?? application.amount ?? 0), 0);
-    let cashbackResult: { processed?: boolean; cashback_amount?: number; first_service?: boolean; cashback_transaction_id?: string | null; referrer_transaction_id?: string | null } | null = null;
+    let cashbackResult: Awaited<ReturnType<typeof settleApplicationPayment>>["cashback"] = null;
 
     // Re-verifying an already-verified order must stay idempotent. The wallet was
     // already debited on the first pass, so recomputing the 50% cap against the
     // post-debit balance would reject a payment that is in fact complete.
     if (!alreadyVerified) {
+      const captured = await assertPaymentCaptured(paymentId, rupeesToPaise(freshPayableAmount));
+
+      if (!captured.ok) {
+        console.error("[razorpay/verify-payment] Razorpay payment is not a capture for this amount", {
+          orderId,
+          paymentId,
+          reason: captured.reason,
+          razorpayStatus: captured.status,
+          paidPaise: captured.paidPaise,
+          expectedPaise: rupeesToPaise(freshPayableAmount),
+        });
+        return jsonError(
+          captured.reason === "not_captured"
+            ? "Payment has not been captured yet. Please wait a moment and refresh."
+            : "Paid amount does not match this order. Please contact support.",
+          400,
+        );
+      }
+
       const wallet = await createWalletIfMissing(user.id);
       const redeemLimit = calculateWalletRedeemBreakdown({
         serviceAmount,
@@ -215,212 +262,98 @@ export async function POST(request: Request) {
     }
 
     if (!alreadyVerified) {
-      const { error: applicationUpdateError } = await supabase
-        .from("applications")
-        .update({
-          status: "submitted",
-          payment_status: "verified",
+      /*
+        Record the payment row first, the same way the webhook does, so the
+        settlement below finds the same trail whichever path got here first.
+      */
+      const { data: existingPayment } = await supabase
+        .from("payments")
+        .select("id")
+        .eq("razorpay_payment_id", paymentId)
+        .maybeSingle();
+
+      if (!existingPayment?.id) {
+        const { data: pendingPayment } = await supabase
+          .from("payments")
+          .select("id")
+          .eq("application_id", primaryApplication.id)
+          .eq("razorpay_order_id", orderId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const paymentPayload = {
+          application_id: primaryApplication.id,
+          user_id: user.id,
+          // The order was created for the whole cart, so the row records the
+          // whole cart, not just the first application's share of it.
+          amount: freshPayableAmount,
+          wallet_used_amount: walletRedeemedAmount,
+          real_payment_amount: freshPayableAmount,
+          status: "verified",
           razorpay_order_id: orderId,
           razorpay_payment_id: paymentId,
+          razorpay_signature: signature,
+          razorpay_status: "captured",
           paid_at: paidAt,
-          submitted_at: paidAt,
           updated_at: paidAt,
-        })
-        .in("id", applications.map((application) => application.id));
+        };
+        const paymentResult = pendingPayment?.id
+          ? await supabase.from("payments").update(paymentPayload).eq("id", pendingPayment.id)
+          : await supabase.from("payments").insert(paymentPayload);
 
-      if (applicationUpdateError) {
+        // 23505: the webhook inserted the same payment id a moment earlier.
+        if (paymentResult.error && paymentResult.error.code !== "23505") {
+          console.error("[razorpay/verify-payment] Payment row upsert failed after signature verification", {
+            orderId,
+            paymentId,
+            applicationId: primaryApplication.id,
+            error: paymentResult.error,
+          });
+          return jsonError("Payment verified, but payment record could not be saved. Please contact support.", 500);
+        }
+      }
+
+      /*
+        One shared settlement for every path into a paid application — status,
+        payment link, commission, wallet debit, cashback, invoice, CRM sync and
+        WhatsApp. The webhook runs exactly this, so a customer who closes the tab
+        mid-redirect still gets everything.
+      */
+      const settlement = await settleApplicationPayment(
+        supabase,
+        applications.map((application) => application.id),
+        "verified",
+        { id: paymentId, orderId, method: null },
+        paidAt,
+        "[razorpay/verify-payment]",
+      );
+
+      if (settlement.updateError) {
         console.error("[razorpay/verify-payment] Application payment update failed after signature verification", {
           orderId,
           paymentId,
           applicationIds,
-          error: applicationUpdateError,
+          error: settlement.updateError,
         });
         return jsonError("Payment verified, but application update failed. Please contact support.", 500);
       }
 
-    // 1. Settle any payment links covering these applications
-    await markPaymentLinksPaid(
-      supabase,
-      applications.map((app) => app.id),
-      { paidAt, razorpayOrderId: orderId, razorpayPaymentId: paymentId },
-      "[razorpay/verify-payment]",
-    );
+      cashbackResult = settlement.cashback;
 
-    // 2. Reserve partner commissions for referred/partner applications
-    try {
-      await Promise.all(
-        applications.map(async (app) => {
-          // Fetch full application to get agency_partner_id
-          const { data: fullApp } = await supabase
-            .from("applications")
-            .select("id, agency_partner_id, service_slug, service_name, amount")
-            .eq("id", app.id)
-            .single();
-
-          if (fullApp?.agency_partner_id) {
-            // Get partner tier details and service record
-            const [partnerRes, serviceRes] = await Promise.all([
-              supabase
-                .from("agency_partners")
-                .select("id, tier_id")
-                .eq("id", fullApp.agency_partner_id)
-                .maybeSingle(),
-              supabase
-                .from("services")
-                .select("id")
-                .eq("slug", fullApp.service_slug)
-                .maybeSingle()
-            ]);
-
-            const partner = partnerRes.data;
-            const service = serviceRes.data;
-
-            if (partner) {
-              const commissionRes = await createCommissionForApplication({
-                agencyPartnerId: partner.id,
-                applicationId: fullApp.id,
-                serviceSlug: fullApp.service_slug,
-                serviceName: fullApp.service_name,
-                saleAmount: Number(fullApp.amount),
-                tierId: partner.tier_id,
-                serviceId: service?.id || null,
-              });
-              console.info("[razorpay/verify-payment] Commission reserved:", commissionRes);
-            }
-          }
-        })
-      );
-    } catch (err) {
-      console.error("[razorpay/verify-payment] Failed to calculate/reserve partner commission:", err);
-    }
-
-    const { data: existingPayment } = await supabase
-      .from("payments")
-      .select("id, status")
-      .eq("razorpay_payment_id", paymentId)
-      .maybeSingle();
-
-    if (!existingPayment?.id) {
-      const { data: pendingPayment } = await supabase
-        .from("payments")
-        .select("id")
-        .eq("application_id", primaryApplication.id)
-        .eq("razorpay_order_id", orderId)
-        .maybeSingle();
-      const paymentPayload = {
-        application_id: primaryApplication.id,
-        user_id: user.id,
-        amount: Number(primaryApplication.fresh_payable_amount ?? primaryApplication.amount ?? 0),
-        wallet_used_amount: Number(primaryApplication.wallet_redeemed_amount ?? 0),
-        real_payment_amount: Number(primaryApplication.fresh_payable_amount ?? primaryApplication.amount ?? 0),
-        status: "verified",
-        razorpay_order_id: orderId,
-        razorpay_payment_id: paymentId,
-        razorpay_signature: signature,
-        razorpay_status: "verified",
-        paid_at: paidAt,
-        updated_at: paidAt,
-      };
-      const paymentResult = pendingPayment?.id
-        ? await supabase.from("payments").update(paymentPayload).eq("id", pendingPayment.id)
-        : await supabase.from("payments").insert(paymentPayload);
-
-      if (paymentResult.error) {
-        console.error("[razorpay/verify-payment] Payment row upsert failed after signature verification", {
+      if (settlement.failures.length) {
+        console.error("[razorpay/verify-payment] Settled with retryable failures", {
           orderId,
           paymentId,
-          applicationId: primaryApplication.id,
-          error: paymentResult.error,
+          failures: settlement.failures,
         });
-        return jsonError("Payment verified, but payment record could not be saved. Please contact support.", 500);
       }
-    }
 
-    if (walletRedeemedAmount > 0) {
-      try {
-        await redeemWalletForApplication({
-          userId: user.id,
-          applicationId: primaryApplication.id,
-          serviceName: applications.map((application) => application.service_name).join(", "),
-          orderAmount: applications.reduce((total, application) => total + Number(application.amount ?? 0), 0),
-          requestedAmount: walletRedeemedAmount,
-          maxRedemptionPercent: 50,
-        });
-      } catch (walletError) {
-        console.error("[razorpay/verify-payment] Wallet debit failed after signature verification", {
-          orderId,
-          paymentId,
-          applicationId: primaryApplication.id,
-          error: walletError,
-        });
-        return jsonError("Payment verified, but wallet debit could not be completed. Please contact support.", 500);
-      }
-    }
-
-    // Credit cashback and referral rewards immediately after payment verification
-    try {
-      cashbackResult = await processRewardsOnPaymentVerified(primaryApplication.id, user.id);
-      devInfo("[razorpay/verify-payment] Cashback processed", {
+      devInfo("[razorpay/verify-payment] Payment verified and application settled", {
         orderId,
         paymentId,
-        applicationId: primaryApplication.id,
-        cashbackResult,
+        applicationIds,
       });
-    } catch (cashbackError) {
-      // Log but don't fail the payment — cashback can be retried
-      console.error("[razorpay/verify-payment] Cashback credit failed (non-blocking)", {
-        orderId,
-        paymentId,
-        applicationId: primaryApplication.id,
-        error: cashbackError,
-      });
-    }
-
-    devInfo("[razorpay/verify-payment] Payment verified and application updated", {
-      orderId,
-      paymentId,
-      applicationIds,
-    });
-
-    await scheduleCrmSyncMany(applicationIds, "payment_updated");
-
-    try {
-      // Auto-create invoice from the application's own customer snapshot
-      // (these columns are part of the select above — do not fall back to
-      // placeholders while real values exist on the row).
-      const appData = primaryApplication as ApplicationRow;
-      const details = (appData.customer_details ?? {}) as { name?: string; email?: string; mobile?: string };
-      const customerName = details.name?.trim() || "Customer";
-      const customerEmail = (appData.customer_email || details.email || "").trim() || "no-reply@digiconnect.in";
-      const customerMobile = (appData.customer_mobile || details.mobile || "").trim() || "0000000000";
-      const serviceName = applications.map((a) => a.service_name).join(", ");
-      await createInvoiceForApplication({
-        applicationId: appData.id,
-        userId: user.id,
-        customerId: appData.customer_id || null,
-        customerName: customerName,
-        customerEmail: customerEmail,
-        customerMobile: customerMobile,
-        serviceName: serviceName,
-        amount: applications.reduce((total, application) => total + Number(application.amount ?? 0), 0),
-        paymentStatus: "verified",
-      });
-    } catch (invoiceErr) {
-      console.error("[razorpay/verify-payment] Invoice creation failed:", invoiceErr);
-    }
-
-    // After the invoice: its WhatsApp message already says "paid, here is
-    // your invoice", and triggerWhatsAppNotification skips payment_success
-    // when that message went out. Sends payment_success only if it did not.
-    try {
-      await triggerWhatsAppNotification("payment_success", primaryApplication.id, {
-        paymentId: paymentId
-      });
-      await scheduleCrmSync(primaryApplication.id, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
-    } catch (waError) {
-      console.error("WhatsApp trigger error for payment verification:", waError);
-    }
-
     } else {
       console.info("[razorpay/verify-payment] Order already verified. Skipping side-effects.", { orderId, paymentId });
     }
