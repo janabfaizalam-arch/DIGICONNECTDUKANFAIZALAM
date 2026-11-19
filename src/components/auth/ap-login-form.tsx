@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Lock, UserRound, ArrowUpRight, Info } from "lucide-react";
+import { Lock, UserRound, ArrowUpRight, Info, KeyRound, MessageCircle } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { useToast } from "@/components/providers/toast-provider";
 import { rearmPasswordPrompt } from "@/components/ap/password-setup-prompt";
-import { AuthButton, AuthHeading, GlassCard, TextField } from "@/components/auth/ui";
+import { APOtpLogin } from "@/components/auth/ap-otp-login";
+import { AuthButton, AuthHeading, GlassCard, SegmentedControl, TextField } from "@/components/auth/ui";
 import { postJson } from "@/components/auth/ui/request";
 import { trackLogin } from "@/lib/google-analytics";
 import { createClient } from "@/lib/supabase/browser";
@@ -26,6 +27,12 @@ export function ApLoginForm({ customerSignedIn = false }: { customerSignedIn?: b
   const [done, setDone] = useState(false);
   const [noticeDismissed, setNoticeDismissed] = useState(false);
   const submittingRef = useRef(false);
+
+  /*
+    Two ways in, one card. A partner who has forgotten their password should
+    not have to find a different page to use the number they know by heart.
+  */
+  const [mode, setMode] = useState<"password" | "otp">("password");
 
   function fail(message: string) {
     setError(message);
@@ -162,6 +169,25 @@ export function ApLoginForm({ customerSignedIn = false }: { customerSignedIn?: b
         </div>
       )}
 
+      <div className="mb-5">
+        <SegmentedControl
+          aria-label="Login ka tareeka"
+          value={mode}
+          onChange={(next) => {
+            setMode(next);
+            setError(null);
+          }}
+          disabled={loading}
+          options={[
+            { value: "password", label: "Password", icon: <KeyRound className="h-4 w-4" /> },
+            { value: "otp", label: "WhatsApp OTP", icon: <MessageCircle className="h-4 w-4" /> },
+          ]}
+        />
+      </div>
+
+      {mode === "otp" ? (
+        <APOtpLogin onUsePassword={() => setMode("password")} />
+      ) : (
       <form
         className="flex flex-col gap-5"
         onSubmit={(event) => {
@@ -194,6 +220,7 @@ export function ApLoginForm({ customerSignedIn = false }: { customerSignedIn?: b
           Sign In
         </AuthButton>
       </form>
+      )}
 
       <div className="flex flex-col items-center gap-3 border-t border-slate-100 pt-4 text-center">
         <div className="flex items-center gap-4 text-sm font-semibold text-slate-500">

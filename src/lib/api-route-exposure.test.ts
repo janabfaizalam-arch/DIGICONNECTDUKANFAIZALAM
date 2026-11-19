@@ -54,6 +54,13 @@ const KNOWN_UNAUTHENTICATED_WRITES = [
   // Auth endpoints themselves — they run before a session can exist.
   "auth/admin/login",
   "auth/ap/login",
+  // Partner WhatsApp sign-in. The code is the credential: hashed, expiring,
+  // attempt-capped and burned on use by `verifyOtpRequest` before anything
+  // else runs. The service role is used to mint a one-time magic-link token
+  // for the account that number belongs to and to stamp last_login_at; the
+  // partner is signed straight out again if the access check refuses them.
+  "auth/ap/otp/verify",
+
   // The DC Partner login the UI actually posts to. Its only service-role write
   // is stamping profiles.last_login_at on the user who has just authenticated
   // and passed the access check — no row is created and nothing else is
