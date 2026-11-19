@@ -73,6 +73,23 @@ export function ApLoginForm({ customerSignedIn = false }: { customerSignedIn?: b
         return;
       }
 
+      /*
+        The server answered, and answered 2xx. Whatever it says, it has handled
+        this sign-in -- the session may already be set -- so trying a different
+        mechanism underneath it can only produce a wrong answer.
+
+        This is what turned a successful login into "Invalid username or
+        password": agent-login returned 200 without the `ok: true` that
+        postJson requires, the form read that as a failure, and the fallback
+        below then tried to sign in with a mobile number as an email address.
+        The route sends the flag now; this makes the class of bug impossible
+        rather than just fixing the one instance.
+      */
+      if (agent.status >= 200 && agent.status < 300) {
+        fail(agent.data?.message || "Login could not be completed. Please refresh and try again.");
+        return;
+      }
+
       // Stage 2 — Supabase agency-partner auth fallback
       const supabase = createClient();
       if (!supabase) {
