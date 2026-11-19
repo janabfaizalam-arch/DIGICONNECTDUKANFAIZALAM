@@ -455,6 +455,12 @@ const CUSTOMER_GROUPS: AdminNavGroup[] = [
         description: "Why a signup OTP did or did not reach WhatsApp",
         icon: Stethoscope,
       },
+      {
+        href: "/admin/diagnostics/payments",
+        label: "Razorpay Health",
+        description: "Which account takes your payments, and which orders are stuck",
+        icon: Stethoscope,
+      },
     ],
   },
   {
