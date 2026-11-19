@@ -58,6 +58,8 @@ const REVIEWED_PUBLIC = {
   "auth/admin/login": "sign-in; per-IP limit + per-account PIN lockout",
   "auth/agent-login": "legacy partner sign-in; rate-limited",
   "auth/ap/login": "partner sign-in; per-IP limit + per-account lockout",
+  "auth/ap/otp/verify":
+    "partner WhatsApp sign-in; the code is the credential \u2014 hashed, 5-minute expiry, attempt ceiling, burned on use; per-IP limit; the service role only mints a one-time magic-link token for the account the number belongs to, and the partner is signed out again if the access check fails",
   "crm/event": "lead scoring; rate-limited, event allowlist, cannot overwrite names",
   "insurance-quotation/[token]/accept": "unguessable token is the credential; rate-limited",
   lead: "public enquiry form; rate-limited, file type/size checked",

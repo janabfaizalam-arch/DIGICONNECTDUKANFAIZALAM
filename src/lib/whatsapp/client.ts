@@ -41,6 +41,7 @@ export type WhatsAppOtpPurpose =
   | "password_reset"
   | "login"
   | "login_otp"
+  | "partner_login"
   | "change_phone"
   | "security_verification";
 
@@ -334,6 +335,7 @@ export function resolveOtpTemplate(purpose: string, env: NodeJS.ProcessEnv = pro
       break;
     case "login":
     case "login_otp":
+    case "partner_login":
       key = "login_otp";
       break;
     case "forgot_pin":

@@ -5,7 +5,13 @@ import {
   type WhatsAppOtpPurpose,
 } from "@/lib/whatsapp/client";
 
-export type OtpPurpose = "customer_signup" | "forgot_pin" | "change_phone" | "security_verification";
+export type OtpPurpose =
+  | "customer_signup"
+  | "forgot_pin"
+  | "change_phone"
+  | "security_verification"
+  /** DC Partner signing in with their mobile number. */
+  | "partner_login";
 
 export { generateOtp, hashOtp, verifyOtpHash };
 
