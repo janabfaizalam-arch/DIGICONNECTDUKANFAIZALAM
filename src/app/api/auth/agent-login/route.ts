@@ -205,7 +205,21 @@ export async function POST(request: Request) {
       }
     }
 
+    /*
+      The success flag below is not decoration: `postJson`, which the partner
+      login form uses, treats a 200 without it as a failure.
+
+      Without it the form fell through to its Supabase fallback, which signs in
+      with the identifier as an email address -- so a partner typing their
+      mobile number was told "Invalid username or password" by a sign-in that
+      had already succeeded and set their session. Closing the page and opening
+      it again dropped them straight into the panel, which is exactly what
+      partners reported.
+
+      Both of the other auth routes the forms post to already return it.
+    */
     const response = NextResponse.json({
+      ok: true,
       message: "DC Partner login successful.",
       destination: "/ap/dashboard",
       redirectTo: "/ap/dashboard",
