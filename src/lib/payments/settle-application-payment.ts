@@ -1,8 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { createCommissionForApplication } from "@/lib/ap-commission-engine";
+import { createInvoiceForApplication } from "@/lib/crm";
 import { scheduleCrmSync, scheduleCrmSyncMany } from "@/lib/crmSync";
 import { markPaymentLinksPaid } from "@/lib/payments/mark-payment-links-paid";
+import { processRewardsOnPaymentVerified } from "@/lib/rewards-wallet";
+import { redeemWalletForApplication } from "@/lib/wallet";
 import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
 
 /**
@@ -20,6 +23,20 @@ import { triggerWhatsAppNotification } from "@/lib/whatsapp-automation";
  * partner's commission reserved, the CRM sync, the customer's WhatsApp. So the
  * work lives here and the route decides only *which* applications it applies
  * to and *how it found them*.
+ *
+ * It also owns the money side of settling -- debiting the wallet credits the
+ * discount was based on, crediting cashback and referral rewards, and raising
+ * the invoice. Those used to run only in /api/verify-payment, which the browser
+ * calls on its way back from checkout. A customer who closed the tab during the
+ * redirect therefore kept their wallet balance, never got cashback and had no
+ * invoice, while the webhook still marked the application paid. Keeping every
+ * step here means whichever path arrives first completes the order.
+ *
+ * Every step is idempotent, so the second path to arrive is a no-op:
+ *   wallet debit      -> wallet_transactions.idempotency_key
+ *   cashback/referral -> process_rewards_on_payment_verified (already_processed)
+ *   commission        -> existing-row check + unique constraint
+ *   invoice           -> returns the application's existing invoice
  */
 
 export type PaymentStatus = "verified" | "failed" | "pending";
@@ -46,6 +63,20 @@ const PAYMENT_STAGE_STATUSES = [
   "submitted",
 ];
 
+export type SettlementResult = {
+  /** Applications that crossed into paid on this call. */
+  transitionedIds: string[];
+  cashback: {
+    processed?: boolean;
+    cashback_amount?: number;
+    first_service?: boolean;
+  } | null;
+  /** Steps that threw. The payment itself stands; these are retryable. */
+  failures: string[];
+  /** Set when the applications could not be marked paid at all. */
+  updateError: string | null;
+};
+
 export async function settleApplicationPayment(
   supabase: SupabaseClient,
   applicationIds: string[],
@@ -53,8 +84,30 @@ export async function settleApplicationPayment(
   payment: SettlementPayment,
   paidAt: string,
   logPrefix: string,
-): Promise<void> {
-  if (!applicationIds.length) return;
+): Promise<SettlementResult> {
+  const result: SettlementResult = {
+    transitionedIds: [],
+    cashback: null,
+    failures: [],
+    updateError: null,
+  };
+
+  if (!applicationIds.length) return result;
+
+  /*
+    Which applications are crossing into paid on this event? Read it before any
+    update, because the money steps below must run exactly once and a replayed
+    webhook (or a verify call racing the webhook) must not send a second
+    WhatsApp or re-raise an invoice.
+  */
+  const { data: priorRows } = await supabase
+    .from("applications")
+    .select("id, payment_status")
+    .in("id", applicationIds);
+
+  const transitionedIds = (priorRows ?? [])
+    .filter((row) => row.payment_status !== "verified")
+    .map((row) => row.id as string);
 
   // Payment facts (payment_status, razorpay ids, paid_at) always apply,
   // whatever stage the application has reached -- only the downgrade of a
@@ -97,10 +150,19 @@ export async function settleApplicationPayment(
     invoicesUpdate = invoicesUpdate.neq("payment_status", "verified");
   }
 
-  await applicationPaymentUpdate;
+  const { error: paymentUpdateError } = await applicationPaymentUpdate;
+
+  if (paymentUpdateError) {
+    console.error(`${logPrefix} Could not mark applications paid:`, paymentUpdateError);
+    result.updateError = paymentUpdateError.message;
+    return result;
+  }
+
   await Promise.all([applicationStatusUpdate, invoicesUpdate]);
 
-  if (status !== "verified") return;
+  if (status !== "verified") return result;
+
+  result.transitionedIds = transitionedIds;
 
   // 1. Settle any payment links covering these applications
   await markPaymentLinksPaid(
@@ -150,14 +212,108 @@ export async function settleApplicationPayment(
     console.error(`${logPrefix} Failed to calculate/reserve partner commission:`, err);
   }
 
+  // 3. The money steps, once per application, for the ones that just became paid
+  if (transitionedIds.length) {
+    const { data: paidRows } = await supabase
+      .from("applications")
+      .select(
+        "id, user_id, customer_id, customer_email, customer_mobile, customer_details, service_name, amount, total_amount, wallet_redeemed_amount, fresh_payable_amount",
+      )
+      .in("id", transitionedIds);
+
+    const rows = (paidRows ?? []) as SettlementApplicationRow[];
+
+    if (rows.length) {
+      const primary = rows[0];
+      const userId = primary.user_id ?? null;
+      const serviceAmount = rows.reduce((total, row) => total + Number(row.amount ?? 0), 0);
+      const walletRedeemed = rows.reduce((total, row) => total + Number(row.wallet_redeemed_amount ?? 0), 0);
+      const serviceNames = rows.map((row) => row.service_name).filter(Boolean).join(", ");
+
+      /*
+        Take the wallet credits out. The discount they paid for was already
+        applied to the Razorpay amount, so skipping this hands the customer
+        their credits back for free.
+      */
+      if (walletRedeemed > 0 && userId) {
+        try {
+          await redeemWalletForApplication({
+            userId,
+            applicationId: primary.id,
+            serviceName: serviceNames,
+            orderAmount: serviceAmount,
+            requestedAmount: walletRedeemed,
+            maxRedemptionPercent: 50,
+          });
+        } catch (walletError) {
+          console.error(`${logPrefix} Wallet debit failed:`, walletError);
+          result.failures.push("wallet_debit");
+        }
+      }
+
+      if (userId) {
+        try {
+          const rewards = await processRewardsOnPaymentVerified(primary.id, userId);
+          result.cashback = rewards
+            ? {
+                processed: rewards.processed,
+                cashback_amount: rewards.cashback_amount,
+                first_service: rewards.first_service,
+              }
+            : null;
+        } catch (rewardError) {
+          console.error(`${logPrefix} Cashback/referral rewards failed:`, rewardError);
+          result.failures.push("rewards");
+        }
+      }
+
+      try {
+        const details = (primary.customer_details ?? {}) as { name?: string; email?: string; mobile?: string };
+        await createInvoiceForApplication({
+          applicationId: primary.id,
+          userId,
+          customerId: primary.customer_id ?? null,
+          customerName: details.name?.trim() || "Customer",
+          customerEmail: (primary.customer_email || details.email || "").trim() || "no-reply@digiconnect.in",
+          customerMobile: (primary.customer_mobile || details.mobile || "").trim() || "0000000000",
+          serviceName: serviceNames,
+          amount: serviceAmount,
+          paymentStatus: "verified",
+        });
+      } catch (invoiceError) {
+        console.error(`${logPrefix} Invoice creation failed:`, invoiceError);
+        result.failures.push("invoice");
+      }
+    }
+  }
+
   await scheduleCrmSyncMany(applicationIds, "payment_updated");
 
+  // Only the applications that just became paid get a message; a replayed
+  // webhook must not tell the customer twice.
   try {
-    for (const appId of applicationIds) {
+    for (const appId of transitionedIds) {
       await triggerWhatsAppNotification("payment_success", appId, { paymentId: payment.id });
       await scheduleCrmSync(appId, "whatsapp_sent", { payload: { whatsappStatus: "Sent" } });
     }
   } catch (waError) {
     console.error(`${logPrefix} WhatsApp trigger error:`, waError);
+    result.failures.push("whatsapp");
   }
+
+  return result;
 }
+
+type SettlementApplicationRow = {
+  id: string;
+  user_id: string | null;
+  customer_id: string | null;
+  customer_email: string | null;
+  customer_mobile: string | null;
+  customer_details: Record<string, unknown> | null;
+  service_name: string | null;
+  amount: number | null;
+  total_amount: number | null;
+  wallet_redeemed_amount: number | null;
+  fresh_payable_amount: number | null;
+};

@@ -65,10 +65,10 @@ describe("order creation", () => {
 
 describe("settlement", () => {
   it("finds links through the cart table, in both payment paths", () => {
-    // verify-payment settles inline; the webhook now delegates to the shared
-    // settlement, which is also what the UPI QR path uses. Either way the
-    // call has to be reachable.
-    expect(read("src/app/api/verify-payment/route.ts")).toContain("markPaymentLinksPaid");
+    // Every path into a paid application now goes through the one shared
+    // settlement — the browser's verify call, the webhook, and the UPI QR
+    // branch — and that is where payment links are settled.
+    expect(read("src/app/api/verify-payment/route.ts")).toContain("settleApplicationPayment");
     expect(read("src/app/api/razorpay/webhook/route.ts")).toContain("settleApplicationPayment");
     expect(read("src/lib/payments/settle-application-payment.ts")).toContain("markPaymentLinksPaid");
 

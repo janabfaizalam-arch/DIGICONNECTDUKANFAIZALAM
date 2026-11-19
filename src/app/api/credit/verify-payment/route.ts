@@ -11,6 +11,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { creditPaymentVerifySchema } from "@/lib/credit/validators";
 import { processCreditScoreCheck } from "@/lib/credit/client";
+import { claimCreditReportForProcessing } from "@/lib/payments/complete-non-application-payment";
 
 function timingSafeEqualHex(a: string, b: string) {
   const left = Buffer.from(a, "hex");
@@ -151,7 +152,20 @@ export async function POST(request: Request) {
       // Non-blocking for the check execution, but logged
     }
 
-    // 6. Trigger end-to-end score retrieval from Unifers
+    // 6. Trigger end-to-end score retrieval from Unifers.
+    // Claim the row first: the Razorpay webhook runs this same step for a
+    // customer who never made it back here, and the bureau bills per call.
+    const claimed = await claimCreditReportForProcessing(record.id);
+
+    if (!claimed) {
+      return NextResponse.json({
+        success: true,
+        message: "Payment verified. Your credit report is already being prepared.",
+        result: null,
+        already_processing: true,
+      });
+    }
+
     const scoreResult = await processCreditScoreCheck(record.id, user.id);
 
     return NextResponse.json({

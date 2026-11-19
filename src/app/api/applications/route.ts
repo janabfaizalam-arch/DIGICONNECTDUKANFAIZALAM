@@ -328,9 +328,12 @@ function isVerifiedRazorpayPayment(value: VerifiedRazorpayPayment | null | undef
     .update(`${value.razorpay_order_id}|${value.razorpay_payment_id}`)
     .digest("hex");
 
-  // IMPORTANT: Only the HMAC signature is verified here.
-  // The amount was already verified by Razorpay's servers during /api/verify-payment.
-  // Checking amount_paise here caused false negatives due to floating-point recalculation drift.
+  // Only the HMAC signature is checked here, and a signature proves exactly one
+  // thing: this payment belongs to that order. It says nothing about the amount
+  // or about whether the money was captured. The amount holds because the order
+  // was created server-side at a server-computed price, and the live
+  // amount/capture check against Razorpay happens below.
+  // (Recomputing the expected paise here caused float-drift false negatives.)
   return expectedSignature === value.razorpay_signature;
 }
 
@@ -586,6 +589,21 @@ export async function POST(request: Request) {
       Number(razorpayDetails.amount) !== expectedRazorpayAmountPaise
     ) {
       return jsonError("Verified Razorpay amount does not match payable amount.", 400);
+    }
+
+    // An authorized-but-uncaptured payment is a hold that can lapse, so it must
+    // not submit an application as paid. Skipped when Razorpay could not be
+    // reached, since the signature still binds the payment to a priced order.
+    if (
+      hasVerifiedRazorpayPayment &&
+      razorpayDetails?.status !== undefined &&
+      razorpayDetails.status !== "captured"
+    ) {
+      console.error("[applications] Razorpay payment is not captured", {
+        paymentId: body.razorpayPayment?.razorpay_payment_id,
+        status: razorpayDetails.status,
+      });
+      return jsonError("Payment has not been captured yet. Please wait a moment and try again.", 400);
     }
 
     const paidAt = razorpayDetails?.created_at

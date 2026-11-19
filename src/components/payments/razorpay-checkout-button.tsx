@@ -131,6 +131,10 @@ type RazorpayCheckoutButtonProps = {
   onVerified: (payment: VerifiedRazorpayPayment) => void;
 };
 
+/** Shown when the payment went through but this tab could not confirm it. */
+const PAYMENT_PENDING_CONFIRMATION =
+  "Payment received. We could not confirm it in this tab — it will be confirmed automatically in a few minutes.";
+
 async function readApiResponse<T extends { message?: string; error?: string }>(response: Response): Promise<T> {
   try {
     return (await response.json()) as T;
@@ -193,6 +197,14 @@ export function RazorpayCheckoutButton({
       toastError("Payment amount must be at least ₹1.");
       return;
     }
+
+    /*
+      Without this the isPending guard above never fires: the button stays
+      enabled, the spinner and its step text never show, and a double click
+      creates two Razorpay orders.
+    */
+    setIsPending(true);
+    setPaymentStep("creating");
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
@@ -291,21 +303,50 @@ export function RazorpayCheckoutButton({
         handler: async (payment: RazorpaySuccessResponse) => {
           try {
             setPaymentStep("verifying");
-            const verifyResponse = await fetch("/api/verify-payment", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                ...payment,
-                application_id: order.application_id,
-                application_ids: order.application_ids,
-              }),
-            });
-            const verifyResult = await readApiResponse<VerifyPaymentResponse>(verifyResponse);
 
-            if (!verifyResponse.ok || !verifyResult.success) {
-              throw new Error(verifyResult.error || verifyResult.message || "Payment verification failed.");
+            /*
+              The money has already left the customer's account by now, so a
+              flaky connection must not be the end of it: retry once, and if
+              that fails too, say what is actually true. Razorpay's webhook
+              confirms the payment server-side whatever this tab does.
+            */
+            let verifyResponse: Response | null = null;
+            let verifyResult: VerifyPaymentResponse = {};
+
+            for (let attempt = 0; attempt < 2; attempt += 1) {
+              if (attempt > 0) {
+                await new Promise((resolve) => setTimeout(resolve, 1500));
+              }
+
+              try {
+                verifyResponse = await fetch("/api/verify-payment", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    ...payment,
+                    application_id: order.application_id,
+                    application_ids: order.application_ids,
+                  }),
+                });
+                verifyResult = await readApiResponse<VerifyPaymentResponse>(verifyResponse);
+              } catch {
+                verifyResponse = null;
+              }
+
+              if (verifyResponse?.ok && verifyResult.success) break;
+
+              // A rejection the server is sure about will not change on a retry.
+              if (verifyResponse && verifyResponse.status >= 400 && verifyResponse.status < 500) break;
+            }
+
+            if (!verifyResponse?.ok || !verifyResult.success) {
+              throw new Error(
+                verifyResult.error ||
+                  verifyResult.message ||
+                  PAYMENT_PENDING_CONFIRMATION,
+              );
             }
 
             onVerified({
@@ -317,7 +358,7 @@ export function RazorpayCheckoutButton({
             trackGooglePurchase(amountPaise / 100);
             success("Payment verified successfully.");
           } catch (error) {
-            toastError(error instanceof Error ? error.message : "Payment verification failed.");
+            toastError(error instanceof Error ? error.message : PAYMENT_PENDING_CONFIRMATION);
           } finally {
             setIsPending(false);
             setPaymentStep("idle");
