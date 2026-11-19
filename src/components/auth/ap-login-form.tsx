@@ -86,7 +86,12 @@ export function ApLoginForm({ customerSignedIn = false }: { customerSignedIn?: b
         rather than just fixing the one instance.
       */
       if (agent.status >= 200 && agent.status < 300) {
-        fail(agent.data?.message || "Login could not be completed. Please refresh and try again.");
+        /*
+          Deliberately not the server's own `message`. On a 2xx that is a
+          success string, and showing "DC Partner login successful." inside a
+          red error box tells the partner nothing they can act on.
+        */
+        fail("Login could not be completed. Please refresh the page and try again.");
         return;
       }
 
