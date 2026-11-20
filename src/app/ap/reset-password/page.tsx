@@ -45,12 +45,12 @@ export default function APResetPasswordPage() {
     if (isPending) return;
 
     if (linkState !== "ready") {
-      toastError("Reset link purana ya galat hai. Forgot password se naya link mangwaiye.");
+      toastError("This reset link has expired or is invalid. Request a new one.");
       return;
     }
 
     if (password.length < 8) {
-      toastError("Password kam se kam 8 character ka rakhiye.");
+      toastError("Use at least 8 characters.");
       return;
     }
 
@@ -75,11 +75,11 @@ export default function APResetPasswordPage() {
         });
         if (!response.ok) {
           const body = (await response.json().catch(() => ({}))) as { error?: string };
-          throw new Error(body.error || "Password badal nahi paaye. Dobara try kijiye.");
+          throw new Error(body.error || "Could not save the password. Try again.");
         }
 
         await supabase.auth.signOut();
-        success("Naya password set ho gaya. Ab login kijiye.");
+        success("New password saved. Please sign in.");
         router.push("/ap/login");
       } catch (error) {
         toastError(error instanceof Error ? error.message : "Password reset failed.");
@@ -121,11 +121,11 @@ export default function APResetPasswordPage() {
         >
           {linkState === "invalid" ? (
             <p className="rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs font-semibold leading-relaxed text-amber-200">
-              Ye reset link purana ya galat hai (link 1 ghante tak hi chalta hai).{" "}
+              This reset link has expired or is invalid (links work for 1 hour).{" "}
               <a href="/ap/forgot-password" className="underline">
-                Forgot password
-              </a>{" "}
-              se naya link mangwaiye.
+                Request a new link
+              </a>
+              .
             </p>
           ) : null}
           <form onSubmit={onSubmit} className="space-y-4">
@@ -135,7 +135,7 @@ export default function APResetPasswordPage() {
                 <KeyRound className="pointer-events-none absolute left-4.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Kam se kam 8 character"
+                  placeholder="At least 8 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
