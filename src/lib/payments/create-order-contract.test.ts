@@ -69,4 +69,31 @@ describe("DC Partner payment preparation contract", () => {
     expect(contents).toContain("getPartnerMembership");
     expect(contents).toContain("agency_partner_id");
   });
+
+  /*
+    The customer waits through every one of these with the checkout still
+    closed, and the database is not in the same region as this function, so a
+    round trip is expensive. Independent lookups must not go back to running
+    one after the other.
+  */
+  describe("nothing independent waits its turn", () => {
+    const source = readFileSync(join(process.cwd(), "src/app/api/create-order/route.ts"), "utf8");
+
+    it("asks for the referral, the partner and the membership together", () => {
+      expect(source).toContain("const [referralResult, ap, partnerMembership] = await Promise.all(");
+    });
+
+    it("prices a whole cart in one round trip, not one per service", () => {
+      expect(source).toContain("await Promise.all(serviceSlugs.map((slug) => getAgentServiceBySlug(slug)))");
+      // The old shape: a lookup awaited inside the loop over the cart.
+      expect(source).not.toContain("for (const slug of serviceSlugs) {");
+    });
+
+    it("links the order, writes the pending payment and enqueues CRM together", () => {
+      expect(source).toContain(
+        "const [{ error: applicationUpdateError }, { error: paymentInsertError }] = await Promise.all(",
+      );
+      expect(source).toContain('scheduleCrmSyncMany(applicationIds, "application_created")');
+    });
+  });
 });
