@@ -94,6 +94,17 @@ export async function getWalletBalance(agencyPartnerId: string): Promise<number>
   return result.ok ? result.balance : 0;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * `created_by` is a uuid column (the admin who made the entry). System callers
+ * pass a label such as "razorpayx-webhook"; writing that failed the whole
+ * insert, so a refund never landed. A label is not a person: store null.
+ */
+export function ledgerActor(createdBy: string | null | undefined): string | null {
+  return createdBy && UUID_RE.test(createdBy) ? createdBy : null;
+}
+
 /**
  * Append a ledger entry. Computes running_balance automatically.
  */
@@ -129,7 +140,7 @@ async function appendLedgerEntry(params: {
       reference_type: params.referenceType ?? null,
       reference_id: params.referenceId ?? null,
       description: params.description ?? null,
-      created_by: params.createdBy ?? null,
+      created_by: ledgerActor(params.createdBy),
     })
     .select("id")
     .single();
