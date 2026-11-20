@@ -66,12 +66,16 @@ export default function APResetPasswordPage() {
           throw new Error("Could not initialize authentication client.");
         }
 
-        const { error } = await supabase.auth.updateUser({
-          password: password,
+        // Through the partner route, not updateUser: it also clears
+        // must_change_password, so the "set your password" prompt stops.
+        const response = await fetch("/api/auth/ap/change-password", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ newPassword: password, confirmPassword: confirmPassword }),
         });
-
-        if (error) {
-          throw error;
+        if (!response.ok) {
+          const body = (await response.json().catch(() => ({}))) as { error?: string };
+          throw new Error(body.error || "Password badal nahi paaye. Dobara try kijiye.");
         }
 
         await supabase.auth.signOut();
