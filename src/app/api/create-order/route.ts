@@ -15,6 +15,29 @@ import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit
 import { resolveApplicationSourceEnum, resolveSourceChannel, rupeesToPaise } from "@/lib/payments/application-source";
 import { getPartnerMembership } from "@/lib/auth/memberships";
 import { scheduleCrmSyncMany } from "@/lib/crmSync";
+import { releaseHoldsForApplications, releaseReserve, releaseUnclaimedReserve, reserveWalletForApplication } from "@/lib/payments/wallet-application-payment";
+
+/**
+ * A DC Partner's wallet hold taken for this request. If the request ends in an
+ * error the hold is given back at once; otherwise it is claimed by the
+ * application (wallet-only) or on payment verification, and an abandoned one
+ * is released by the partner's next checkout.
+ */
+type OrderContext = { partnerReserve: { partnerId: string; id: string; amount: number } | null };
+
+export async function POST(request: Request) {
+  const ctx: OrderContext = { partnerReserve: null };
+  const response = await createOrder(request, ctx);
+  if (ctx.partnerReserve && response.status >= 400) {
+    await releaseReserve(
+      ctx.partnerReserve.partnerId,
+      ctx.partnerReserve.id,
+      ctx.partnerReserve.amount,
+      "Payment taiyaar nahi ho paya — amount wapas wallet mein",
+    );
+  }
+  return response;
+}
 
 type CreateOrderBody = {
   amount?: number;
@@ -23,6 +46,10 @@ type CreateOrderBody = {
   serviceSlug?: string;
   serviceSlugs?: string[];
   walletUseAmount?: number;
+  /** DC Partner checkout: pay what the partner's own wallet holds first. */
+  usePartnerWallet?: boolean;
+  /** The same checkout prepared earlier; its wallet hold is given back. */
+  replacesApplicationIds?: string[];
   couponCode?: string;
   applicationId?: string;
   applicationIds?: string[];
@@ -112,7 +139,7 @@ function getCustomerValidationError(customer: ReturnType<typeof normalizeCustome
 }
 
 
-export async function POST(request: Request) {
+async function createOrder(request: Request, ctx: OrderContext) {
   try {
     const rateLimit = checkRateLimit(`create-order:${getClientIp(request)}`, 20, 60_000);
 
@@ -310,15 +337,44 @@ export async function POST(request: Request) {
 
       const finalAmountBeforeWallet = serviceAmount - couponDiscount;
 
-      const requestedWalletAmount = Math.max(0, Math.round(Number(body?.walletUseAmount ?? 0)));
+      /*
+        A DC Partner pays from their own wallet first (ap_wallet_ledger, the
+        scores credited for completed services), then Razorpay for the rest.
+        The wallet share is held now, because the Razorpay amount depends on it.
+      */
+      let partnerWalletAmount = 0;
+      const partnerIdForWallet = ap?.id || partnerIdFromMembership || null;
+      if (isPartnerFlow && Array.isArray(body?.replacesApplicationIds) && body.replacesApplicationIds.length) {
+        await releaseHoldsForApplications(
+          user.id,
+          body.replacesApplicationIds.filter((id): id is string => typeof id === "string"),
+        );
+      }
+      if (body?.usePartnerWallet === true && isPartnerFlow && partnerIdForWallet && finalAmountBeforeWallet > 0) {
+        const reserved = await reserveWalletForApplication({
+          agencyPartnerId: partnerIdForWallet,
+          price: finalAmountBeforeWallet,
+          serviceName: services.map((service) => service.title).join(", "),
+        });
+        if (!reserved.ok) return jsonError(reserved.error, 409, "partner_wallet_reserve_failed");
+        if (reserved.reserveId && reserved.split.fromWallet > 0) {
+          ctx.partnerReserve = { partnerId: partnerIdForWallet, id: reserved.reserveId, amount: reserved.split.fromWallet };
+          partnerWalletAmount = Math.min(reserved.split.fromWallet, finalAmountBeforeWallet);
+        }
+      } else if (isPartnerFlow && partnerIdForWallet && body?.usePartnerWallet === false) {
+        // Wallet switched off: an earlier hold from this checkout goes back.
+        await releaseUnclaimedReserve(partnerIdForWallet);
+      }
+
+      const requestedWalletAmount = partnerWalletAmount > 0 ? 0 : Math.max(0, Math.round(Number(body?.walletUseAmount ?? 0)));
       const wallet = await createWalletIfMissing(user.id);
       const redeem = calculateWalletRedeemBreakdown({
         serviceAmount: finalAmountBeforeWallet,
         walletBalance: Number(wallet.balance ?? 0),
         requestedRedeem: requestedWalletAmount,
       });
-      walletRedeemAmount = redeem.walletRedeem;
-      const freshPayableAmount = redeem.freshPayable;
+      walletRedeemAmount = partnerWalletAmount > 0 ? partnerWalletAmount : redeem.walletRedeem;
+      const freshPayableAmount = partnerWalletAmount > 0 ? finalAmountBeforeWallet - partnerWalletAmount : redeem.freshPayable;
       const expectedAmount = rupeesToPaise(freshPayableAmount);
 
       if (redeem.wasClamped) {
@@ -333,7 +389,7 @@ export async function POST(request: Request) {
       // Always override with authoritative server amount
       amount = expectedAmount;
 
-      if (finalAmountBeforeWallet > 0 && freshPayableAmount < redeem.minimumFreshPayable) {
+      if (partnerWalletAmount === 0 && finalAmountBeforeWallet > 0 && freshPayableAmount < redeem.minimumFreshPayable) {
         return jsonError("Wallet redeem cannot exceed 50% of wallet balance and 50% of service amount", 400);
       }
 
@@ -445,7 +501,7 @@ export async function POST(request: Request) {
           })),
         };
         const metadata = {
-          source: "wallet_only_payment",
+          source: partnerWalletAmount > 0 ? "partner_wallet_payment" : "wallet_only_payment",
           coupon_code: couponCode || null,
           coupon_discount: couponDiscount,
           original_price: serviceAmount,
@@ -460,7 +516,7 @@ export async function POST(request: Request) {
         };
 
         let remainingWalletToAllocate = walletRedeemAmount;
-        const applicationsToInsert = services.map((service) => {
+        const applicationsToInsert = services.map((service, index) => {
           let serviceAmountForRow = Number(service.customer_fee);
           if (service.slug === "cm-yuva-entrepreneur-loan-assistance" && couponDiscount > 0) {
             serviceAmountForRow = serviceAmountForRow - couponDiscount;
@@ -493,6 +549,8 @@ export async function POST(request: Request) {
             customer_details: customerDetails,
             service_snapshot: serviceSnapshot,
             metadata,
+            // The first application claims the partner's wallet hold.
+            ...(index === 0 && ctx.partnerReserve ? { wallet_reserve_id: ctx.partnerReserve.id } : {}),
             status: "submitted",
             payment_status: "verified",
             paid_at: paidAt,
@@ -530,9 +588,13 @@ export async function POST(request: Request) {
 
         const walletAppIds = applications.map((a) => a.id);
         const primaryAppId = walletAppIds[0];
+        // Claimed by the application row: nothing to give back from here on.
+        const paidFromPartnerWallet = Boolean(ctx.partnerReserve);
+        ctx.partnerReserve = null;
 
-        // Debit wallet server-side
-        try {
+        // Debit wallet server-side (the customer's reward wallet; a partner's
+        // wallet was already debited by the hold).
+        if (!paidFromPartnerWallet) try {
           await redeemRewardWalletDirect({
             userId: user.id,
             applicationId: primaryAppId,
@@ -559,7 +621,7 @@ export async function POST(request: Request) {
         });
 
         // Process cashback (will be ₹0 since fresh amount is 0)
-        try {
+        if (!paidFromPartnerWallet) try {
           await processRewardsOnPaymentVerified(primaryAppId, user.id);
         } catch (cashbackError) {
           console.error("[razorpay/create-order] Cashback processing failed for wallet-only order (non-blocking)", cashbackError);
@@ -575,6 +637,7 @@ export async function POST(request: Request) {
           application_ids: walletAppIds,
           wallet_only: true,
           message: "Service paid using DigiWallet. No Razorpay payment required.",
+          partner_wallet_used: paidFromPartnerWallet ? walletRedeemAmount : 0,
           servicePrice: serviceAmount,
           walletUsed: walletRedeemAmount,
           rewardUsed: walletRedeemAmount,
@@ -728,7 +791,7 @@ export async function POST(request: Request) {
           },
         };
         let remainingWalletToAllocate = walletRedeemAmount;
-        const applicationsToInsert = services.map((service) => {
+        const applicationsToInsert = services.map((service, index) => {
           let serviceAmountForRow = Number(service.customer_fee);
           if (service.slug === "cm-yuva-entrepreneur-loan-assistance" && couponDiscount > 0) {
             serviceAmountForRow = serviceAmountForRow - couponDiscount;
@@ -761,7 +824,12 @@ export async function POST(request: Request) {
             form_data: formData,
             customer_details: customerDetails,
             service_snapshot: serviceSnapshot,
-            metadata,
+            // The first application carries the partner's wallet hold; it is
+            // claimed when the payment is verified (settleApplicationPayment).
+            metadata:
+              index === 0 && ctx.partnerReserve
+                ? { ...metadata, partner_wallet: { reserve_id: ctx.partnerReserve.id, amount: ctx.partnerReserve.amount } }
+                : metadata,
             status: "payment_pending",
             payment_status: "pending",
             created_by: user.id,
@@ -1018,6 +1086,7 @@ export async function POST(request: Request) {
       walletUsed,
       rewardUsed,
       finalPayable,
+      partner_wallet_used: ctx.partnerReserve ? ctx.partnerReserve.amount : 0,
       key_id: getRazorpayKeyId(),
     });
   } catch (error) {

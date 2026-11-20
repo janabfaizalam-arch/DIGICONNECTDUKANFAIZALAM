@@ -408,6 +408,27 @@ export function PartnerApplicationWizard({
   const [isPreparing, setIsPreparing] = useState(false);
   const [prepareError, setPrepareError] = useState<string | null>(null);
   /*
+    The partner's own wallet (scores from completed services). It pays first,
+    Razorpay takes the rest; with enough balance there is nothing to pay.
+  */
+  const [partnerWalletBalance, setPartnerWalletBalance] = useState(0);
+  const [useWallet, setUseWallet] = useState(true);
+  const [walletUsed, setWalletUsed] = useState(0);
+  // The applications the last prepare created, so a re-prepare can give back their hold.
+  const lastPreparedIdsRef = useRef<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/ap/wallet", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setPartnerWalletBalance(Math.max(0, Math.floor(Number(data.balance) || 0)));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  /*
     What the prepared payment was prepared *for*. A partner who goes back and
     edits the cart must not be handed the previous cart's QR, so re-entering
     the step with a different signature prepares again.
@@ -906,6 +927,8 @@ export function PartnerApplicationWizard({
           serviceSlugs: slugs,
           currency:     "INR",
           receipt:      `wiz-${Date.now()}`,
+          usePartnerWallet: useWallet && partnerWalletBalance > 0,
+          replacesApplicationIds: lastPreparedIdsRef.current,
           applicationDraft: {
             customer: {
               name:   customer.name,
@@ -928,6 +951,28 @@ export function PartnerApplicationWizard({
       const orderData = await orderRes.json();
       if (!orderRes.ok || !orderData.application_ids?.length) {
         throw new Error(orderData.error ?? orderData.message ?? `Could not prepare the payment (HTTP ${orderRes.status})`);
+      }
+
+      lastPreparedIdsRef.current = orderData.wallet_only ? [] : (orderData.application_ids as string[]);
+      const usedFromWallet = Number(orderData.partner_wallet_used ?? 0) || 0;
+      setWalletUsed(usedFromWallet);
+      if (usedFromWallet > 0) {
+        setPartnerWalletBalance((balance) => Math.max(0, balance - usedFromWallet));
+      }
+
+      // The wallet paid the whole price: the applications are already submitted.
+      if (orderData.wallet_only) {
+        setPreparedOrder(null);
+        setSuccessDetails({
+          applicationIds: orderData.application_ids,
+          customerName:   customer.name,
+          serviceTitle:   cartItems.map(i => `${i.service.title} \u00d7${i.quantity}`).join(", "),
+          amountPaid:     0,
+        });
+        preparedSignatureRef.current = signature;
+        toastSuccess?.("Poora amount wallet se pay ho gaya.");
+        setCurrentStep(6);
+        return;
       }
 
       setPreparedOrder({
@@ -953,7 +998,7 @@ export function PartnerApplicationWizard({
     } finally {
       setIsPreparing(false);
     }
-  }, [cartItems, customer, cartTotal, toastError]);
+  }, [cartItems, customer, cartTotal, toastError, toastSuccess, useWallet, partnerWalletBalance]);
 
   /**
    * Create the shareable payment link, only when the partner asks for it.
@@ -1196,8 +1241,9 @@ export function PartnerApplicationWizard({
         items: cartItems.map(i => [i.service.slug, i.quantity]),
         mobile: customer.mobile,
         name: customer.name,
+        useWallet,
       }),
-    [cartItems, customer.mobile, customer.name],
+    [cartItems, customer.mobile, customer.name, useWallet],
   );
 
   useEffect(() => {
@@ -1956,13 +2002,48 @@ export function PartnerApplicationWizard({
                       <span className="font-bold">₹{item.service.customer_fee * item.quantity}</span>
                     </div>
                   ))}
+                  {walletUsed > 0 && preparedOrder ? (
+                    <div className="flex justify-between text-xs font-bold text-emerald-700">
+                      <span>Wallet se</span>
+                      <span>− ₹{walletUsed}</span>
+                    </div>
+                  ) : null}
                   <div className="border-t border-blue-200 pt-2 flex justify-between items-center">
-                    <span className="text-sm font-black text-[var(--dcp-ink)]">Total</span>
+                    <span className="text-sm font-black text-[var(--dcp-ink)]">{walletUsed > 0 && preparedOrder ? "Baaki payment" : "Total"}</span>
                     <span className="text-xl font-black text-[var(--dcp-brand-deep)]">
                       ₹{preparedOrder ? preparedOrder.amount / 100 : cartTotal}
                     </span>
                   </div>
                 </div>
+
+                {/* Use the partner's wallet first. Changing it prepares the payment again. */}
+                {partnerWalletBalance > 0 || walletUsed > 0 ? (
+                  <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <span className="flex flex-col">
+                      <span className="text-sm font-black text-emerald-800">Wallet use karein</span>
+                      <span className="text-[11px] font-semibold text-emerald-700">
+                        {walletUsed > 0 && useWallet
+                          ? `₹${walletUsed} wallet se kat gaye · bacha ₹${partnerWalletBalance}`
+                          : `Wallet balance ₹${partnerWalletBalance}`}
+                      </span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      aria-label="Wallet use karein"
+                      className="h-5 w-5 accent-emerald-600"
+                      checked={useWallet}
+                      disabled={isPreparing}
+                      onChange={(e) => {
+                        // Turning the wallet off gives the held amount back on the next prepare.
+                        if (!e.target.checked && walletUsed > 0) setPartnerWalletBalance((b) => b + walletUsed);
+                        setWalletUsed(0);
+                        setPreparedOrder(null);
+                        setPaymentLinkUrl(null);
+                        setUseWallet(e.target.checked);
+                      }}
+                    />
+                  </label>
+                ) : null}
 
                 {isPreparing && !preparedOrder ? (
                   <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-[var(--dcp-line-2)] bg-[var(--dcp-surface-2)] px-4 py-10">
