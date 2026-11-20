@@ -103,7 +103,34 @@ async function findUnclaimedReserve(
       .select("id")
       .eq("wallet_reserve_id", id)
       .maybeSingle();
-    if (!claimed) return { id, amount: Number(entry.amount) || 0 };
+    if (claimed) continue;
+
+    // Already given back: nothing left to release.
+    const { data: refunded } = await supabase
+      .from("ap_wallet_ledger")
+      .select("id")
+      .eq("reference_type", "wallet_refund")
+      .eq("reference_id", id)
+      .maybeSingle();
+    if (refunded) continue;
+
+    /*
+      Held for a checkout whose customer may still pay (a QR or a payment link
+      sent from the DC Partner wizard). Kept for a day, so starting another
+      customer's checkout does not hand back money an unpaid order still counts
+      on; after that it is released, and a late payment re-debits it
+      (settleApplicationPayment).
+    */
+    const { data: pending } = await supabase
+      .from("applications")
+      .select("id, created_at")
+      .eq("metadata->partner_wallet->>reserve_id", id)
+      .eq("payment_status", "pending")
+      .limit(1)
+      .maybeSingle();
+    if (pending && Date.now() - new Date(String(pending.created_at)).getTime() < 24 * 60 * 60 * 1000) continue;
+
+    return { id, amount: Number(entry.amount) || 0 };
   }
 
   return null;
@@ -244,4 +271,36 @@ export async function checkReserve(params: {
   }
 
   return { ok: true, fromWallet: Number(entry.amount) || 0 };
+}
+
+/** Give back the partner's abandoned hold, if any (a checkout started without the wallet). */
+export async function releaseUnclaimedReserve(agencyPartnerId: string): Promise<void> {
+  const stale = await findUnclaimedReserve(agencyPartnerId);
+  if (stale) {
+    await releaseReserve(agencyPartnerId, stale.id, stale.amount, "Pichhli application poori nahi hui — amount wapas wallet mein");
+  }
+}
+
+/**
+ * Give back the holds of a checkout the partner is re-preparing (wallet
+ * switched, cart edited): those applications are being replaced, so their
+ * hold must not stay counted. Only the caller's own unpaid applications.
+ */
+export async function releaseHoldsForApplications(userId: string, applicationIds: string[]): Promise<void> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase || !applicationIds.length) return;
+
+  const { data: rows } = await supabase
+    .from("applications")
+    .select("id, metadata, wallet_reserve_id, payment_status, agency_partner_id")
+    .in("id", applicationIds.slice(0, 50))
+    .eq("user_id", userId)
+    .eq("payment_status", "pending");
+
+  for (const row of rows ?? []) {
+    if (row.wallet_reserve_id) continue;
+    const held = (row.metadata as { partner_wallet?: { reserve_id?: string; amount?: number } } | null)?.partner_wallet;
+    if (!held?.reserve_id || !row.agency_partner_id) continue;
+    await releaseReserve(String(row.agency_partner_id), held.reserve_id, Number(held.amount) || 0, "Checkout badla — amount wapas wallet mein");
+  }
 }

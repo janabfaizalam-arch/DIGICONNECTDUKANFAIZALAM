@@ -27,7 +27,7 @@ describe("the shared settlement", () => {
   it("reads prior state before updating, so the money steps run once", () => {
     // The transition set is computed from a read that happens before any
     // update; without that, a replayed webhook would re-run everything.
-    const priorRead = source.indexOf('select("id, payment_status")');
+    const priorRead = source.indexOf('select("id, payment_status, metadata, wallet_reserve_id")');
     const firstUpdate = source.indexOf("applicationPaymentUpdate");
 
     expect(priorRead).toBeGreaterThan(-1);

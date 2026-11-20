@@ -102,12 +102,37 @@ export async function settleApplicationPayment(
   */
   const { data: priorRows } = await supabase
     .from("applications")
-    .select("id, payment_status")
+    .select("id, payment_status, metadata, wallet_reserve_id")
     .in("id", applicationIds);
 
   const transitionedIds = (priorRows ?? [])
     .filter((row) => row.payment_status !== "verified")
     .map((row) => row.id as string);
+
+  /*
+    A DC Partner who paid part of the price from their wallet left a hold on
+    the first application (create-order). The payment is real now, so the
+    application claims it; an unclaimed hold would be given back at the
+    partner's next checkout.
+  */
+  if (status === "verified") {
+    for (const row of priorRows ?? []) {
+      if (row.payment_status === "verified" || row.wallet_reserve_id) continue;
+      const held = (row.metadata as { partner_wallet?: { reserve_id?: string; amount?: number } } | null)?.partner_wallet;
+      const reserveId = held?.reserve_id;
+      if (!reserveId) continue;
+      const claimId = await liveReserveId(supabase, reserveId, Number(held?.amount) || 0, String(row.id), logPrefix);
+      if (!claimId) continue;
+      const { error: claimError } = await supabase
+        .from("applications")
+        .update({ wallet_reserve_id: claimId })
+        .eq("id", row.id)
+        .is("wallet_reserve_id", null);
+      if (claimError) {
+        console.error(`${logPrefix} partner_wallet_claim_failed`, { applicationId: row.id, message: claimError.message });
+      }
+    }
+  }
 
   // Payment facts (payment_status, razorpay ids, paid_at) always apply,
   // whatever stage the application has reached -- only the downgrade of a
@@ -317,3 +342,54 @@ type SettlementApplicationRow = {
   wallet_redeemed_amount: number | null;
   fresh_payable_amount: number | null;
 };
+
+/**
+ * The hold to claim for a paid application. Normally the one taken at
+ * checkout; if that was given back meanwhile (the partner started another
+ * checkout a day later), the customer still paid only the rest, so the wallet
+ * share is debited again and that entry is claimed instead.
+ */
+async function liveReserveId(
+  supabase: SupabaseClient,
+  reserveId: string,
+  amount: number,
+  applicationId: string,
+  logPrefix: string,
+): Promise<string | null> {
+  const { data: refund } = await supabase
+    .from("ap_wallet_ledger")
+    .select("id")
+    .eq("reference_type", "wallet_refund")
+    .eq("reference_id", reserveId)
+    .maybeSingle();
+  if (!refund) return reserveId;
+
+  const { data: original } = await supabase
+    .from("ap_wallet_ledger")
+    .select("agency_partner_id, amount, description")
+    .eq("id", reserveId)
+    .maybeSingle();
+  if (!original) return null;
+
+  const { getWalletBalance } = await import("@/lib/ap-wallet");
+  const debit = Number(original.amount) || amount;
+  const before = await getWalletBalance(String(original.agency_partner_id));
+  const { data: entry, error } = await supabase
+    .from("ap_wallet_ledger")
+    .insert({
+      agency_partner_id: original.agency_partner_id,
+      entry_type: "application_spend",
+      amount: debit,
+      running_balance: before - debit,
+      reference_type: "application_payment",
+      reference_id: applicationId,
+      description: original.description ?? "Service liya",
+    })
+    .select("id")
+    .single();
+  if (error || !entry?.id) {
+    console.error(`${logPrefix} partner_wallet_redebit_failed`, { applicationId, message: error?.message });
+    return null;
+  }
+  return String(entry.id);
+}
