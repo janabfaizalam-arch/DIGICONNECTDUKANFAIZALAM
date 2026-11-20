@@ -526,7 +526,7 @@ export function UnifiedLoginExperience({
         rearmPasswordPrompt();
         trackLogin("agent_email");
         toastSuccess("Agent workspace ready!");
-        window.location.assign(result.destination || "/ap/dashboard");
+        window.location.assign(result.destination || "/dc-partner/dashboard");
         return;
       }
       
@@ -564,7 +564,7 @@ export function UnifiedLoginExperience({
         }
 
         toastSuccess("Partner workspace logged in!");
-        window.location.assign("/ap/dashboard");
+        window.location.assign("/dc-partner/dashboard");
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Partner login failed.";
         setFormMessage({ type: "error", text: msg });
@@ -1202,11 +1202,11 @@ export function UnifiedLoginExperience({
                 {/* Footer links: Partner password recovery, Support, Apply for Partnership */}
                 <div className="flex flex-col gap-2 items-center pt-2.5 border-t border-slate-100/80 text-center">
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-xs font-semibold text-[#64748B]">
-                    <Link href="/ap/forgot-password" className="hover:text-[#0F172A] hover:underline outline-none">
+                    <Link href="/dc-partner/forgot-password" className="hover:text-[#0F172A] hover:underline outline-none">
                       Forgot Password?
                     </Link>
                     <span className="hidden sm:inline text-slate-200">|</span>
-                    <Link href="/ap/support" className="hover:text-[#0F172A] hover:underline outline-none">
+                    <Link href="/dc-partner/support" className="hover:text-[#0F172A] hover:underline outline-none">
                       Partner Support
                     </Link>
                   </div>

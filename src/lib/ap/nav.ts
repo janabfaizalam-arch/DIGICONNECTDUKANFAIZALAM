@@ -35,7 +35,7 @@ import {
  * So the panel gets what the admin panel already has and for the same reason.
  * Every screen is either placed in a group below, or named in
  * {@link AP_ALIAS_ROUTES} as a redirect, or in {@link AP_DETAIL_ROUTES} as
- * something you reach from its parent. A contract test walks `src/app/ap` and
+ * something you reach from its parent. A contract test walks `src/app/dc-partner` and
  * fails the build if a screen is in none of them — a new screen cannot go
  * invisible the way these did.
  *
@@ -85,7 +85,7 @@ export const AP_NAV_GROUPS: ApNavGroup[] = [
     icon: ClipboardList,
     items: [
       {
-        href: "/ap/dashboard",
+        href: "/dc-partner/dashboard",
         label: "Dashboard",
         dockLabel: "Home",
         description: "Today's work, earnings and what needs you first",
@@ -93,7 +93,7 @@ export const AP_NAV_GROUPS: ApNavGroup[] = [
         dock: true,
       },
       {
-        href: "/ap/applications",
+        href: "/dc-partner/applications",
         label: "Applications",
         dockLabel: "Apps",
         description: "Every application you have filed, and its stage",
@@ -101,13 +101,13 @@ export const AP_NAV_GROUPS: ApNavGroup[] = [
         dock: true,
       },
       {
-        href: "/ap/applications/new",
+        href: "/dc-partner/applications/new",
         label: "New application",
         description: "File a service for a customer, start to finish",
         icon: Sparkles,
       },
       {
-        href: "/ap/customers",
+        href: "/dc-partner/customers",
         label: "Customers",
         dockLabel: "People",
         description: "The people you serve, and everything filed for them",
@@ -115,13 +115,13 @@ export const AP_NAV_GROUPS: ApNavGroup[] = [
         dock: true,
       },
       {
-        href: "/ap/leads",
+        href: "/dc-partner/leads",
         label: "Leads",
         description: "Enquiries that have not become applications yet",
         icon: Handshake,
       },
       {
-        href: "/ap/assigned-work",
+        href: "/dc-partner/assigned-work",
         label: "Assigned to me",
         description: "Work the office has handed to you by name",
         icon: ClipboardList,
@@ -135,37 +135,37 @@ export const AP_NAV_GROUPS: ApNavGroup[] = [
     icon: Building2,
     items: [
       {
-        href: "/ap/services",
+        href: "/dc-partner/services",
         label: "Service catalogue",
         description: "Everything you can sell, with your price and commission",
         icon: LayoutGrid,
       },
       {
-        href: "/ap/print",
+        href: "/dc-partner/print",
         label: "Print counter",
         description: "Your printer on a QR — rates, key and the day's queue",
         icon: Printer,
       },
       {
-        href: "/ap/payment-links",
+        href: "/dc-partner/payment-links",
         label: "Payment links",
         description: "Send a customer a link and get paid without cash",
         icon: Link2,
       },
       {
-        href: "/ap/invoices/offline",
+        href: "/dc-partner/invoices/offline",
         label: "Offline invoices",
         description: "Bills for work taken in cash at the counter",
         icon: Receipt,
       },
       {
-        href: "/ap/referrals",
+        href: "/dc-partner/referrals",
         label: "Referrals",
         description: "Your code, who joined with it, and what it earned",
         icon: Megaphone,
       },
       {
-        href: "/ap/marketing",
+        href: "/dc-partner/marketing",
         label: "Marketing kit",
         description: "Posters and WhatsApp messages ready to forward",
         icon: Megaphone,
@@ -179,20 +179,20 @@ export const AP_NAV_GROUPS: ApNavGroup[] = [
     icon: WalletCards,
     items: [
       {
-        href: "/ap/wallet",
+        href: "/dc-partner/wallet",
         label: "Wallet",
         description: "Balance, credits and every rupee in and out",
         icon: WalletCards,
         dock: true,
       },
       {
-        href: "/ap/commissions",
+        href: "/dc-partner/commissions",
         label: "Score",
         description: "What each completed service earned you",
         icon: Coins,
       },
       {
-        href: "/ap/payouts",
+        href: "/dc-partner/payouts",
         label: "Payouts",
         description: "Withdrawals to your bank, and where each one is",
         icon: Banknote,
@@ -206,14 +206,14 @@ export const AP_NAV_GROUPS: ApNavGroup[] = [
     icon: UsersRound,
     items: [
       {
-        href: "/ap/team",
+        href: "/dc-partner/team",
         label: "My team",
         description: "Members you have added, and what they can do",
         icon: UsersRound,
         teamOnly: true,
       },
       {
-        href: "/ap/team/new",
+        href: "/dc-partner/team/new",
         label: "Add a member",
         description: "Create a login for someone on your team",
         icon: UserRound,
@@ -228,44 +228,44 @@ export const AP_NAV_GROUPS: ApNavGroup[] = [
     icon: UserRound,
     items: [
       {
-        href: "/ap/profile",
+        href: "/dc-partner/profile",
         label: "Profile",
         description: "Your name, shop, contact and KYC status",
         icon: UserRound,
       },
       {
-        href: "/ap/documents",
+        href: "/dc-partner/documents",
         label: "My documents",
         description: "PAN, Aadhaar and anything else we hold for you",
         icon: ShieldCheck,
       },
       {
-        href: "/ap/training",
+        href: "/dc-partner/training",
         label: "Training",
         description: "How each service works, step by step",
         icon: GraduationCap,
       },
       {
-        href: "/ap/support",
+        href: "/dc-partner/support",
         label: "Help & support",
         description: "Raise a problem and see what we said",
         icon: LifeBuoy,
       },
       {
-        href: "/ap/notifications",
+        href: "/dc-partner/notifications",
         label: "Notifications",
         description: "Everything the office has told you",
         icon: BookOpen,
         partial: "Notifications are kept in this browser, so they do not follow you to another device.",
       },
       {
-        href: "/ap/settings",
+        href: "/dc-partner/settings",
         label: "Settings",
         description: "How the panel behaves for you",
         icon: Settings,
       },
       {
-        href: "/ap/change-password",
+        href: "/dc-partner/change-password",
         label: "Change password",
         description: "Set a new password for your login",
         icon: ShieldCheck,
@@ -276,25 +276,25 @@ export const AP_NAV_GROUPS: ApNavGroup[] = [
 
 /** Screens that only redirect somewhere else. Deliberately not in the nav. */
 export const AP_ALIAS_ROUTES: Record<string, string> = {
-  "/ap": "/ap/dashboard",
-  "/ap/knowledge": "/ap/training",
-  "/ap/customers/new": "/ap/applications/new",
-  "/ap/payments/collect": "/ap/payment-links",
+  "/dc-partner": "/dc-partner/dashboard",
+  "/dc-partner/knowledge": "/dc-partner/training",
+  "/dc-partner/customers/new": "/dc-partner/applications/new",
+  "/dc-partner/payments/collect": "/dc-partner/payment-links",
 };
 
 /** Reached from a parent screen (a row, a card), never from the nav. */
 export const AP_DETAIL_ROUTES = [
-  "/ap/applications/[id]",
-  "/ap/customers/[id]",
-  "/ap/services/[slug]",
-  "/ap/all",
+  "/dc-partner/applications/[id]",
+  "/dc-partner/customers/[id]",
+  "/dc-partner/services/[slug]",
+  "/dc-partner/all",
 ] as const;
 
 /** Standalone auth screens: they hide every shell, so they are not placed. */
 export const AP_AUTH_ROUTES = [
-  "/ap/login",
-  "/ap/forgot-password",
-  "/ap/reset-password",
+  "/dc-partner/login",
+  "/dc-partner/forgot-password",
+  "/dc-partner/reset-password",
 ] as const;
 
 /* ─────────────────────────────────────────────────────────────────────────

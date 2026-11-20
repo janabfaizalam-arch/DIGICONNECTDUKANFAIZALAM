@@ -120,7 +120,7 @@ export function BecomeDigiPartner() {
                 />
               </Link>
               <Link
-                href="/ap/login"
+                href="/dc-partner/login"
                 className="lg-pill-dark lg-raise-dark inline-flex h-12 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-5 text-[15px] font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 <LogIn className="h-4 w-4" aria-hidden="true" />

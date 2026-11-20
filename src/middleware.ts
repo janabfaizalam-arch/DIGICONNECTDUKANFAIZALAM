@@ -4,7 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { getSupabaseUrl } from "@/lib/supabase/config";
 import { DIGI_PARTNER_LOGIN_ROUTE, resolvePartnerLoginAlias } from "@/lib/auth/partner-access";
 
-const protectedRoutes = ["/dashboard", "/customer", "/admin", "/agent", "/ap", "/apply"];
+const protectedRoutes = ["/dashboard", "/customer", "/admin", "/agent", "/dc-partner", "/apply"];
 const authRoutes = [
   "/login",
   "/login/agent",
@@ -16,9 +16,9 @@ const authRoutes = [
   "/customer/login",
   "/customer/signup",
   "/customer/forgot-pin",
-  "/ap/login",
-  "/ap/forgot-password",
-  "/ap/reset-password",
+  "/dc-partner/login",
+  "/dc-partner/forgot-password",
+  "/dc-partner/reset-password",
   "/signup",
   "/forgot-password",
   "/reset-password",
@@ -27,17 +27,17 @@ const removedRoleRoutes = ["/staff", "/team", "/employee", "/super-admin", "/sup
 
 // Legacy agent routes that redirect to /ap/*
 const legacyAgentRedirects: Record<string, string> = {
-  "/agent/dashboard": "/ap/dashboard",
-  "/agent/applications/new": "/ap/applications/new",
-  "/agent/applications": "/ap/applications",
-  "/agent/assigned-work": "/ap/assigned-work",
-  "/agent/commissions": "/ap/commissions",
-  "/agent/payout-history": "/ap/wallet",
-  "/agent/profile": "/ap/profile",
-  "/agent/support": "/ap/support",
-  "/agent": "/ap/dashboard",
-  "/agent-login": "/ap/login",
-  "/login/agent": "/ap/login",
+  "/agent/dashboard": "/dc-partner/dashboard",
+  "/agent/applications/new": "/dc-partner/applications/new",
+  "/agent/applications": "/dc-partner/applications",
+  "/agent/assigned-work": "/dc-partner/assigned-work",
+  "/agent/commissions": "/dc-partner/commissions",
+  "/agent/payout-history": "/dc-partner/wallet",
+  "/agent/profile": "/dc-partner/profile",
+  "/agent/support": "/dc-partner/support",
+  "/agent": "/dc-partner/dashboard",
+  "/agent-login": "/dc-partner/login",
+  "/login/agent": "/dc-partner/login",
 };
 
 type AppRole = "admin" | "agency_partner" | "customer";
@@ -79,7 +79,7 @@ function getRoleHome(role: AppRole) {
   }
 
   if (role === "agency_partner") {
-    return "/ap/dashboard";
+    return "/dc-partner/dashboard";
   }
 
   return "/customer/dashboard";
@@ -94,7 +94,7 @@ function isAllowedForPath(
     return options?.adminMembership === true || role === "admin";
   }
 
-  if (matchesRoute(pathname, "/ap") || matchesRoute(pathname, "/agent")) {
+  if (matchesRoute(pathname, "/dc-partner") || matchesRoute(pathname, "/agent")) {
     // DC Partner access is membership-based, not profiles.role alone.
     if (options?.partnerActive) return true;
     return role === "agency_partner";
@@ -112,8 +112,8 @@ function isAllowedForPath(
 }
 
 function getLoginPathForProtectedRoute(pathname: string) {
-  if (matchesRoute(pathname, "/ap") || matchesRoute(pathname, "/agent")) {
-    return "/ap/login";
+  if (matchesRoute(pathname, "/dc-partner") || matchesRoute(pathname, "/agent")) {
+    return "/dc-partner/login";
   }
 
   if (matchesRoute(pathname, "/admin")) {
@@ -140,7 +140,7 @@ function applyCustomerRedirect(url: URL, pathname: string) {
 }
 
 function getLegacyAgentRedirect(pathname: string): string | null {
-  if (pathname.startsWith("/ap")) {
+  if (pathname.startsWith("/dc-partner")) {
     return null;
   }
 
@@ -150,11 +150,11 @@ function getLegacyAgentRedirect(pathname: string): string | null {
 
   if (pathname.startsWith("/agent/applications/") && pathname !== "/agent/applications/new") {
     const id = pathname.replace("/agent/applications/", "");
-    return `/ap/applications/${id}`;
+    return `/dc-partner/applications/${id}`;
   }
 
   if (matchesRoute(pathname, "/agent")) {
-    return "/ap/dashboard";
+    return "/dc-partner/dashboard";
   }
 
   return null;
@@ -248,7 +248,7 @@ export async function middleware(request: NextRequest) {
   // Agent-login redirect
   if (pathname === "/agent-login" || matchesRoute(pathname, "/agent-login")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/ap/login";
+    url.pathname = "/dc-partner/login";
     url.search = "";
     return NextResponse.redirect(url);
   }
@@ -457,7 +457,7 @@ export async function middleware(request: NextRequest) {
     // already says partner, and when the token records no role at all — that
     // last case is the one the removed probe existed to answer.
     const needsPartnerData =
-      matchesRoute(pathname, "/ap") ||
+      matchesRoute(pathname, "/dc-partner") ||
       matchesRoute(pathname, "/agent") ||
       matchesRoute(pathname, "/apply") ||
       matchesRoute(pathname, DIGI_PARTNER_LOGIN_ROUTE) ||
@@ -511,7 +511,7 @@ export async function middleware(request: NextRequest) {
       partnerInactiveOrUnapproved = !partnerActive;
       // When visiting AP portal with valid membership, treat request context as agency_partner
       // even if profiles.role was incorrectly set to admin (e.g. shared-mobile admin promotion).
-      if (partnerActive && (matchesRoute(pathname, "/ap") || matchesRoute(pathname, "/agent"))) {
+      if (partnerActive && (matchesRoute(pathname, "/dc-partner") || matchesRoute(pathname, "/agent"))) {
         role = "agency_partner";
       }
     } else if (role === "agency_partner") {
@@ -551,7 +551,7 @@ export async function middleware(request: NextRequest) {
   if (user && matchesRoute(pathname, DIGI_PARTNER_LOGIN_ROUTE) && !loggedOutIntent) {
     if (partnerActive) {
       const url = request.nextUrl.clone();
-      url.pathname = "/ap/dashboard";
+      url.pathname = "/dc-partner/dashboard";
       return NextResponse.redirect(url);
     }
     if (partnerLinked && partnerInactiveOrUnapproved) {
@@ -613,7 +613,7 @@ export async function middleware(request: NextRequest) {
     // Partner-friendly redirect for customer apply workflow
     if ((role === "agency_partner" || partnerActive) && matchesRoute(pathname, "/apply")) {
       const slug = pathname.replace("/apply/", "").replace("/apply", "");
-      url.pathname = "/ap/applications/new";
+      url.pathname = "/dc-partner/applications/new";
       url.search = "";
       if (slug) {
         url.searchParams.set("serviceId", slug);
@@ -621,7 +621,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    if (matchesRoute(pathname, "/ap") || matchesRoute(pathname, "/agent")) {
+    if (matchesRoute(pathname, "/dc-partner") || matchesRoute(pathname, "/agent")) {
       url.pathname = "/unauthorized";
       if (adminMembership && !partnerLinked) {
         url.search = "reason=admin_portal_only";
@@ -641,8 +641,8 @@ export async function middleware(request: NextRequest) {
 
   if (
     user &&
-    matchesRoute(pathname, "/ap") &&
-    !matchesRoute(pathname, "/ap/login") &&
+    matchesRoute(pathname, "/dc-partner") &&
+    !matchesRoute(pathname, "/dc-partner/login") &&
     partnerInactiveOrUnapproved &&
     (partnerLinked || role === "agency_partner")
   ) {

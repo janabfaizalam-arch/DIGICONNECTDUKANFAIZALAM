@@ -490,7 +490,7 @@ export function InboxCustomerDrawer({
               {notesList.map((n, i) => (
                 <div key={i} className="rounded-lg bg-slate-50 p-2 text-slate-700 border border-slate-100 space-y-0.5">
                   <p className="text-[11.5px] leading-relaxed">{n.text}</p>
-                  <p className="text-[9.5px] text-slate-400">
+                  <p className="text-[10px] text-slate-400">
                     {new Date(n.created_at).toLocaleDateString([], {
                       month: "short",
                       day: "numeric",

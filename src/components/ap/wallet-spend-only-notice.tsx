@@ -25,7 +25,7 @@ export function WalletSpendOnlyNotice({ balance }: { balance: string }) {
       </p>
 
       <Link
-        href="/ap/applications/new"
+        href="/dc-partner/applications/new"
         className="inline-flex h-11 items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-5 text-sm font-bold text-white shadow-md shadow-blue-500/10 transition active:scale-[0.98]"
       >
         Wallet se apply kijiye

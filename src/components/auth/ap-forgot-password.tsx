@@ -70,7 +70,7 @@ export function ApForgotPassword() {
       }
       setStage("done");
       success("New password saved.");
-      window.location.assign(result.data?.redirectTo || "/ap/dashboard");
+      window.location.assign(result.data?.redirectTo || "/dc-partner/dashboard");
     } catch {
       setError("Could not save the password. Try again.");
     } finally {
@@ -180,7 +180,7 @@ export function ApForgotPassword() {
         </form>
       )}
 
-      <Link href="/ap/login" className="inline-flex min-h-11 items-center justify-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-900 hover:underline">
+      <Link href="/dc-partner/login" className="inline-flex min-h-11 items-center justify-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-900 hover:underline">
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
         Back to login
       </Link>

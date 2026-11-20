@@ -136,6 +136,6 @@ describe("the session", () => {
     // postJson treats a 200 without this as a failure — the bug that made a
     // successful login say "Invalid username or password".
     expect(verify).toMatch(/ok: true/);
-    expect(verify).toContain('destination: "/ap/dashboard"');
+    expect(verify).toContain('destination: "/dc-partner/dashboard"');
   });
 });

@@ -242,7 +242,7 @@ describe("buildKpis", () => {
     const kpis = buildKpis(base);
 
     expect(new Set(kpis.map((k) => k.key)).size).toBe(kpis.length);
-    expect(kpis.every((k) => k.href.startsWith("/ap/"))).toBe(true);
+    expect(kpis.every((k) => k.href.startsWith("/dc-partner/"))).toBe(true);
   });
 });
 

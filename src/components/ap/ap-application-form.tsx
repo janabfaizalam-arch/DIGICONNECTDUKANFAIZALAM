@@ -925,7 +925,7 @@ export function APApplicationForm({
         {/* Actions */}
         <div className="grid grid-cols-3 gap-2">
           <Link
-            href={`/ap/applications/${submittedApplication.id}`}
+            href={`/dc-partner/applications/${submittedApplication.id}`}
             className="flex flex-col items-center justify-center gap-1.5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-xs transition active:scale-[0.97] min-h-[52px]"
           >
             <Clock className="w-4 h-4" />
@@ -988,7 +988,7 @@ export function APApplicationForm({
       <div className="flex items-center justify-between h-14 mb-3">
         <div className="flex items-center gap-3">
           <Link
-            href="/ap/dashboard"
+            href="/dc-partner/dashboard"
             className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-slate-100 text-slate-500 hover:bg-slate-50 active:scale-95 transition shadow-sm"
           >
             <ArrowLeft className="w-4.5 h-4.5" />
@@ -1221,7 +1221,7 @@ export function APApplicationForm({
                   <p className="text-xs text-slate-600 mt-0.5">Active application exists for this customer and service.</p>
                   <div className="flex gap-2 mt-3">
                     <Link
-                      href={`/ap/applications/${activeDuplicateApp.id}`}
+                      href={`/dc-partner/applications/${activeDuplicateApp.id}`}
                       className="px-3 py-2 bg-amber-600 text-white font-semibold rounded-lg text-xs transition active:scale-95"
                     >
                       View Existing

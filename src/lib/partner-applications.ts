@@ -8,7 +8,6 @@
  * boundary explicit is the point of the separate table.
  */
 
-import { isPublicApplicationPartnerType } from "@/lib/ap/partner-type";
 import type { DigiPartnerType } from "@/lib/ap/partner-type";
 
 export const PARTNER_APPLICATION_STATUSES = [
@@ -86,6 +85,12 @@ export type PartnerApplicationInput = {
   gstin: string | null;
   referralSource: string | null;
   about: string | null;
+  /**
+   * The password the applicant chose. Never stored in the application row:
+   * it goes straight to their (not yet usable) Supabase Auth user, which only
+   * becomes a login when an admin approves the application.
+   */
+  password: string;
 };
 
 export type ValidationResult =
@@ -156,38 +161,20 @@ export function validatePartnerApplication(raw: unknown): ValidationResult {
 
   const emailRaw = trimmedOrNull(body.email);
   const email = emailRaw ? emailRaw.toLowerCase() : null;
-  // Optional — but a typo in one that was offered is still worth catching.
-  if (email && !isValidEmail(email)) {
-    return { ok: false, error: "Enter a valid email address, or leave it blank.", field: "email" };
+  // Required: it is where the partner's password reset link is sent.
+  if (!email || !isValidEmail(email)) {
+    return { ok: false, error: "Enter a valid email address (Gmail).", field: "email" };
   }
 
-  /*
-    Only the two types a stranger may claim.
+  // There is one kind of partner now: the DC Partner (stored as business_partner).
+  const partnerType: DigiPartnerType = "business_partner";
 
-    All four exist in the system, but Company Partner is a commercial
-    arrangement and Office Staff is an employee — both are created by an admin
-    or from /ap/team. Accepting them here would let anyone register themselves
-    as a strategic partner of the company by editing one field in the request.
-  */
-  const partnerTypeRaw = String(body.partnerType ?? "business_partner");
-  if (!isPublicApplicationPartnerType(partnerTypeRaw)) {
-    return { ok: false, error: "Choose how you want to partner with us.", field: "partnerType" };
-  }
-  const partnerType = partnerTypeRaw as DigiPartnerType;
-
-  /*
-    A shop needs a name; a person walking the field does not have one.
-
-    Requiring it of everybody would make a Field Executive invent a shop, and
-    requiring it of nobody loses the one thing that identifies a Business
-    Partner in a list of two hundred.
-  */
   const businessName = trimmedOrNull(body.businessName);
-  if (partnerType === "business_partner" && !businessName) {
-    return { ok: false, error: "Enter your shop or business name.", field: "businessName" };
+  if (!businessName) {
+    return { ok: false, error: "Enter your shop name.", field: "businessName" };
   }
-  if (businessName && businessName.length > 160) {
-    return { ok: false, error: "Business name must be 160 characters or fewer.", field: "businessName" };
+  if (businessName.length > 160) {
+    return { ok: false, error: "Shop name must be 160 characters or fewer.", field: "businessName" };
   }
 
   const whatsappRaw = trimmedOrNull(body.whatsapp);
@@ -198,8 +185,16 @@ export function validatePartnerApplication(raw: unknown): ValidationResult {
 
   const pinRaw = trimmedOrNull(body.pin);
   const pin = pinRaw ? pinRaw.replace(/\D/g, "").slice(0, 6) : null;
-  if (pin && pin.length !== 6) {
-    return { ok: false, error: "PIN code must be 6 digits.", field: "pin" };
+  if (!pin || pin.length !== 6) {
+    return { ok: false, error: "Enter your 6-digit PIN code.", field: "pin" };
+  }
+
+  const password = String(body.password ?? "");
+  if (password.length < 8) {
+    return { ok: false, error: "Password must be at least 8 characters.", field: "password" };
+  }
+  if (password.length > 72) {
+    return { ok: false, error: "Password must be 72 characters or fewer.", field: "password" };
   }
 
   const aadhaarRaw = trimmedOrNull(body.aadhaarNumber);
@@ -237,6 +232,7 @@ export function validatePartnerApplication(raw: unknown): ValidationResult {
       gstin: trimmedOrNull(body.gstin)?.toUpperCase() ?? null,
       referralSource: trimmedOrNull(body.referralSource),
       about,
+      password,
     },
   };
 }

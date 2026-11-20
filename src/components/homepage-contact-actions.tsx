@@ -12,7 +12,7 @@ const hiddenPrefixes = [
   "/agent",
   "/login",
   "/signup",
-  "/ap/login",
+  "/dc-partner/login",
   "/forgot-password",
   "/reset-password",
   "/customer/dashboard",

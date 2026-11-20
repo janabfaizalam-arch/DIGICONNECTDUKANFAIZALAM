@@ -229,7 +229,7 @@ export function InboxConversationList({
                     {conv.status !== "open" && (
                       <span
                         className={cn(
-                          "rounded px-1 text-[9px] font-semibold uppercase",
+                          "rounded px-1 text-[10px] font-semibold uppercase",
                           conv.status === "resolved" && "bg-emerald-100 text-emerald-800",
                           conv.status === "pending" && "bg-amber-100 text-amber-800",
                           conv.status === "archived" && "bg-slate-100 text-slate-600",

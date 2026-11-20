@@ -4,10 +4,10 @@ import { readCode } from "@/lib/testing/source";
 
 const provider = readCode("src/components/ap/score-visibility.tsx");
 const form = readCode("src/components/ap/ap-application-form.tsx");
-const layout = readCode("src/app/ap/layout.tsx");
+const layout = readCode("src/app/dc-partner/layout.tsx");
 const panel = readCode("src/components/ap/home/earnings-panel.tsx");
-const catalogue = readCode("src/app/ap/services/services-client.tsx");
-const detail = readCode("src/app/ap/services/[slug]/detail-client.tsx");
+const catalogue = readCode("src/app/dc-partner/services/services-client.tsx");
+const detail = readCode("src/app/dc-partner/services/[slug]/detail-client.tsx");
 
 /* ─────────────────────────────────────────────────────────────────────────
    Off until the partner says otherwise

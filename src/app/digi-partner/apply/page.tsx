@@ -51,9 +51,8 @@ export default function PartnerApplyPage() {
             Become a DC Partner
           </h1>
           <p className="text-sm font-medium leading-relaxed text-slate-500">
-            Six things and you are done. We read every application and call you on WhatsApp. Once
-            approved you get a partner login, the full service catalogue, and commission in your
-            wallet on every completed service.
+            Fill six details. Once approved, sign in with your mobile number and the password you
+            create here.
           </p>
         </div>
 

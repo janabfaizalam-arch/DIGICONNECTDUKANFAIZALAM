@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function AgentRootPage() {
-  redirect("/ap/dashboard");
+  redirect("/dc-partner/dashboard");
 }

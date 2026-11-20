@@ -15,13 +15,13 @@
 export const DIGI_PARTNER_LANDING_ROUTE = "/digi-partner";
 
 /** The one canonical DC Partner login route. */
-export const DIGI_PARTNER_LOGIN_ROUTE = "/ap/login";
+export const DIGI_PARTNER_LOGIN_ROUTE = "/dc-partner/login";
 
 /** Public self-signup form for people who want to become a partner. */
 export const DIGI_PARTNER_APPLY_ROUTE = "/digi-partner/apply";
 
 /** Where an authenticated, active DC Partner lands after login. */
-export const DIGI_PARTNER_DASHBOARD_ROUTE = "/ap/dashboard";
+export const DIGI_PARTNER_DASHBOARD_ROUTE = "/dc-partner/dashboard";
 
 /** Public label shown in navbars, footers, menus, and CTAs. */
 export const DIGI_PARTNER_LABEL = "DC Partner";
@@ -88,7 +88,7 @@ export type PartnerCtaResult = {
   /** Where to send the visitor. */
   href: string;
   /**
-   * When true, the visitor may stay on `/ap/login` but should be shown the
+   * When true, the visitor may stay on `/dc-partner/login` but should be shown the
    * "signed in as a customer" switch notice.
    */
   showCustomerNotice: boolean;

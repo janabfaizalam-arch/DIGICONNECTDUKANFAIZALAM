@@ -145,7 +145,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (error) return jsonError(error.message, 500);
   if (!data) return jsonError("Banner not found.", 404);
 
-  revalidatePath("/ap/dashboard");
+  revalidatePath("/dc-partner/dashboard");
   revalidatePath("/admin/partner-banners");
   return NextResponse.json({ banner: data, message: "Banner updated." });
 }
@@ -166,7 +166,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
   if (error) return jsonError(error.message, 500);
 
-  revalidatePath("/ap/dashboard");
+  revalidatePath("/dc-partner/dashboard");
   revalidatePath("/admin/partner-banners");
   return NextResponse.json({ message: "Banner deleted." });
 }

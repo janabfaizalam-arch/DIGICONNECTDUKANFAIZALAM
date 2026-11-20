@@ -114,19 +114,19 @@ export function EarningsPanel({ data, showTeamToggle = false, className }: Earni
 
         <div className="mt-3.5 flex flex-wrap gap-2">
           <Link
-            href="/ap/payments/collect"
+            href="/dc-partner/payments/collect"
             className="dcp-btn dcp-btn-brand"
           >
             Collect payment
           </Link>
           <Link
-            href="/ap/wallet"
+            href="/dc-partner/wallet"
             className="dcp-btn dcp-btn-quiet"
           >
             Wallet
           </Link>
           <Link
-            href="/ap/commissions"
+            href="/dc-partner/commissions"
             className="dcp-btn dcp-btn-quiet"
           >
             Commission ledger

@@ -21,7 +21,7 @@ function partnerScreensOnDisk(): string[] {
 
   const walk = (dir: string, url: string) => {
     const entries = readdirSync(dir);
-    if (entries.includes("page.tsx")) found.push(url || "/ap");
+    if (entries.includes("page.tsx")) found.push(url || "/dc-partner");
 
     for (const entry of entries) {
       const path = join(dir, entry);
@@ -32,7 +32,7 @@ function partnerScreensOnDisk(): string[] {
     }
   };
 
-  walk(join(root, "src/app/ap"), "/ap");
+  walk(join(root, "src/app/dc-partner"), "/dc-partner");
   return [...new Set(found)];
 }
 
@@ -50,7 +50,7 @@ function partnerScreensOnDisk(): string[] {
  * no door fails the build.
  */
 describe("every partner screen has a door", () => {
-  it("places every page under src/app/ap", () => {
+  it("places every page under src/app/dc-partner", () => {
     const placed = new Set<string>([
       ...apNavItems({ canManageTeam: true }).map((item) => item.href),
       ...Object.keys(AP_ALIAS_ROUTES),
@@ -96,14 +96,14 @@ describe("the map a partner navigates by", () => {
   });
 
   it("starts the dock at the dashboard", () => {
-    expect(apDockItems()[0].href).toBe("/ap/dashboard");
+    expect(apDockItems()[0].href).toBe("/dc-partner/dashboard");
   });
 
   it("hides team screens from a partner who has no team", () => {
     const forShop = apNavItems({ canManageTeam: false }).map((item) => item.href);
-    expect(forShop).not.toContain("/ap/team");
+    expect(forShop).not.toContain("/dc-partner/team");
     expect(apNavItems({ canManageTeam: true })).toEqual(
-      expect.arrayContaining([expect.objectContaining({ href: "/ap/team" })]),
+      expect.arrayContaining([expect.objectContaining({ href: "/dc-partner/team" })]),
     );
   });
 
@@ -113,10 +113,10 @@ describe("the map a partner navigates by", () => {
   });
 
   it("matches the longest path, so a child does not answer as its parent", () => {
-    expect(apActiveItem("/ap/applications/new")?.href).toBe("/ap/applications/new");
-    expect(apActiveItem("/ap/applications")?.href).toBe("/ap/applications");
-    expect(apActiveItem("/ap/applications/8f2c")?.href).toBe("/ap/applications");
-    expect(apActiveItem("/ap/nowhere")).toBeNull();
+    expect(apActiveItem("/dc-partner/applications/new")?.href).toBe("/dc-partner/applications/new");
+    expect(apActiveItem("/dc-partner/applications")?.href).toBe("/dc-partner/applications");
+    expect(apActiveItem("/dc-partner/applications/8f2c")?.href).toBe("/dc-partner/applications");
+    expect(apActiveItem("/dc-partner/nowhere")).toBeNull();
   });
 
   it("says something useful about every screen", () => {

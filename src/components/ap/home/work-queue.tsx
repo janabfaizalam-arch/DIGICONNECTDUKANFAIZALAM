@@ -82,7 +82,7 @@ export function WorkQueue({ groups, className }: WorkQueueProps) {
     <section aria-label="Work queue" className={cn("space-y-2", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="dcp-h2">Work queue</h2>
-        <Link href="/ap/applications" className="shrink-0 rounded-lg bg-[var(--dcp-brand-soft)] px-2.5 py-1 text-[11.5px] font-bold text-[var(--dcp-brand-deep)] transition hover:brightness-95">
+        <Link href="/dc-partner/applications" className="shrink-0 rounded-lg bg-[var(--dcp-brand-soft)] px-2.5 py-1 text-[11.5px] font-bold text-[var(--dcp-brand-deep)] transition hover:brightness-95">
           See all
         </Link>
       </div>
@@ -138,7 +138,7 @@ export function WorkQueue({ groups, className }: WorkQueueProps) {
       {/* The tab already carries the true count; this is the way to the rest. */}
       {current.items.length > VISIBLE ? (
         <Link
-          href="/ap/applications"
+          href="/dc-partner/applications"
           className="dcp-btn dcp-btn-quiet w-full text-[11.5px]"
         >
           {current.items.length - VISIBLE} more in {current.label.toLowerCase()}

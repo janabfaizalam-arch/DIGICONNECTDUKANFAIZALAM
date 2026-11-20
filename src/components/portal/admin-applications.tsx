@@ -187,7 +187,7 @@ export function AdminApplications({
           </p>
         </div>
         <Link
-          href="/ap/applications/new"
+          href="/dc-partner/applications/new"
           className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl px-4 text-[13.5px] font-bold text-white shadow-[0_12px_26px_-14px_rgba(0,29,95,0.9)] transition hover:-translate-y-px"
           style={{ background: "var(--dc-grad-blue)" }}
         >

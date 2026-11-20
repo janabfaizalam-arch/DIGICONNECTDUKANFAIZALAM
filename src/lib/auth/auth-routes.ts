@@ -5,9 +5,9 @@
  */
 export const AUTH_ROUTES = [
   "/admin/login",
-  "/ap/login",
-  "/ap/forgot-password",
-  "/ap/reset-password",
+  "/dc-partner/login",
+  "/dc-partner/forgot-password",
+  "/dc-partner/reset-password",
   "/customer/login",
   "/customer/signup",
   "/customer/forgot-password",

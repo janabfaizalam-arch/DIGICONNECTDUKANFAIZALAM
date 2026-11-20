@@ -221,8 +221,8 @@ export async function POST(request: Request) {
     const response = NextResponse.json({
       ok: true,
       message: "DC Partner login successful.",
-      destination: "/ap/dashboard",
-      redirectTo: "/ap/dashboard",
+      destination: "/dc-partner/dashboard",
+      redirectTo: "/dc-partner/dashboard",
     });
     return setPortalCookie(response);
   } catch (error) {

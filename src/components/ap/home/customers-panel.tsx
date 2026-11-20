@@ -26,7 +26,7 @@ export function CustomersPanel({ customers, variant = "own", className }: Custom
     <section aria-label={heading} className={cn("space-y-2", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="dcp-h2">{heading}</h2>
-        <Link href="/ap/customers" className="shrink-0 rounded-lg bg-[var(--dcp-brand-soft)] px-2.5 py-1 text-[11.5px] font-bold text-[var(--dcp-brand-deep)] transition hover:brightness-95">
+        <Link href="/dc-partner/customers" className="shrink-0 rounded-lg bg-[var(--dcp-brand-soft)] px-2.5 py-1 text-[11.5px] font-bold text-[var(--dcp-brand-deep)] transition hover:brightness-95">
           All customers
         </Link>
       </div>
@@ -68,7 +68,7 @@ export function CustomersPanel({ customers, variant = "own", className }: Custom
 
       {variant === "own" ? (
         <Link
-          href="/ap/customers/new"
+          href="/dc-partner/customers/new"
           className="dcp-btn dcp-btn-quiet"
         >
           <UserPlus className="h-3.5 w-3.5" aria-hidden />

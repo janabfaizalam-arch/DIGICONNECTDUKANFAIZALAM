@@ -218,7 +218,7 @@ export function APPanelNav({ canManageTeam = false }: { canManageTeam?: boolean 
           
           {/* LEFT: Logo + Workspace Badge */}
           <div className="flex min-w-0 items-center gap-2.5 md:gap-3">
-            <Link href="/ap/dashboard" className="flex shrink-0 items-center gap-2">
+            <Link href="/dc-partner/dashboard" className="flex shrink-0 items-center gap-2">
               <span className="flex h-5 w-[88px] items-center md:h-6 md:w-24">
                 <Image
                   src="/logo-navbar.png"
@@ -468,7 +468,7 @@ export function APPanelNav({ canManageTeam = false }: { canManageTeam?: boolean 
                 ))}
 
                 <Link
-                  href="/ap/all"
+                  href="/dc-partner/all"
                   onClick={() => setDrawerOpen(false)}
                   className="flex items-center gap-2.5 rounded-[11px] border border-dashed border-[var(--dcp-line-2)] py-1.5 pl-1.5 pr-2.5 text-[12.5px] font-semibold text-[var(--dcp-ink-3)] transition-all duration-200 hover:border-[var(--dcp-brand)] hover:bg-[var(--dcp-brand-soft)] hover:text-[var(--dcp-brand-deep)]"
                 >
@@ -536,7 +536,7 @@ export function APPanelNav({ canManageTeam = false }: { canManageTeam?: boolean 
                       {searchResults.services.map((item) => (
                         <Link
                           key={item.id}
-                          href={`/ap/applications/new?serviceId=${item.id}`}
+                          href={`/dc-partner/applications/new?serviceId=${item.id}`}
                           onClick={() => setSearchOpen(false)}
                           className="flex items-center justify-between p-3 bg-white rounded-xl border border-[var(--dcp-line)] hover:border-blue-500 hover:shadow-sm transition-all"
                         >
@@ -563,7 +563,7 @@ export function APPanelNav({ canManageTeam = false }: { canManageTeam?: boolean 
                       {searchResults.customers.map((item) => (
                         <Link
                           key={item.id}
-                          href={`/ap/customers?search=${item.full_name}`}
+                          href={`/dc-partner/customers?search=${item.full_name}`}
                           onClick={() => setSearchOpen(false)}
                           className="flex items-center justify-between p-3 bg-white rounded-xl border border-[var(--dcp-line)] hover:border-indigo-500 hover:shadow-sm transition-all"
                         >
@@ -590,7 +590,7 @@ export function APPanelNav({ canManageTeam = false }: { canManageTeam?: boolean 
                       {searchResults.applications.map((item) => (
                         <Link
                           key={item.id}
-                          href={`/ap/applications/${item.id}`}
+                          href={`/dc-partner/applications/${item.id}`}
                           onClick={() => setSearchOpen(false)}
                           className="flex items-center justify-between p-3 bg-white rounded-xl border border-[var(--dcp-line)] hover:border-emerald-500 hover:shadow-sm transition-all"
                         >

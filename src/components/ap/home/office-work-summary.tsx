@@ -17,10 +17,10 @@ type OfficeWorkSummaryProps = {
  */
 export function OfficeWorkSummary({ summary, className }: OfficeWorkSummaryProps) {
   const tiles = [
-    { label: "To process", value: formatCount(summary.applicationsToProcess), href: "/ap/assigned-work" },
-    { label: "Assigned to me", value: formatCount(summary.assignedWorkCount), href: "/ap/assigned-work" },
-    { label: "Support queue", value: formatCount(summary.supportQueueCount), href: "/ap/support" },
-    { label: "Offline invoices", value: formatCount(summary.recentOfflineInvoices), href: "/ap/invoices/offline" },
+    { label: "To process", value: formatCount(summary.applicationsToProcess), href: "/dc-partner/assigned-work" },
+    { label: "Assigned to me", value: formatCount(summary.assignedWorkCount), href: "/dc-partner/assigned-work" },
+    { label: "Support queue", value: formatCount(summary.supportQueueCount), href: "/dc-partner/support" },
+    { label: "Offline invoices", value: formatCount(summary.recentOfflineInvoices), href: "/dc-partner/invoices/offline" },
   ];
 
   return (

@@ -284,7 +284,7 @@ function BannerFields({
         </label>
         <label className="grid gap-2">
           <span className="text-sm font-bold text-slate-700">Button URL</span>
-          <Input name="button_url" defaultValue={banner?.button_url ?? ""} placeholder="/ap/applications or https://..." disabled={disabled} />
+          <Input name="button_url" defaultValue={banner?.button_url ?? ""} placeholder="/dc-partner/applications or https://..." disabled={disabled} />
         </label>
       </div>
 

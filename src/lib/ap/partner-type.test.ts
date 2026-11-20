@@ -57,7 +57,7 @@ describe("partner-type", () => {
 
   it("exposes labels and dashboard path helper", () => {
     expect(DIGI_PARTNER_TYPES.company_partner.label).toBe("Company Partner");
-    expect(partnerTypeDisplayLabel("shop_owner")).toContain("Business Partner");
-    expect(resolvePartnerDashboardPath("company_partner")).toBe("/ap/dashboard");
+    expect(partnerTypeDisplayLabel("shop_owner")).toContain("DC Partner");
+    expect(resolvePartnerDashboardPath("company_partner")).toBe("/dc-partner/dashboard");
   });
 });

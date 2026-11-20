@@ -89,7 +89,9 @@ describe("a leftover auth user does not block approval forever", () => {
   });
 
   it("adopts the orphan rather than suffixing the username", () => {
-    expect(provision).toContain("updateUserById(holder.id, authPayload)");
+    expect(provision).toContain("updateUserById(\n      holder.id,");
+    // An applicant who chose a password keeps it; anybody else gets the temporary one.
+    expect(provision).toMatch(/selfPassword\s*\?[\s\S]{0,120}keepPassword[\s\S]{0,120}: authPayload/);
     expect(provision).toContain("userId = holder.id");
   });
 
@@ -122,7 +124,7 @@ describe("the adopted user gets the same treatment as a new one", () => {
     // the role metadata the login depends on.
     expect(provision).toContain("const authPayload = {");
     expect(provision).toContain("...authPayload,");
-    expect(provision).toContain("updateUserById(holder.id, authPayload)");
+    expect(provision).toMatch(/: authPayload,\n\s*\);/);
     expect(provision).toContain('app_metadata: { role: "agency_partner" }');
   });
 });

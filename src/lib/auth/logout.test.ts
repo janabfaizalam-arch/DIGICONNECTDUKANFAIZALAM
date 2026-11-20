@@ -14,24 +14,24 @@ import { inferLogoutPortal, resolveLogoutRedirect, getLoginDestinationForPortal 
 describe("logout destinations", () => {
   it("maps each portal to a loggedOut login URL (replace, not home)", () => {
     expect(resolveLogoutRedirect("admin")).toBe("/admin/login?loggedOut=1");
-    expect(resolveLogoutRedirect("ap")).toBe("/ap/login?loggedOut=1");
+    expect(resolveLogoutRedirect("ap")).toBe("/dc-partner/login?loggedOut=1");
     expect(resolveLogoutRedirect("customer")).toBe("/customer/login?loggedOut=1");
     expect(resolveLogoutRedirect("auto")).toBe("/login?loggedOut=1");
   });
 
   it("infers portal from pathname", () => {
     expect(inferLogoutPortal("/admin/agency-partners")).toBe("admin");
-    expect(inferLogoutPortal("/ap/dashboard")).toBe("ap");
+    expect(inferLogoutPortal("/dc-partner/dashboard")).toBe("ap");
     expect(inferLogoutPortal("/customer/dashboard")).toBe("customer");
     expect(inferLogoutPortal("/")).toBe("auto");
   });
 
   it("maps guests to login pages, never /unauthorized", () => {
-    expect(getLoginDestinationForPortal("/ap/dashboard")).toBe("/ap/login");
+    expect(getLoginDestinationForPortal("/dc-partner/dashboard")).toBe("/dc-partner/login");
     expect(getLoginDestinationForPortal("/admin")).toBe("/admin/login");
     expect(getLoginDestinationForPortal("/customer/dashboard")).toBe("/customer/login");
     expect(getLoginDestinationForPortal("/unauthorized")).toBe("/login");
-    expect(getLoginDestinationForPortal("/ap/wallet")).not.toContain("unauthorized");
+    expect(getLoginDestinationForPortal("/dc-partner/wallet")).not.toContain("unauthorized");
   });
 });
 

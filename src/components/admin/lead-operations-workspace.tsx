@@ -84,7 +84,7 @@ export function LeadOperationsWorkspace({
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const filters = useMemo(() => query, [query]);
-  const basePath = mode === "partner" ? "/ap/leads" : "/admin/leads";
+  const basePath = mode === "partner" ? "/dc-partner/leads" : "/admin/leads";
 
   function pushFilters(next: Partial<typeof filters> & { page?: number }) {
     const params = new URLSearchParams();

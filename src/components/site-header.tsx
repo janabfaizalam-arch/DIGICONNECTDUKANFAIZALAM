@@ -27,7 +27,7 @@ function getPanelConfig(role: AppRole | null) {
   }
 
   if (role === "agent" || role === "agency_partner") {
-    return { href: "/ap/dashboard", label: "Partner Dashboard" };
+    return { href: "/dc-partner/dashboard", label: "Partner Dashboard" };
   }
 
   if (role === "customer") {
@@ -38,7 +38,7 @@ function getPanelConfig(role: AppRole | null) {
 }
 
 function isAgentShellPath(pathname: string) {
-  return pathname === "/agent/dashboard" || pathname.startsWith("/agent/") || pathname === "/ap" || pathname.startsWith("/ap/");
+  return pathname === "/agent/dashboard" || pathname.startsWith("/agent/") || pathname === "/dc-partner" || pathname.startsWith("/dc-partner/");
 }
 
 interface NotificationItem {
@@ -517,8 +517,8 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
   if (
     pathname === "/admin" ||
     pathname.startsWith("/admin/") ||
-    pathname === "/ap" ||
-    pathname.startsWith("/ap/") ||
+    pathname === "/dc-partner" ||
+    pathname.startsWith("/dc-partner/") ||
     /*
       A shop's print counter, reached by scanning the QR taped to it.
 
@@ -609,10 +609,10 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
           {agentShell && (
             <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
               {[
-                ["/ap/dashboard", "Dashboard"],
-                ["/ap/applications/new", "New Application"],
-                ["/ap/applications", "Applications"],
-                ["/ap/commissions", "Commissions"],
+                ["/dc-partner/dashboard", "Dashboard"],
+                ["/dc-partner/applications/new", "New Application"],
+                ["/dc-partner/applications", "Applications"],
+                ["/dc-partner/commissions", "Commissions"],
               ].map(([href, label]) => {
                 const isActive = pathname === href;
                 return (
@@ -918,11 +918,11 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
       {searchOpen && (
         <div className={cn(
           "fixed inset-0 z-[60] flex flex-col backdrop-blur-xl",
-          pathname.startsWith("/ap") ? "bg-slate-950/98 text-slate-100" : "bg-white/95 text-slate-900"
+          pathname.startsWith("/dc-partner") ? "bg-slate-950/98 text-slate-100" : "bg-white/95 text-slate-900"
         )}>
           <div className={cn(
             "flex items-center gap-3 border-b px-4 py-3",
-            pathname.startsWith("/ap") ? "border-white/10 bg-slate-900" : "border-slate-200 bg-slate-50"
+            pathname.startsWith("/dc-partner") ? "border-white/10 bg-slate-900" : "border-slate-200 bg-slate-50"
           )}>
             <Search className="h-5 w-5 shrink-0 text-slate-400" />
             <input
@@ -930,18 +930,18 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
               type="text"
               value={searchQuery}
               onChange={(e) => {
-                if (pathname.startsWith("/ap")) {
+                if (pathname.startsWith("/dc-partner")) {
                   handlePartnerSearch(e.target.value);
                 }
               }}
               placeholder={
-                pathname.startsWith("/ap")
+                pathname.startsWith("/dc-partner")
                   ? "Search partner services, customers, applications, leads..."
                   : "Search GST, ITR, Passport, CIBIL, DL..."
               }
               className={cn(
                 "flex-1 bg-transparent text-base font-medium outline-none",
-                pathname.startsWith("/ap") ? "text-white placeholder:text-slate-500" : "text-slate-800 placeholder:text-slate-400"
+                pathname.startsWith("/dc-partner") ? "text-white placeholder:text-slate-500" : "text-slate-800 placeholder:text-slate-400"
               )}
               onKeyDown={(e) => {
                 if (e.key === "Escape") setSearchOpen(false);
@@ -955,14 +955,14 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
               }}
               className={cn(
                 "flex h-8 w-8 items-center justify-center rounded-lg transition",
-                pathname.startsWith("/ap") ? "text-slate-400 hover:bg-white/5 hover:text-white" : "text-slate-400 hover:bg-slate-200/50 hover:text-slate-700"
+                pathname.startsWith("/dc-partner") ? "text-slate-400 hover:bg-white/5 hover:text-white" : "text-slate-400 hover:bg-slate-200/50 hover:text-slate-700"
               )}
             >
               <X className="h-5 w-5" />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
-            {pathname.startsWith("/ap") ? (
+            {pathname.startsWith("/dc-partner") ? (
               // Partner Search Results
               searchQuery.trim() ? (
                 <div className="space-y-6 max-w-4xl mx-auto">
@@ -976,7 +976,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
                         {partnerResults.services.map((item) => (
                           <Link
                             key={item.id}
-                            href={`/ap/applications/new?serviceId=${item.id}`}
+                            href={`/dc-partner/applications/new?serviceId=${item.id}`}
                             onClick={() => setSearchOpen(false)}
                             className="flex items-center justify-between p-3.5 rounded-xl border border-white/5 bg-slate-900/40 hover:border-blue-500/30 hover:bg-slate-900 transition-all group"
                           >
@@ -1003,7 +1003,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
                         {partnerResults.customers.map((item) => (
                           <Link
                             key={item.id}
-                            href={`/ap/customers?search=${item.full_name}`}
+                            href={`/dc-partner/customers?search=${item.full_name}`}
                             onClick={() => setSearchOpen(false)}
                             className="flex items-center justify-between p-3.5 rounded-xl border border-white/5 bg-slate-900/40 hover:border-indigo-500/30 hover:bg-slate-900 transition-all group"
                           >
@@ -1030,7 +1030,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
                         {partnerResults.applications.map((item) => (
                           <Link
                             key={item.id}
-                            href={`/ap/applications/${item.id}`}
+                            href={`/dc-partner/applications/${item.id}`}
                             onClick={() => setSearchOpen(false)}
                             className="flex items-center justify-between p-3.5 rounded-xl border border-white/5 bg-slate-900/40 hover:border-emerald-500/30 hover:bg-slate-900 transition-all group"
                           >
@@ -1057,7 +1057,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode } = {}) 
                         {partnerResults.leads.map((item) => (
                           <Link
                             key={item.id}
-                            href={`/ap/leads?search=${item.name}`}
+                            href={`/dc-partner/leads?search=${item.name}`}
                             onClick={() => setSearchOpen(false)}
                             className="flex items-center justify-between p-3.5 rounded-xl border border-white/5 bg-slate-900/40 hover:border-amber-500/30 hover:bg-slate-900 transition-all group"
                           >

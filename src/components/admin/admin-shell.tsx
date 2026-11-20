@@ -205,7 +205,7 @@ function AdminNav({
                           )}
                           {collapsed && badgeCount ? (
                             <span
-                              className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[9px] font-bold text-white shadow-xs"
+                              className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-emerald-600 px-1 text-[11px] font-bold text-white shadow-xs"
                               aria-label={`${badgeCount} unread WhatsApp messages`}
                             >
                               {badgeCount > 99 ? "99+" : badgeCount}
@@ -224,7 +224,7 @@ function AdminNav({
                             </span>
                             {badgeCount ? (
                               <span
-                                className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[10px] font-bold text-white shadow-xs shrink-0"
+                                className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[11px] font-bold text-white shadow-xs shrink-0"
                                 aria-label={`${badgeCount} unread WhatsApp messages`}
                               >
                                 {badgeCount > 99 ? "99+" : badgeCount}

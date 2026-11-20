@@ -78,7 +78,7 @@ export default async function AgentApplicationDetailPage({ params }: { params: P
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-5xl space-y-5">
-        <Link href="/ap/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
+        <Link href="/dc-partner/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]">
           <ArrowLeft className="h-4 w-4" />
           Back to DC Partners
         </Link>

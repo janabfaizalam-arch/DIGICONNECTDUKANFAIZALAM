@@ -39,7 +39,7 @@ export default async function UnauthorizedPage({ searchParams }: PageProps) {
   const role = await getCurrentUserRole(user);
   const hasPartnerAccess = await isActiveAgent(user);
   const dashboardHref = hasPartnerAccess
-    ? "/ap/dashboard"
+    ? "/dc-partner/dashboard"
     : isAdminRole(role)
       ? "/admin"
       : getRoleHome(role);

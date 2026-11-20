@@ -114,6 +114,10 @@ const nextConfig: NextConfig = {
         destination: "/services/detailed-project-report",
         permanent: true,
       },
+      // The DC Partner panel moved from /ap to /dc-partner; old links,
+      // bookmarks and reset emails keep working (the query string is kept).
+      { source: "/ap", destination: "/dc-partner", permanent: true },
+      { source: "/ap/:path*", destination: "/dc-partner/:path*", permanent: true },
       {
         source: "/apply/dpr-report",
         destination: "/apply/detailed-project-report",

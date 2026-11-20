@@ -4,15 +4,15 @@ import { DIGI_PARTNER_LANDING_ROUTE, DIGI_PARTNER_LOGIN_ROUTE, normalizePartnerR
 
 describe("DC Partner hub routes (stages 4–5)", () => {
   it("keeps canonical login and landing routes stable", () => {
-    expect(DIGI_PARTNER_LOGIN_ROUTE).toBe("/ap/login");
+    expect(DIGI_PARTNER_LOGIN_ROUTE).toBe("/dc-partner/login");
     expect(DIGI_PARTNER_LANDING_ROUTE).toBe("/digi-partner");
   });
 
   it("documents training as the canonical education route (knowledge redirects)", () => {
-    const training = "/ap/training";
-    const knowledge = "/ap/knowledge";
+    const training = "/dc-partner/training";
+    const knowledge = "/dc-partner/knowledge";
     expect(training).not.toBe(knowledge);
-    expect(training).toBe("/ap/training");
+    expect(training).toBe("/dc-partner/training");
   });
 
   it("ignores client-side role escalation aliases for customers and admins", () => {

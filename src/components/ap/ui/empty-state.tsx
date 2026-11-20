@@ -46,7 +46,7 @@ export function ErrorState({
   title = "Something went wrong",
   description = "We couldn’t load this section. Please try again.",
   onRetry,
-  supportHref = "/ap/support",
+  supportHref = "/dc-partner/support",
   className,
 }: ErrorStateProps) {
   return (

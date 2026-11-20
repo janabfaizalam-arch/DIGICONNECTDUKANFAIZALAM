@@ -118,13 +118,14 @@ describe("every way a partner account is created", () => {
   it("the username provisioning picks is the mobile number", () => {
     const provision = readCode("src/lib/ap/provision-partner.ts");
     expect(provision).toContain("input.mobile");
-    expect(provision).toContain("must_change_password: true");
+    // Only a password the partner did not choose has to be replaced.
+    expect(provision).toContain("must_change_password: !selfPassword");
   });
 });
 
 describe("the prompt that asks for a real password", () => {
   const prompt = readCode("src/components/ap/password-setup-prompt.tsx");
-  const layout = readCode("src/app/ap/layout.tsx");
+  const layout = readCode("src/app/dc-partner/layout.tsx");
 
   it("sits above every panel screen, not on one of them", () => {
     expect(layout).toContain("PasswordSetupPrompt");
@@ -134,7 +135,7 @@ describe("the prompt that asks for a real password", () => {
   it("offers both now and later", () => {
     expect(prompt).toContain("Abhi banayein");
     expect(prompt).toContain("Baad mein");
-    expect(prompt).toContain("/ap/change-password");
+    expect(prompt).toContain("/dc-partner/change-password");
   });
 
   it("comes back on the next sign-in after a later", () => {
