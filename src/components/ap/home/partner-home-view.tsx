@@ -8,7 +8,6 @@ import { KpiRow } from "@/components/ap/home/kpi-row";
 import { OfficeWorkSummary } from "@/components/ap/home/office-work-summary";
 import { QuickActions } from "@/components/ap/home/quick-actions";
 import { RecentApplications } from "@/components/ap/home/recent-applications";
-import { TeamPanel } from "@/components/ap/home/team-panel";
 import { WorkQueue } from "@/components/ap/home/work-queue";
 import type { PartnerHomePayload } from "@/lib/ap/home-types";
 
@@ -76,7 +75,6 @@ export function PartnerHomeView({ data }: PartnerHomeViewProps) {
 
           <EarningsPanel data={data.collection} showTeamToggle={isCompany} />
 
-          {isCompany && data.teamSummary ? <TeamPanel summary={data.teamSummary} /> : null}
           {isOffice && data.officeWork ? <OfficeWorkSummary summary={data.officeWork} /> : null}
 
           <RecentApplications items={data.recentApplications} />

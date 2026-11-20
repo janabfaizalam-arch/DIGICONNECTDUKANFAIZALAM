@@ -99,16 +99,7 @@ export const OFFICE_STAFF_ACTIONS: PartnerQuickAction[] = [
 export const PARTNER_HOME_ACTIONS = {
   business_partner: STANDARD_PARTNER_ACTIONS,
   field_executive: STANDARD_PARTNER_ACTIONS,
-  company_partner: [
-    ...STANDARD_PARTNER_ACTIONS,
-    {
-      key: "my-team",
-      label: "My Team",
-      description: "Manage team members",
-      href: "/dc-partner/team",
-      iconName: "Users",
-    },
-  ],
+  company_partner: STANDARD_PARTNER_ACTIONS,
   office_staff: OFFICE_STAFF_ACTIONS,
 } satisfies Record<DigiPartnerType, PartnerQuickAction[]>;
 

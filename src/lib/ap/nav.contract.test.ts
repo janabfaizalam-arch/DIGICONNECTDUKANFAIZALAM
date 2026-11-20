@@ -99,12 +99,11 @@ describe("the map a partner navigates by", () => {
     expect(apDockItems()[0].href).toBe("/dc-partner/dashboard");
   });
 
-  it("hides team screens from a partner who has no team", () => {
-    const forShop = apNavItems({ canManageTeam: false }).map((item) => item.href);
-    expect(forShop).not.toContain("/dc-partner/team");
-    expect(apNavItems({ canManageTeam: true })).toEqual(
-      expect.arrayContaining([expect.objectContaining({ href: "/dc-partner/team" })]),
-    );
+  it("has no team screens at all: every partner is a DC Partner", () => {
+    for (const canManageTeam of [false, true]) {
+      const hrefs = apNavItems({ canManageTeam }).map((item) => item.href);
+      expect(hrefs.some((href) => href.startsWith("/dc-partner/team"))).toBe(false);
+    }
   });
 
   it("drops a group that has nothing left in it", () => {

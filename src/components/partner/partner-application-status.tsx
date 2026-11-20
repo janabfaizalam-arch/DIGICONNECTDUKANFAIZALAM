@@ -157,7 +157,7 @@ export function PartnerApplicationStatusLookup({ initialCode }: { initialCode?: 
 
           {application.status === "rejected" ? (
             <Link
-              href="/digi-partner/apply"
+              href="/become-dc-partner/apply"
               className="inline-flex h-11 items-center rounded-full border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
             >
               Apply again

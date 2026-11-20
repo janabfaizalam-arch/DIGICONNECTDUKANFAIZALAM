@@ -29,7 +29,7 @@ const STATIC: Array<{ path: string; changeFrequency: Entry["changeFrequency"]; p
   { path: "/packages", changeFrequency: "weekly", priority: 0.8 },
   { path: "/digital-services", changeFrequency: "monthly", priority: 0.7 },
   { path: "/blog", changeFrequency: "weekly", priority: 0.6 },
-  { path: "/digi-partner", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/become-dc-partner", changeFrequency: "monthly", priority: 0.7 },
   { path: "/print", changeFrequency: "monthly", priority: 0.7 },
   { path: "/download-app", changeFrequency: "monthly", priority: 0.5 },
   { path: "/track-application", changeFrequency: "monthly", priority: 0.6 },
