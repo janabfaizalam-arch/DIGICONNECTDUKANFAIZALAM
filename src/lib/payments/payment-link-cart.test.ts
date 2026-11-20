@@ -31,6 +31,12 @@ describe("the wizard", () => {
     expect(source).toContain("Number(orderData.amount ?? 0) / 100 || cartTotal");
   });
 
+  it("shows no QR anywhere in the payment step", () => {
+    // Paying happens on the terminal; a customer who is not in the shop gets
+    // the link by copy or WhatsApp.
+    expect(source).not.toContain("PaymentLinkQr");
+  });
+
   it("does not make the customer wait for a link to press Pay", () => {
     // Checkout needs the order and nothing else; generating the link and its
     // QR up front left the Pay button disabled through a second API call.

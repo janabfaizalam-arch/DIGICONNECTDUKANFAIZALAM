@@ -14,12 +14,11 @@ import {
   FileText, UserCheck, Building, Briefcase, Car, FileCheck,
   HeartHandshake, Star, ShoppingCart, Plus, Minus, RotateCcw,
   SwitchCamera, Zap, ZapOff, Clock, CheckCircle2, History,
-  MapPin, User, TrendingUp, Award, Copy, QrCode,
+  MapPin, User, TrendingUp, Award, Copy,
 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { createClient } from "@/lib/supabase/browser";
 import { normalizeAgentService, type AgentService } from "@/lib/agent-services";
-import { PaymentLinkQr } from "@/components/ap/payment-link-qr";
 import { cn } from "@/lib/utils";
 import { servicesData } from "@/lib/services-data";
 import { useWizardLayoutMetrics } from "@/lib/layout/use-wizard-layout-metrics";
@@ -386,8 +385,6 @@ export function PartnerApplicationWizard({
   const [isScriptReady, setIsScriptReady] = useState(false);
   const [paymentError,  setPaymentError]  = useState<string | null>(null);
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null);
-  const [paymentLinkCode, setPaymentLinkCode] = useState<string | null>(null);
-  const [paymentLinkUpiQr, setPaymentLinkUpiQr] = useState<string | null>(null);
 
   /*
     The payment step prepares itself.
@@ -983,8 +980,6 @@ export function PartnerApplicationWizard({
       }
 
       setPaymentLinkUrl(linkData.url);
-      setPaymentLinkCode(linkData.code ?? null);
-      setPaymentLinkUpiQr(linkData.upiQrImageUrl ?? null);
       setPaymentLinkMessage(linkData.whatsAppMessage);
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : String(e);
@@ -2005,24 +2000,20 @@ export function PartnerApplicationWizard({
                       </>
                     ) : (
                       <>
-                        <QrCode className="h-3.5 w-3.5" /> Send a payment link instead
+                        <Copy className="h-3.5 w-3.5" /> Send a payment link instead
                       </>
                     )}
                   </button>
                 ) : null}
 
-                {/* The QR, at the size the customer actually scans it from. */}
+                {/* The link, for a customer who is not standing here. No QR:
+                    anyone in the shop pays on the terminal instead. */}
                 {paymentLinkUrl ? (
-                  <div className="flex flex-col items-center rounded-2xl border border-[var(--dcp-line)] bg-[var(--dcp-surface-2)] p-2 sm:p-4">
-                    <PaymentLinkQr
-                      url={paymentLinkUrl}
-                      code={paymentLinkCode ?? undefined}
-                      upiQrImageUrl={paymentLinkUpiQr}
-                      amount={preparedOrder ? preparedOrder.amount / 100 : cartTotal}
-                    />
+                  <div className="flex flex-col items-center rounded-2xl border border-[var(--dcp-line)] bg-[var(--dcp-surface-2)] p-4">
+                    <p className="w-full break-all rounded-xl border border-[var(--dcp-line-2)] bg-[var(--dcp-surface)] px-3 py-2 text-center text-[11px] font-semibold text-[var(--dcp-ink-2)]">
+                      {paymentLinkUrl}
+                    </p>
 
-                    {/* Sharing sits under the QR: the same link, for a customer
-                        who is not standing here. */}
                     <div className="mt-4 flex w-full max-w-[400px] gap-2">
                       <button
                         onClick={() => {
