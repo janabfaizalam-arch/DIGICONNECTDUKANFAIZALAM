@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { getCurrentUser } from "@/lib/auth";
 import { getPartnerMembership } from "@/lib/auth/memberships";
 import { getAgencyPartnerById, getAgencyPartnerByUserId } from "@/lib/ap-data";
-import { closeUpiQr, createUpiQrForPaymentLink } from "@/lib/payments/upi-qr";
+import { closeUpiQr } from "@/lib/payments/upi-qr";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 function generatePaymentCode(): string {
@@ -249,30 +249,22 @@ export async function POST(request: Request) {
       const reusable = links[0];
 
       /*
-        Mint the UPI QR before the row is written, so the link is never
-        recorded pointing at a QR that does not exist. A failure here returns
-        null and the link goes out with its page-based QR alone.
+        No UPI QR is minted any more. The pay page now goes straight to
+        checkout, and minting cost a Razorpay round trip on every link the
+        partner generated. Links already carrying a live QR keep working —
+        the webhook still settles `qr_code.credited` — and a replaced link
+        still has its old QR closed below.
       */
-      const upiQr = await createUpiQrForPaymentLink({
-        code,
-        amount: totalAmount,
-        expiresAt,
-        description: applications.map((a) => a.service_name || "Service").join(", "),
-        customerName,
-      });
-
-      upiQrImageUrl = upiQr?.imageUrl ?? null;
-
       const { data: written, error: writeError } = reusable
         ? await supabase
             .from("payment_links")
-            .update({ ...row, razorpay_qr_id: upiQr?.id ?? null, razorpay_qr_image_url: upiQrImageUrl })
+            .update({ ...row, razorpay_qr_id: null, razorpay_qr_image_url: null })
             .eq("id", reusable.id)
             .select("id")
             .maybeSingle()
         : await supabase
             .from("payment_links")
-            .insert({ ...row, razorpay_qr_id: upiQr?.id ?? null, razorpay_qr_image_url: upiQrImageUrl })
+            .insert(row)
             .select("id")
             .maybeSingle();
 
@@ -288,7 +280,7 @@ export async function POST(request: Request) {
 
         // The replaced link's QR must stop being payable, or a customer
         // holding the old one could pay against a cart that no longer exists.
-        if (reusable.razorpay_qr_id && reusable.razorpay_qr_id !== upiQr?.id) {
+        if (reusable.razorpay_qr_id) {
           await closeUpiQr(reusable.razorpay_qr_id);
         }
       }

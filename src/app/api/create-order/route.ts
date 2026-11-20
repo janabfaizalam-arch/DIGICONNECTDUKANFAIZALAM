@@ -167,22 +167,32 @@ export async function POST(request: Request) {
       const resolvedReferralToken = body?.applicationDraft?.details?.referralToken || referralTokenFromCookie || null;
       let referrerApId = null;
 
-      if (resolvedReferralToken) {
-        const { data: referralRecord, error: referralErr } = await supabase
-          .from("service_referrals")
-          .select("id, partner_id")
-          .eq("token", resolvedReferralToken)
-          .maybeSingle();
+      /*
+        These three ask different questions of different tables and none of
+        them needs the others' answer, so they go together. Run one after the
+        other they cost three round trips to a database that is not in the same
+        region as this function, which the customer waits through before
+        checkout can even open.
+      */
+      const [referralResult, ap, partnerMembership] = await Promise.all([
+        resolvedReferralToken
+          ? supabase
+              .from("service_referrals")
+              .select("id, partner_id")
+              .eq("token", resolvedReferralToken)
+              .maybeSingle()
+          : Promise.resolve(null),
+        getAgencyPartnerByUserId(user.id).catch(() => null),
+        getPartnerMembership(user.id).catch(() => null),
+      ]);
 
-        if (referralErr) {
-          console.error(`[CREATE-ORDER] Supabase error querying referral token:`, referralErr);
-        } else if (referralRecord) {
-          referrerApId = referralRecord.partner_id;
+      if (referralResult) {
+        if (referralResult.error) {
+          console.error(`[CREATE-ORDER] Supabase error querying referral token:`, referralResult.error);
+        } else if (referralResult.data) {
+          referrerApId = referralResult.data.partner_id;
         }
       }
-
-      const ap = await getAgencyPartnerByUserId(user.id).catch(() => null);
-      const partnerMembership = await getPartnerMembership(user.id).catch(() => null);
       const portalHint = String(body?.applicationDraft?.details?.portal ?? "").toLowerCase();
       const isPartnerPortalRequest = portalHint === "ap" || portalHint === "agency_partner";
 
@@ -240,8 +250,15 @@ export async function POST(request: Request) {
           return jsonError("Package bundle not found.", 400);
         }
       } else {
-        for (const slug of serviceSlugs) {
-          const service = await getAgentServiceBySlug(slug);
+        /*
+          A cart of three services used to cost three round trips, one after
+          the other, because each waited for the last. They are independent
+          lookups, so they go out together and the cart costs one.
+        */
+        const resolved = await Promise.all(serviceSlugs.map((slug) => getAgentServiceBySlug(slug)));
+
+        for (const [index, service] of resolved.entries()) {
+          const slug = serviceSlugs[index];
           if (!service) {
             console.error(`[CREATE-ORDER] Service "${slug}" not found in agent_services.`);
             return jsonError("Service pricing is not configured in Admin Panel.", 400);
@@ -945,23 +962,34 @@ export async function POST(request: Request) {
         return jsonError("Razorpay order was created, but application could not be linked. Please contact support.", 500);
       }
 
-      const { error: applicationUpdateError } = await supabase
-        .from("applications")
-        .update({
+      /*
+        The link-up and the pending payment row touch different tables and the
+        CRM enqueue needs neither, so all three go together. Sequentially they
+        were three more round trips the customer waited through with the
+        checkout still closed.
+      */
+      const [{ error: applicationUpdateError }, { error: paymentInsertError }] = await Promise.all([
+        supabase
+          .from("applications")
+          .update({
+            razorpay_order_id: order.id,
+            updated_at: new Date().toISOString(),
+          })
+          .in("id", applicationIds),
+        supabase.from("payments").insert({
+          application_id: primaryApplicationId,
+          user_id: orderUserId,
+          amount: amount / 100,
+          wallet_used_amount: walletRedeemAmount,
+          real_payment_amount: amount / 100,
+          status: "pending",
           razorpay_order_id: order.id,
-          updated_at: new Date().toISOString(),
-        })
-        .in("id", applicationIds);
-
-      const { error: paymentInsertError } = await supabase.from("payments").insert({
-        application_id: primaryApplicationId,
-        user_id: orderUserId,
-        amount: amount / 100,
-        wallet_used_amount: walletRedeemAmount,
-        real_payment_amount: amount / 100,
-        status: "pending",
-        razorpay_order_id: order.id,
-      });
+        }),
+        // Unpaid / payment-pending applications must still appear in office CRM.
+        // Awaited (inside this group) so Vercel cannot freeze before the
+        // crm_sync_jobs insert lands.
+        scheduleCrmSyncMany(applicationIds, "application_created"),
+      ]);
 
       if (applicationUpdateError || paymentInsertError) {
         console.error("[razorpay/create-order] Razorpay order link failed", {
@@ -979,12 +1007,6 @@ export async function POST(request: Request) {
       currency: order.currency,
       receipt,
     });
-
-    if (applicationIds.length) {
-      // Unpaid / payment-pending applications must still appear in office CRM.
-      // Await enqueue so Vercel cannot freeze before crm_sync_jobs insert.
-      await scheduleCrmSyncMany(applicationIds, "application_created");
-    }
 
     return NextResponse.json({
       order_id: order.id,

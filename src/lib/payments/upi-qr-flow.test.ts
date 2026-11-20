@@ -14,6 +14,10 @@ import { describe, expect, it } from "vitest";
  * If that door is not wired, the customer's money is taken and the
  * application stays unpaid, with no commission and no notification. These
  * tests pin each link in that chain.
+ *
+ * New links no longer carry a UPI QR — the pay page goes straight to checkout
+ * — but QRs already in customers' hands stay payable until they expire, so
+ * the door must stay wired and a replaced link must still have its QR closed.
  */
 
 const root = process.cwd();
@@ -46,16 +50,27 @@ describe("the QR a customer pays into", () => {
 describe("generation", () => {
   const source = read("src/app/api/payment-links/generate/route.ts");
 
-  it("stores the QR id, which is all the webhook will have to match on", () => {
-    expect(source).toContain("razorpay_qr_id: upiQr?.id ?? null");
+  it("no longer mints a QR, so a link costs no Razorpay round trip", () => {
+    expect(source).not.toContain("createUpiQrForPaymentLink(");
   });
 
-  it("does not mint a second QR for a link the customer already holds", () => {
+  it("still closes the QR of a link it replaces", () => {
+    // A customer holding the old QR must not be able to pay against a cart
+    // that has since changed, whether or not we mint new ones.
+    expect(source).toContain("closeUpiQr(reusable.razorpay_qr_id)");
+  });
+
+  it("still reads the QR a live link already carries", () => {
+    // Links issued before minting stopped keep working until they expire.
     expect(source).toContain("upiQrImageUrl = liveLink.razorpay_qr_image_url ?? null");
   });
+});
 
-  it("closes the QR of a link it replaces", () => {
-    expect(source).toContain("closeUpiQr(reusable.razorpay_qr_id)");
+describe("the pay page", () => {
+  const source = read("src/app/pay/[code]/page.tsx");
+
+  it("goes straight to checkout, with no QR in the way", () => {
+    expect(source).not.toContain("Scan with any UPI app");
   });
 });
 
