@@ -14,7 +14,7 @@ import {
   FileText, UserCheck, Building, Briefcase, Car, FileCheck,
   HeartHandshake, Star, ShoppingCart, Plus, Minus, RotateCcw,
   SwitchCamera, Zap, ZapOff, Clock, CheckCircle2, History,
-  MapPin, User, TrendingUp, Award, Copy,
+  MapPin, User, TrendingUp, Award, Copy, QrCode,
 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { createClient } from "@/lib/supabase/browser";
@@ -417,6 +417,7 @@ export function PartnerApplicationWizard({
   */
   const preparedSignatureRef = useRef<string | null>(null);
   const [paymentLinkMessage, setPaymentLinkMessage] = useState<string | null>(null);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
 
   // Camera extras
   const [cameraFacing, setCameraFacing] = useState<"environment" | "user">("environment");
@@ -940,27 +941,11 @@ export function PartnerApplicationWizard({
         keyId: orderData.key_id,
       });
 
-      const linkRes = await fetch("/api/payment-links/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ applicationIds: orderData.application_ids }),
-      });
-      const linkData = await linkRes.json();
-
-      if (!linkRes.ok) {
-        throw new Error(linkData.error ?? "Could not create the payment link");
-      }
-
-      setPaymentLinkUrl(linkData.url);
-      setPaymentLinkCode(linkData.code ?? null);
-      setPaymentLinkUpiQr(linkData.upiQrImageUrl ?? null);
-      setPaymentLinkMessage(linkData.whatsAppMessage);
-
       setSuccessDetails({
         applicationIds: orderData.application_ids,
         customerName:   customer.name,
         serviceTitle:   cartItems.map(i => `${i.service.title} \u00d7${i.quantity}`).join(", "),
-        amountPaid:     Number(linkData.amount ?? cartTotal),
+        amountPaid:     Number(orderData.amount ?? 0) / 100 || cartTotal,
       });
 
       preparedSignatureRef.current = signature;
@@ -972,6 +957,42 @@ export function PartnerApplicationWizard({
       setIsPreparing(false);
     }
   }, [cartItems, customer, cartTotal, toastError]);
+
+  /**
+   * Create the shareable payment link, only when the partner asks for it.
+   *
+   * At the counter the customer is standing right there and the partner just
+   * presses Pay, so generating a link and its QR up front bought nothing and
+   * cost a second API call -- with the Pay button disabled until it returned.
+   * It is one tap away for a customer who is not in the shop.
+   */
+  const generatePaymentLink = useCallback(async () => {
+    if (!preparedOrder?.applicationIds.length || isGeneratingLink) return;
+
+    setIsGeneratingLink(true);
+    try {
+      const linkRes = await fetch("/api/payment-links/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ applicationIds: preparedOrder.applicationIds }),
+      });
+      const linkData = await linkRes.json();
+
+      if (!linkRes.ok) {
+        throw new Error(linkData.error ?? "Could not create the payment link");
+      }
+
+      setPaymentLinkUrl(linkData.url);
+      setPaymentLinkCode(linkData.code ?? null);
+      setPaymentLinkUpiQr(linkData.upiQrImageUrl ?? null);
+      setPaymentLinkMessage(linkData.whatsAppMessage);
+    } catch (e) {
+      const errMsg = e instanceof Error ? e.message : String(e);
+      toastError?.(errMsg);
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  }, [preparedOrder, isGeneratingLink, toastError]);
 
   /**
    * Open Razorpay Checkout for an order that already exists.
@@ -1928,7 +1949,7 @@ export function PartnerApplicationWizard({
                 <div>
                   <h2 className="text-lg font-black text-[var(--dcp-ink)]">Payment</h2>
                   <p className="text-xs text-[var(--dcp-ink-3)] mt-0.5">
-                    Let the customer scan, or send them the link.
+                    Take the payment here, or send the customer a link.
                   </p>
                 </div>
 
@@ -1948,14 +1969,14 @@ export function PartnerApplicationWizard({
                   </div>
                 </div>
 
-                {isPreparing && !paymentLinkUrl ? (
+                {isPreparing && !preparedOrder ? (
                   <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-[var(--dcp-line-2)] bg-[var(--dcp-surface-2)] px-4 py-10">
                     <RefreshCw className="h-5 w-5 animate-spin text-[var(--dcp-brand)]" />
                     <p className="text-xs font-bold text-[var(--dcp-ink-3)]">Preparing the payment…</p>
                   </div>
                 ) : null}
 
-                {prepareError && !paymentLinkUrl ? (
+                {prepareError && !preparedOrder ? (
                   <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
                     <p className="text-xs font-black text-red-700">Could not prepare the payment</p>
                     <p className="mt-1 text-[11px] font-medium leading-snug text-red-600">{prepareError}</p>
@@ -1967,6 +1988,27 @@ export function PartnerApplicationWizard({
                       <RefreshCw className="h-3.5 w-3.5" /> Try again
                     </button>
                   </div>
+                ) : null}
+
+                {/* Not in the shop? Ask for a link. Nothing is generated,
+                    and nothing is waited for, until this is pressed. */}
+                {preparedOrder && !paymentLinkUrl ? (
+                  <button
+                    type="button"
+                    onClick={() => void generatePaymentLink()}
+                    disabled={isGeneratingLink}
+                    className="dcp-btn dcp-btn-quiet h-11 w-full text-xs disabled:opacity-50"
+                  >
+                    {isGeneratingLink ? (
+                      <>
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Creating the link…
+                      </>
+                    ) : (
+                      <>
+                        <QrCode className="h-3.5 w-3.5" /> Send a payment link instead
+                      </>
+                    )}
+                  </button>
                 ) : null}
 
                 {/* The QR, at the size the customer actually scans it from. */}
