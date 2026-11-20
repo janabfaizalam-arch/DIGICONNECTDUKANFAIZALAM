@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound, Eye, EyeOff, ShieldCheck } from "lucide-react";
 
@@ -17,13 +17,40 @@ export default function APResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  // The emailed link carries a one-time recovery token; it is redeemed for a
+  // session here, before the new password is saved against it.
+  const [linkState, setLinkState] = useState<"checking" | "ready" | "invalid">("checking");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tokenHash = params.get("token_hash");
+    const supabase = createClient();
+    if (!supabase) {
+      setLinkState("invalid");
+      return;
+    }
+    if (!tokenHash) {
+      // An older link may already have signed the browser in.
+      void supabase.auth.getSession().then(({ data }) => setLinkState(data.session ? "ready" : "invalid"));
+      return;
+    }
+    void supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" }).then(({ error }) => {
+      setLinkState(error ? "invalid" : "ready");
+      window.history.replaceState(null, "", "/ap/reset-password");
+    });
+  }, []);
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isPending) return;
 
-    if (password.length < 6) {
-      toastError("Password must be at least 6 characters long.");
+    if (linkState !== "ready") {
+      toastError("Reset link purana ya galat hai. Forgot password se naya link mangwaiye.");
+      return;
+    }
+
+    if (password.length < 8) {
+      toastError("Password kam se kam 8 character ka rakhiye.");
       return;
     }
 
@@ -47,7 +74,8 @@ export default function APResetPasswordPage() {
           throw error;
         }
 
-        success("Password updated successfully. Please sign in.");
+        await supabase.auth.signOut();
+        success("Naya password set ho gaya. Ab login kijiye.");
         router.push("/ap/login");
       } catch (error) {
         toastError(error instanceof Error ? error.message : "Password reset failed.");
@@ -87,6 +115,15 @@ export default function APResetPasswordPage() {
             background: "rgba(15, 23, 42, 0.45)",
           }}
         >
+          {linkState === "invalid" ? (
+            <p className="rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs font-semibold leading-relaxed text-amber-200">
+              Ye reset link purana ya galat hai (link 1 ghante tak hi chalta hai).{" "}
+              <a href="/ap/forgot-password" className="underline">
+                Forgot password
+              </a>{" "}
+              se naya link mangwaiye.
+            </p>
+          ) : null}
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-400 ml-1">New Password</label>
@@ -94,7 +131,7 @@ export default function APResetPasswordPage() {
                 <KeyRound className="pointer-events-none absolute left-4.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Min 6 characters"
+                  placeholder="Kam se kam 8 character"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
