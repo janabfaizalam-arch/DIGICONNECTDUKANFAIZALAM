@@ -20,12 +20,23 @@ describe("the wizard", () => {
   const source = read("src/components/portal/partner-application-wizard.tsx");
 
   it("sends the whole cart to link generation, not its first application", () => {
-    expect(source).toContain("applicationIds: orderData.application_ids");
+    // The link is generated on demand now, from the prepared order.
+    expect(source).toContain("applicationIds: preparedOrder.applicationIds");
     expect(source).not.toContain("applicationId: orderData.application_ids[0]");
   });
 
   it("reports the amount the server priced, not the cart total it guessed", () => {
-    expect(source).toContain("Number(linkData.amount ?? cartTotal)");
+    // Read from the order rather than the link, because a counter payment
+    // never generates a link at all.
+    expect(source).toContain("Number(orderData.amount ?? 0) / 100 || cartTotal");
+  });
+
+  it("does not make the customer wait for a link to press Pay", () => {
+    // Checkout needs the order and nothing else; generating the link and its
+    // QR up front left the Pay button disabled through a second API call.
+    const prepare = source.slice(source.indexOf("const preparePayment ="), source.indexOf("const generatePaymentLink ="));
+    expect(prepare).toContain("/api/create-order");
+    expect(prepare).not.toContain("/api/payment-links/generate");
   });
 });
 
