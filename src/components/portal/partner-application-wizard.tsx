@@ -956,9 +956,14 @@ export function PartnerApplicationWizard({
       lastPreparedIdsRef.current = orderData.wallet_only ? [] : (orderData.application_ids as string[]);
       const usedFromWallet = Number(orderData.partner_wallet_used ?? 0) || 0;
       setWalletUsed(usedFromWallet);
-      if (usedFromWallet > 0) {
-        setPartnerWalletBalance((balance) => Math.max(0, balance - usedFromWallet));
-      }
+      // The server's balance, not a local guess: a hold it could not give back
+      // must not show as money the partner still has.
+      fetch("/api/ap/wallet", { cache: "no-store" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data) setPartnerWalletBalance(Math.max(0, Math.floor(Number(data.balance) || 0)));
+        })
+        .catch(() => {});
 
       // The wallet paid the whole price: the applications are already submitted.
       if (orderData.wallet_only) {
