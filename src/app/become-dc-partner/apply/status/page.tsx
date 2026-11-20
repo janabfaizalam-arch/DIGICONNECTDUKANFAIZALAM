@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Track your DC Partner application | DigiConnect Dukan",
   description: "Check the status of your DigiConnect DC Partner application with your tracking code.",
-  alternates: { canonical: "/digi-partner/apply/status" },
+  alternates: { canonical: "/become-dc-partner/apply/status" },
 };
 
 type PageProps = {
@@ -41,7 +41,7 @@ export default async function PartnerApplicationStatusPage({ searchParams }: Pag
     >
       <GlassCard>
         <Link
-          href="/digi-partner/apply"
+          href="/become-dc-partner/apply"
           className="inline-flex w-fit items-center gap-1.5 text-[13px] font-bold text-slate-500 transition hover:text-slate-900"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />

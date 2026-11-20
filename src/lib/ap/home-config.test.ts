@@ -10,9 +10,9 @@ describe("partner home config", () => {
     expect(getPartnerHomeActions("business_partner")).toEqual(getPartnerHomeActions("field_executive"));
   });
 
-  it("adds My Team only for company_partner", () => {
+  it("offers My Team to nobody: the team feature is gone", () => {
     const company = getPartnerHomeActions("company_partner");
-    expect(company.some((a) => a.key === "my-team")).toBe(true);
+    expect(company.some((a) => a.key === "my-team")).toBe(false);
     expect(getPartnerHomeActions("business_partner").some((a) => a.key === "my-team")).toBe(false);
     expect(getPartnerHomeActions("office_staff").some((a) => a.key === "my-team")).toBe(false);
   });

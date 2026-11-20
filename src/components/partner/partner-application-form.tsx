@@ -296,8 +296,8 @@ export function PartnerApplicationForm() {
           <Link
             href={
               finished.code
-                ? `/digi-partner/apply/status?code=${encodeURIComponent(finished.code)}`
-                : "/digi-partner/apply/status"
+                ? `/become-dc-partner/apply/status?code=${encodeURIComponent(finished.code)}`
+                : "/become-dc-partner/apply/status"
             }
             className="inline-flex h-11 items-center gap-2 rounded-full bg-slate-900 px-5 text-sm font-bold text-white transition hover:bg-slate-800"
           >
@@ -471,7 +471,7 @@ export function PartnerApplicationForm() {
       <div className="flex flex-col items-center gap-2 border-t border-slate-100 pt-4 text-center text-sm font-semibold text-slate-500">
         <span>
           Already applied?{" "}
-          <Link href="/digi-partner/apply/status" className="text-slate-900 hover:underline">
+          <Link href="/become-dc-partner/apply/status" className="text-slate-900 hover:underline">
             Track your application
           </Link>
         </span>

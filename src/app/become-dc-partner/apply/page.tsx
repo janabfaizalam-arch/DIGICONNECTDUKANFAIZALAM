@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "Become a DC Partner | DigiConnect Dukan",
   description:
     "Apply to become a DigiConnect DC Partner. Serve customers, earn commission on every completed service, and manage everything from your partner panel.",
-  alternates: { canonical: "/digi-partner/apply" },
+  alternates: { canonical: "/become-dc-partner/apply" },
 };
 
 /**

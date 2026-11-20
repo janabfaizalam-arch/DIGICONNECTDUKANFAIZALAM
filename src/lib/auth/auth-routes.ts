@@ -19,9 +19,9 @@ export const AUTH_ROUTES = [
     Both own the full viewport now — same split-screen scene as the partner
     login — so the site header would sit on top of the brand panel and clip
     its first line. Listed as the parent route on purpose: the nested
-    /digi-partner/apply/status is the same scene.
+    /become-dc-partner/apply/status is the same scene.
   */
-  "/digi-partner/apply",
+  "/become-dc-partner/apply",
   // Legacy aliases: they redirect to the routes above, but stay chrome-free
   // so the old URLs never flash a header on the way through.
   "/login",

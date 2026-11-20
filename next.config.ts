@@ -117,6 +117,11 @@ const nextConfig: NextConfig = {
       // The DC Partner panel moved from /ap to /dc-partner; old links,
       // bookmarks and reset emails keep working (the query string is kept).
       { source: "/ap", destination: "/dc-partner", permanent: true },
+      // The public "Become a DC Partner" pages moved from /digi-partner.
+      // /digi-partner/login stays the login alias the middleware resolves.
+      { source: "/digi-partner/login", destination: "/dc-partner/login", permanent: true },
+      { source: "/digi-partner", destination: "/become-dc-partner", permanent: true },
+      { source: "/digi-partner/:path*", destination: "/become-dc-partner/:path*", permanent: true },
       { source: "/ap/:path*", destination: "/dc-partner/:path*", permanent: true },
       {
         source: "/apply/dpr-report",

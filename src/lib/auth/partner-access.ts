@@ -6,19 +6,19 @@
  *     "DC Partner". That is the only name shown to anybody, public or admin.
  *   - The older names — "Digi Partner", "Agency Partner", "AP", "Agent" —
  *     survive only where changing them would break something already in the
- *     world: the /ap and /digi-partner routes, the agency_partner* tables and
+ *     world: the /ap and /digi-partner routes (now redirected to /dc-partner and /become-dc-partner), the agency_partner* tables and
  *     role values, the DCD-AP-#### partner codes, and the ap-* modules that
  *     read them. None of them is ever rendered.
  */
 
 /** Public DC Partner marketing / onboarding landing page. */
-export const DIGI_PARTNER_LANDING_ROUTE = "/digi-partner";
+export const DIGI_PARTNER_LANDING_ROUTE = "/become-dc-partner";
 
 /** The one canonical DC Partner login route. */
 export const DIGI_PARTNER_LOGIN_ROUTE = "/dc-partner/login";
 
 /** Public self-signup form for people who want to become a partner. */
-export const DIGI_PARTNER_APPLY_ROUTE = "/digi-partner/apply";
+export const DIGI_PARTNER_APPLY_ROUTE = "/become-dc-partner/apply";
 
 /** Where an authenticated, active DC Partner lands after login. */
 export const DIGI_PARTNER_DASHBOARD_ROUTE = "/dc-partner/dashboard";

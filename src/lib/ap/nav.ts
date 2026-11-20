@@ -200,28 +200,6 @@ export const AP_NAV_GROUPS: ApNavGroup[] = [
     ],
   },
   {
-    id: "team",
-    label: "Team",
-    blurb: "People working under your partnership.",
-    icon: UsersRound,
-    items: [
-      {
-        href: "/dc-partner/team",
-        label: "My team",
-        description: "Members you have added, and what they can do",
-        icon: UsersRound,
-        teamOnly: true,
-      },
-      {
-        href: "/dc-partner/team/new",
-        label: "Add a member",
-        description: "Create a login for someone on your team",
-        icon: UserRound,
-        teamOnly: true,
-      },
-    ],
-  },
-  {
     id: "you",
     label: "Aapka account",
     blurb: "Your details, your learning, and help when stuck.",

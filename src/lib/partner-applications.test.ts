@@ -192,12 +192,12 @@ describe("the signup path is actually wired up", () => {
   it("the AP login CTA opens the application form", () => {
     // It used to link to /services, which starts nothing.
     const loginForm = readSrc("src/components/auth/ap-login-form.tsx");
-    expect(loginForm).toContain("/digi-partner/apply");
+    expect(loginForm).toContain("/become-dc-partner/apply");
     expect(loginForm).not.toContain('href="/services"');
   });
 
   it("the landing page CTA opens the form instead of WhatsApp", () => {
-    const landing = readSrc("src/app/digi-partner/page.tsx");
+    const landing = readSrc("src/app/become-dc-partner/page.tsx");
     expect(landing).toContain("DIGI_PARTNER_APPLY_ROUTE");
   });
 

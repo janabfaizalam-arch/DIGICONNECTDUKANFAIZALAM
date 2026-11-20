@@ -5,7 +5,7 @@ import { DIGI_PARTNER_LANDING_ROUTE, DIGI_PARTNER_LOGIN_ROUTE, normalizePartnerR
 describe("DC Partner hub routes (stages 4–5)", () => {
   it("keeps canonical login and landing routes stable", () => {
     expect(DIGI_PARTNER_LOGIN_ROUTE).toBe("/dc-partner/login");
-    expect(DIGI_PARTNER_LANDING_ROUTE).toBe("/digi-partner");
+    expect(DIGI_PARTNER_LANDING_ROUTE).toBe("/become-dc-partner");
   });
 
   it("documents training as the canonical education route (knowledge redirects)", () => {

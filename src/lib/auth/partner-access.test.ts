@@ -15,7 +15,7 @@ describe("canonical routes", () => {
   it("uses /ap/login as the single canonical partner login route", () => {
     expect(DIGI_PARTNER_LOGIN_ROUTE).toBe("/dc-partner/login");
     expect(DIGI_PARTNER_DASHBOARD_ROUTE).toBe("/dc-partner/dashboard");
-    expect(DIGI_PARTNER_LANDING_ROUTE).toBe("/digi-partner");
+    expect(DIGI_PARTNER_LANDING_ROUTE).toBe("/become-dc-partner");
     expect(DIGI_PARTNER_BECOME_CTA_LABEL).toBe("Become a DC Partner");
   });
 

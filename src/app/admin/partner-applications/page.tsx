@@ -94,8 +94,8 @@ export default async function AdminPartnerApplicationsPage({
             <p className="text-sm font-bold text-slate-900">Nothing here</p>
             <p className="mx-auto max-w-lg text-sm font-medium text-slate-600">
               Applications submitted at{" "}
-              <Link href="/digi-partner/apply" className="font-bold text-[var(--primary)] underline">
-                /digi-partner/apply
+              <Link href="/become-dc-partner/apply" className="font-bold text-[var(--primary)] underline">
+                /become-dc-partner/apply
               </Link>{" "}
               land in this queue.
             </p>
