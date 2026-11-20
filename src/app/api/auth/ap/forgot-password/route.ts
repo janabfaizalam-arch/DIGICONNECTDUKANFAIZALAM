@@ -72,8 +72,8 @@ export async function POST(request: Request) {
   const sent = await sendMail({
     to: email,
     subject: "DC Partner password reset",
-    text: `Namaste,\n\nApna DC Partner password badalne ke liye ye link kholiye (1 ghante tak chalega):\n${link}\n\nAgar aapne ye nahi maanga tha to is email ko ignore kar dijiye.\n\nDigiConnect Dukan`,
-    html: `<p>Namaste,</p><p>Apna DC Partner password badalne ke liye neeche ka button dabaiye. Ye link 1 ghante tak chalega.</p><p><a href="${link}" style="display:inline-block;padding:12px 20px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:bold">Naya password banaiye</a></p><p style="color:#64748b;font-size:13px">Agar aapne ye nahi maanga tha to is email ko ignore kar dijiye.</p><p>DigiConnect Dukan</p>`,
+    text: `Apna DC Partner password badalne ke liye ye link kholiye (1 ghante tak chalega):\n${link}\n\nAgar aapne ye nahi maanga tha to is email ko ignore kar dijiye.\n\nDigiConnect Dukan`,
+    html: `<p>Apna DC Partner password badalne ke liye neeche ka button dabaiye. Ye link 1 ghante tak chalega.</p><p><a href="${link}" style="display:inline-block;padding:12px 20px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:bold">Naya password banaiye</a></p><p style="color:#64748b;font-size:13px">Agar aapne ye nahi maanga tha to is email ko ignore kar dijiye.</p><p>DigiConnect Dukan</p>`,
   });
   if (!sent) return json({ ok: false, error: "Email bhej nahi paaye. Thodi der baad try kijiye, ya WhatsApp wala option use kijiye." }, 502);
 
