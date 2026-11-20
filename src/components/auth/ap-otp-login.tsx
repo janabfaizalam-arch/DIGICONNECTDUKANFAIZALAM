@@ -23,7 +23,16 @@ import { trackLogin } from "@/lib/google-analytics";
 
 const RESEND_SECONDS = 60;
 
-export function APOtpLogin({ onUsePassword }: { onUsePassword: () => void }) {
+export function APOtpLogin({
+  onUsePassword,
+  onVerified,
+  verifyLabel = "Login kijiye",
+}: {
+  onUsePassword?: () => void;
+  /** Called after the code is verified (the partner is then signed in) instead of opening the dashboard. */
+  onVerified?: () => void;
+  verifyLabel?: string;
+}) {
   const { success } = useToast();
 
   const [stage, setStage] = useState<"number" | "code">("number");
@@ -112,6 +121,11 @@ export function APOtpLogin({ onUsePassword }: { onUsePassword: () => void }) {
         return;
       }
 
+      if (onVerified) {
+        setDone(true);
+        onVerified();
+        return;
+      }
       // A "later" from an earlier session must not silence the password prompt.
       rearmPasswordPrompt();
       trackLogin("agent_email");
@@ -158,13 +172,15 @@ export function APOtpLogin({ onUsePassword }: { onUsePassword: () => void }) {
           WhatsApp par code bhejiye
         </AuthButton>
 
-        <button
-          type="button"
-          onClick={onUsePassword}
-          className="inline-flex min-h-11 items-center justify-center text-sm font-semibold text-slate-500 transition hover:text-slate-900 hover:underline"
-        >
-          Password se login kijiye
-        </button>
+        {onUsePassword ? (
+          <button
+            type="button"
+            onClick={onUsePassword}
+            className="inline-flex min-h-11 items-center justify-center text-sm font-semibold text-slate-500 transition hover:text-slate-900 hover:underline"
+          >
+            Password se login kijiye
+          </button>
+        ) : null}
       </form>
     );
   }
@@ -199,7 +215,7 @@ export function APOtpLogin({ onUsePassword }: { onUsePassword: () => void }) {
       />
 
       <AuthButton type="submit" loading={busy} loadingText="Check kar rahe hain…" status={done ? "success" : "idle"}>
-        Login kijiye
+        {verifyLabel}
       </AuthButton>
 
       <div className="flex flex-col items-center gap-2 text-center">
