@@ -141,7 +141,7 @@ export function InboxChatThread({
                 </h3>
                 <span
                   className={cn(
-                    "rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider",
+                    "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
                     conversation.status === "open" && "bg-blue-100 text-blue-800",
                     conversation.status === "pending" && "bg-amber-100 text-amber-800",
                     conversation.status === "resolved" && "bg-emerald-100 text-emerald-800",

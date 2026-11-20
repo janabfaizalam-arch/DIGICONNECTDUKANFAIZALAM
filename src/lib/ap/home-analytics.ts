@@ -272,7 +272,7 @@ export function buildKpis(input: KpiInput): PartnerKpi[] {
       key: "today-collection",
       label: "Collected today",
       value: formatINR(input.todayCollection),
-      href: "/ap/payments/collect",
+      href: "/dc-partner/payments/collect",
       tone: "success",
       delta: { ...collectionDelta, caption: "vs yesterday" },
       spark: sparkFrom(input.trend, "collection"),
@@ -281,7 +281,7 @@ export function buildKpis(input: KpiInput): PartnerKpi[] {
       key: "today-applications",
       label: "Applications today",
       value: String(input.todayApplications),
-      href: "/ap/applications",
+      href: "/dc-partner/applications",
       tone: "default",
       delta: { ...applicationsDelta, caption: "vs yesterday" },
       spark: sparkFrom(input.trend, "applications"),
@@ -290,7 +290,7 @@ export function buildKpis(input: KpiInput): PartnerKpi[] {
       key: "open-work",
       label: "Open applications",
       value: String(input.pendingApplications),
-      href: "/ap/applications",
+      href: "/dc-partner/applications",
       tone: input.pendingApplications > 0 ? "pending" : "default",
       delta: null,
       spark: [],
@@ -299,7 +299,7 @@ export function buildKpis(input: KpiInput): PartnerKpi[] {
       key: "commission-earned",
       label: "Commission earned",
       value: formatINR(input.commissionEarned),
-      href: "/ap/commissions",
+      href: "/dc-partner/commissions",
       tone: "default",
       delta:
         input.commissionPending > 0
@@ -343,7 +343,7 @@ export function buildAttention(
       title: `${actionNeeded.length} application${actionNeeded.length === 1 ? "" : "s"} blocked on documents`,
       detail: "Upload or fix the pending papers to get these moving again.",
       ctaLabel: "Fix now",
-      href: "/ap/applications",
+      href: "/dc-partner/applications",
     });
   }
 
@@ -354,7 +354,7 @@ export function buildAttention(
       title: `${formatINR(unpaidTotal)} still to collect`,
       detail: `${unpaid.length} application${unpaid.length === 1 ? "" : "s"} waiting on payment.`,
       ctaLabel: "Collect",
-      href: "/ap/payments/collect",
+      href: "/dc-partner/payments/collect",
     });
   }
 
@@ -365,7 +365,7 @@ export function buildAttention(
       title: `${stale.length} application${stale.length === 1 ? "" : "s"} untouched for a week`,
       detail: "Nothing has moved on these for seven days or more.",
       ctaLabel: "Review",
-      href: "/ap/applications",
+      href: "/dc-partner/applications",
     });
   }
 

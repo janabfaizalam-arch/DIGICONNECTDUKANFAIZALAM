@@ -231,7 +231,7 @@ function buildWorkQueue(
           subtitle: `${service} · documents needed`,
           statusLabel: app.status,
           ctaLabel: "Upload documents",
-          href: `/ap/applications/${app.id}`,
+          href: `/dc-partner/applications/${app.id}`,
         });
       }
       continue;
@@ -245,7 +245,7 @@ function buildWorkQueue(
           subtitle: `${service} · ${formatINR(app.amount)} pending`,
           statusLabel: app.payment_status || "pending",
           ctaLabel: "Collect payment",
-          href: "/ap/payments/collect",
+          href: "/dc-partner/payments/collect",
         });
       }
       continue;
@@ -261,7 +261,7 @@ function buildWorkQueue(
         subtitle: service,
         statusLabel: app.status,
         ctaLabel: partnerType === "office_staff" ? "Process now" : "Open",
-        href: `/ap/applications/${app.id}`,
+        href: `/dc-partner/applications/${app.id}`,
       });
     }
   }
@@ -279,18 +279,18 @@ function buildRecentApplications(
 ): PartnerRecentApplicationItem[] {
   return apps.slice(0, 8).map((app) => {
     const actions: Array<{ label: string; href: string }> = [
-      { label: "View", href: `/ap/applications/${app.id}` },
+      { label: "View", href: `/dc-partner/applications/${app.id}` },
     ];
 
     if (partnerType !== "office_staff") {
       if (isOpenStatus(app.status)) {
-        actions.push({ label: "Upload document", href: `/ap/applications/${app.id}` });
+        actions.push({ label: "Upload document", href: `/dc-partner/applications/${app.id}` });
       }
       if (isUnpaid(app.payment_status)) {
-        actions.push({ label: "Collect payment", href: "/ap/payments/collect" });
+        actions.push({ label: "Collect payment", href: "/dc-partner/payments/collect" });
       }
     } else if (isOpenStatus(app.status)) {
-      actions.push({ label: "Process", href: `/ap/applications/${app.id}` });
+      actions.push({ label: "Process", href: `/dc-partner/applications/${app.id}` });
     }
 
     return {
@@ -411,7 +411,7 @@ export async function getPartnerHomePayload(userId: string): Promise<PartnerHome
     id: app.id,
     name: getCustomerName(app) || "Customer",
     mobile: getCustomerMobile(app) || "—",
-    href: `/ap/applications/${app.id}`,
+    href: `/dc-partner/applications/${app.id}`,
   }));
 
   return {

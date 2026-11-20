@@ -35,7 +35,7 @@ export function TeamPanel({ summary, className }: TeamPanelProps) {
     <section aria-label="Team" className={cn("space-y-2", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="dcp-h2">Team</h2>
-        <Link href="/ap/team" className="text-[11.5px] font-bold text-[var(--dcp-brand)] hover:underline">
+        <Link href="/dc-partner/team" className="text-[11.5px] font-bold text-[var(--dcp-brand)] hover:underline">
           Manage team
         </Link>
       </div>
@@ -59,7 +59,7 @@ export function TeamPanel({ summary, className }: TeamPanelProps) {
         </dl>
 
         <Link
-          href="/ap/team/new"
+          href="/dc-partner/team/new"
           className="mt-3.5 dcp-btn dcp-btn-quiet"
         >
           <UserPlus2 className="h-3.5 w-3.5" aria-hidden />

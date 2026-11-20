@@ -134,7 +134,7 @@ export function WalletLedgerClient({ ledger }: Props) {
               : "Try clearing search or filters to see more ledger rows."
           }
           actionLabel="View commissions"
-          actionHref="/ap/commissions"
+          actionHref="/dc-partner/commissions"
         />
       ) : (
         <>

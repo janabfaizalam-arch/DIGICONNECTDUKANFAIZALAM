@@ -7,7 +7,7 @@ export function resolveLogoutRedirect(portal: LogoutPortal): string {
     case "admin":
       return "/admin/login?loggedOut=1";
     case "ap":
-      return "/ap/login?loggedOut=1";
+      return "/dc-partner/login?loggedOut=1";
     case "customer":
       return "/customer/login?loggedOut=1";
     default:
@@ -18,7 +18,7 @@ export function resolveLogoutRedirect(portal: LogoutPortal): string {
 export function inferLogoutPortal(pathname: string | null | undefined): LogoutPortal {
   const path = String(pathname ?? "");
   if (path.startsWith("/admin")) return "admin";
-  if (path.startsWith("/ap") || path.startsWith("/agent")) return "ap";
+  if (path.startsWith("/dc-partner") || path.startsWith("/agent")) return "ap";
   if (
     path.startsWith("/customer") ||
     path.startsWith("/customer-v2") ||
@@ -38,7 +38,7 @@ export function getLoginDestinationForPortal(pathname: string | null | undefined
     case "admin":
       return "/admin/login";
     case "ap":
-      return "/ap/login";
+      return "/dc-partner/login";
     case "customer":
       return "/customer/login";
     default:

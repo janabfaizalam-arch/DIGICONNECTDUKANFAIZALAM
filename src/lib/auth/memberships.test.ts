@@ -71,10 +71,10 @@ describe("buildIdentityLinkageHealth", () => {
 
 describe("portal CTA dual membership", () => {
   it("does not trap dual-role admins on /admin when partner membership exists", () => {
-    expect(resolvePartnerCtaDestination("admin", { hasPartnerMembership: true }).href).toBe("/ap/dashboard");
+    expect(resolvePartnerCtaDestination("admin", { hasPartnerMembership: true }).href).toBe("/dc-partner/dashboard");
   });
 
   it("sends admin-only users to DC Partner login for an explicit switch", () => {
-    expect(resolvePartnerCtaDestination("admin").href).toBe("/ap/login");
+    expect(resolvePartnerCtaDestination("admin").href).toBe("/dc-partner/login");
   });
 });

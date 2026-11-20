@@ -128,6 +128,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return jsonError(provisioned.error, provisioned.status);
     }
 
+    // The partner set their own password when applying: there is nothing to read out.
+    if (provisioned.selfPassword) temporaryPassword = null;
     partnerCode = provisioned.partnerCode;
     username = provisioned.username;
     updates.created_partner_id = provisioned.partnerId;
@@ -160,7 +162,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     temporaryPassword,
     message:
       nextStatus === "approved"
-        ? "Partner approved and account created."
+        ? temporaryPassword
+          ? "Partner approved and account created."
+          : "Partner approved. They sign in with their mobile number and the password they chose."
         : "Application updated.",
   });
 }

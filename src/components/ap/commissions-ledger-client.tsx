@@ -97,7 +97,7 @@ export function CommissionsLedgerClient({ commissions }: Props) {
           title="No commission activity yet"
           description="Completed eligible applications will appear here."
           actionLabel="View applications"
-          actionHref="/ap/applications"
+          actionHref="/dc-partner/applications"
         />
       ) : (
         <>
@@ -125,7 +125,7 @@ export function CommissionsLedgerClient({ commissions }: Props) {
                     <td className="px-4 py-3 font-bold text-slate-900">{row.service_name || "Service"}</td>
                     <td className="px-4 py-3">
                       <Link
-                        href={`/ap/applications/${row.application_id}`}
+                        href={`/dc-partner/applications/${row.application_id}`}
                         className="font-mono text-[11px] font-bold text-indigo-700 hover:underline"
                       >
                         {row.application_id.slice(0, 8).toUpperCase()}
@@ -156,7 +156,7 @@ export function CommissionsLedgerClient({ commissions }: Props) {
                     <p className="truncate text-sm font-extrabold text-slate-900">{customerName(row)}</p>
                     <p className="truncate text-xs font-semibold text-slate-500">{row.service_name || "Service"}</p>
                     <Link
-                      href={`/ap/applications/${row.application_id}`}
+                      href={`/dc-partner/applications/${row.application_id}`}
                       className="mt-0.5 inline-block font-mono text-[11px] font-bold text-indigo-700"
                     >
                       {row.application_id.slice(0, 8).toUpperCase()}

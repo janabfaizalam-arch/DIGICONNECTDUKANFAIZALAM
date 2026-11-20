@@ -51,7 +51,15 @@ export type ProvisionPartnerInput = {
 };
 
 export type ProvisionPartnerResult =
-  | { ok: true; partnerId: string; userId: string; partnerCode: string; username: string }
+  | {
+      ok: true;
+      partnerId: string;
+      userId: string;
+      partnerCode: string;
+      username: string;
+      /** The applicant chose their own password when applying; no temporary one was set. */
+      selfPassword: boolean;
+    }
   | { ok: false; error: string; status: number };
 
 /**
@@ -99,10 +107,10 @@ export function describeAuthCreateFailure(error: { code?: string; message?: stri
  * called after a create has already failed on a collision, never on the happy
  * path. The bound mirrors `findAuthUserByEmailOrMobile`.
  */
-async function findAuthUserByEmail(
+export async function findAuthUserByEmail(
   supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
   email: string,
-): Promise<{ id: string } | null> {
+): Promise<{ id: string; selfPassword: boolean } | null> {
   const target = email.trim().toLowerCase();
 
   for (let page = 1; page <= 20; page += 1) {
@@ -113,7 +121,7 @@ async function findAuthUserByEmail(
     }
 
     const match = data.users.find((user) => (user.email ?? "").trim().toLowerCase() === target);
-    if (match) return { id: match.id };
+    if (match) return { id: match.id, selfPassword: match.app_metadata?.self_password === true };
     if (data.users.length < 1000) return null;
   }
 
@@ -202,6 +210,7 @@ export async function provisionPartnerAccount(
      rollback. Deleting one that was already there would take a partner's login
      away because our own table write failed. */
   let createdAuthUser = Boolean(userId);
+  let selfPassword = false;
 
   if (!userId) {
     /*
@@ -253,7 +262,20 @@ export async function provisionPartnerAccount(
       };
     }
 
-    const { error: adoptError } = await supabase.auth.admin.updateUserById(holder.id, authPayload);
+    /*
+      An applicant who chose a password on the "Become a DC Partner" form was
+      given this auth user then (see /api/partner-applications). Their own
+      password is kept; nothing temporary replaces it.
+    */
+    selfPassword = holder.selfPassword;
+    const { password: _temporary, ...keepPassword } = authPayload;
+    void _temporary;
+    const { error: adoptError } = await supabase.auth.admin.updateUserById(
+      holder.id,
+      selfPassword
+        ? { ...keepPassword, app_metadata: { role: "agency_partner", self_password: false } }
+        : authPayload,
+    );
 
     if (adoptError) {
       console.error("[provision-partner] auth_adopt_failed", { error: adoptError.message });
@@ -294,8 +316,9 @@ export async function provisionPartnerAccount(
         status: "active",
         kyc_status: input.kycStatus ?? "pending",
         // The temporary password is read out over the phone. It stops being a
-        // password the moment the partner is in.
-        must_change_password: true,
+        // password the moment the partner is in. A password the partner chose
+        // themselves needs no replacing.
+        must_change_password: !selfPassword,
       },
       { onConflict: "user_id" },
     )
@@ -309,7 +332,7 @@ export async function provisionPartnerAccount(
         id: userId,
         role: "agency_partner",
         username,
-        must_change_password: true,
+        must_change_password: !selfPassword,
         agent_code: partnerCode,
         address: input.address || null,
         area: input.address || null,
@@ -358,7 +381,7 @@ export async function provisionPartnerAccount(
     };
   }
 
-  return { ok: true, partnerId: String(partnerRow.id), userId, partnerCode, username };
+  return { ok: true, partnerId: String(partnerRow.id), userId, partnerCode, username, selfPassword };
 }
 
 /**

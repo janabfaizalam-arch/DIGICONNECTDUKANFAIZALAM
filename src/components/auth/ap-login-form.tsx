@@ -65,7 +65,7 @@ export function ApLoginForm({ customerSignedIn = false }: { customerSignedIn?: b
         trackLogin("agent_email");
         toastSuccess("Agent workspace ready!");
         setDone(true);
-        window.location.assign(agent.data.destination || "/ap/dashboard");
+        window.location.assign(agent.data.destination || "/dc-partner/dashboard");
         return;
       }
 
@@ -125,7 +125,7 @@ export function ApLoginForm({ customerSignedIn = false }: { customerSignedIn?: b
 
       toastSuccess("Partner workspace logged in!");
       setDone(true);
-      window.location.assign("/ap/dashboard");
+      window.location.assign("/dc-partner/dashboard");
     } catch {
       fail("Login failed. Please try again.");
     } finally {
@@ -224,11 +224,11 @@ export function ApLoginForm({ customerSignedIn = false }: { customerSignedIn?: b
 
       <div className="flex flex-col items-center gap-3 border-t border-slate-100 pt-4 text-center">
         <div className="flex items-center gap-4 text-sm font-semibold text-slate-500">
-          <Link href="/ap/forgot-password" className="inline-flex min-h-11 items-center hover:text-slate-900 hover:underline">
+          <Link href="/dc-partner/forgot-password" className="inline-flex min-h-11 items-center hover:text-slate-900 hover:underline">
             Forgot password?
           </Link>
           <span className="text-slate-200">|</span>
-          <Link href="/ap/support" className="hover:text-slate-900 hover:underline">
+          <Link href="/dc-partner/support" className="hover:text-slate-900 hover:underline">
             Partner support
           </Link>
         </div>

@@ -42,8 +42,8 @@ describe("errorForField", () => {
 
   it("says nothing about a field that is fine", () => {
     expect(errorForField("mobile", filled({ mobile: "9876543210" }))).toBeNull();
-    expect(errorForField("email", filled({ email: "" }))).toBeNull();
-    expect(errorForField("whatsapp", filled({ whatsapp: "" }))).toBeNull();
+    expect(errorForField("email", filled({ email: "shop@gmail.com" }))).toBeNull();
+    expect(errorForField("password", filled({ password: "longenough" }))).toBeNull();
   });
 
   it("does not report another field's problem", () => {
@@ -53,14 +53,11 @@ describe("errorForField", () => {
     expect(errorForField("mobile", form)).toBeNull();
   });
 
-  it("asks a shop for a shop name, and a field executive for none", () => {
-    expect(
-      errorForField("businessName", filled({ partnerType: "business_partner", businessName: "" })),
-    ).toMatch(/shop or business/i);
-
-    expect(
-      errorForField("businessName", filled({ partnerType: "field_executive", businessName: "" })),
-    ).toBeNull();
+  it("asks for the shop name, the email, the PIN and a password", () => {
+    expect(errorForField("businessName", filled({ businessName: "" }))).toMatch(/shop name/i);
+    expect(errorForField("email", filled({ email: "" }))).toMatch(/email/i);
+    expect(errorForField("pin", filled({ pin: "" }))).toMatch(/PIN/);
+    expect(errorForField("password", filled({ password: "short" }))).toMatch(/8 characters/);
   });
 
   it("uses the same verdict as the server, field by field", () => {
@@ -71,7 +68,7 @@ describe("errorForField", () => {
       ["email", "a@b"],
       ["fullName", "ab"],
       ["pin", "12345"],
-      ["whatsapp", "5000000000"],
+      ["password", "1234567"],
     ];
 
     for (const [field, value] of cases) {
@@ -137,7 +134,7 @@ describe("the application form", () => {
   });
 
   it("keeps a draft and drops it once the application is in", () => {
-    expect(form).toContain("saveDraft(form)");
+    expect(form).toContain('saveDraft({ ...form, password: "" })');
     expect(form.match(/clearDraft\(\)/g)?.length).toBeGreaterThanOrEqual(2);
   });
 

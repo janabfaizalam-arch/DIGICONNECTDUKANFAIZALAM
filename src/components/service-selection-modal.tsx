@@ -50,7 +50,7 @@ async function getApplyHref(slug: string) {
     return "/admin";
   }
   if (role === "agency_partner" || role === "agent") {
-    return `/ap/applications/new?serviceId=${slug}`;
+    return `/dc-partner/applications/new?serviceId=${slug}`;
   }
 
   return applyPath;

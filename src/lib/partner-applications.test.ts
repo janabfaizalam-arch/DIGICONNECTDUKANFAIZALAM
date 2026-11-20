@@ -27,7 +27,9 @@ function baseApplication(overrides: Record<string, unknown> = {}) {
     fullName: "Faiz Alam",
     mobile: "9876543210",
     businessName: "Alam Digital Seva",
-    partnerType: "business_partner",
+    email: "faiz@gmail.com",
+    pin: "285001",
+    password: "shop@1234",
     ...overrides,
   };
 }
@@ -82,9 +84,8 @@ describe("review lifecycle", () => {
 });
 
 describe("validatePartnerApplication", () => {
-  it("accepts a minimal application", () => {
-    // Name, mobile, shop name. Nothing else is worth turning a partner away
-    // over before anybody has even read their application.
+  it("accepts the six things the form asks for", () => {
+    // Name, shop name, mobile, email, PIN and a password: nothing more.
     const result = validatePartnerApplication(baseApplication());
     expect(result.ok).toBe(true);
   });
@@ -94,71 +95,34 @@ describe("validatePartnerApplication", () => {
     expect(validatePartnerApplication(baseApplication({ mobile: "12345" })).ok).toBe(false);
   });
 
-  it("does not require an email at all", () => {
-    /*
-      The form used to demand one and call it the login. The login is a
-      username built from the mobile; plenty of shop owners have WhatsApp and
-      no working email, and the field was turning them away at the first
-      screen for something nothing depended on.
-    */
-    expect(validatePartnerApplication(baseApplication({ email: "" })).ok).toBe(true);
-    const result = validatePartnerApplication(baseApplication({ email: undefined }));
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.email).toBeNull();
-  });
-
-  it("still catches a typo in an email that was offered", () => {
-    expect(validatePartnerApplication(baseApplication({ email: "not-an-email" })).ok).toBe(false);
-    const good = validatePartnerApplication(baseApplication({ email: "Faiz@Example.com" }));
+  it("requires an email, where the password reset link goes", () => {
+    expect(validatePartnerApplication(baseApplication({ email: "" }))).toMatchObject({ ok: false, field: "email" });
+    expect(validatePartnerApplication(baseApplication({ email: "not-an-email" }))).toMatchObject({ ok: false, field: "email" });
+    const good = validatePartnerApplication(baseApplication({ email: "Faiz@Gmail.com" }));
     expect(good.ok).toBe(true);
-    if (good.ok) expect(good.value.email).toBe("faiz@example.com");
+    if (good.ok) expect(good.value.email).toBe("faiz@gmail.com");
   });
 
-  it("asks a shop for its name, and a field executive for nothing of the kind", () => {
-    expect(
-      validatePartnerApplication(baseApplication({ businessName: "" })),
-    ).toMatchObject({ ok: false, field: "businessName" });
-
-    expect(
-      validatePartnerApplication({
-        fullName: "Faiz Alam",
-        mobile: "9876543210",
-        partnerType: "field_executive",
-      }).ok,
-    ).toBe(true);
+  it("requires the shop name, the PIN and a password of 8+ characters", () => {
+    expect(validatePartnerApplication(baseApplication({ businessName: "" }))).toMatchObject({ ok: false, field: "businessName" });
+    expect(validatePartnerApplication(baseApplication({ pin: "" }))).toMatchObject({ ok: false, field: "pin" });
+    expect(validatePartnerApplication(baseApplication({ pin: "12" }))).toMatchObject({ ok: false, field: "pin" });
+    expect(validatePartnerApplication(baseApplication({ password: "short" }))).toMatchObject({ ok: false, field: "password" });
   });
 
-  it("refuses the two types nobody may claim for themselves", () => {
-    /*
-      Company Partner is a commercial arrangement and Office Staff is an
-      employee: both are created by an admin or from /ap/team. Offering them
-      on a public form let anyone register as a strategic partner of the
-      company by changing one field in the request.
-    */
-    for (const partnerType of ["company_partner", "office_staff"]) {
-      expect(
-        validatePartnerApplication(baseApplication({ partnerType })),
-        `${partnerType} was accepted from the public form`,
-      ).toMatchObject({ ok: false, field: "partnerType" });
+  it("makes everybody a DC Partner, whatever type the request claims", () => {
+    // Business partner / field executive / company partner / office staff are
+    // gone from the public form; a request cannot pick one.
+    for (const partnerType of ["field_executive", "company_partner", "office_staff", "reseller"]) {
+      const result = validatePartnerApplication(baseApplication({ partnerType }));
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(result.value.partnerType).toBe("business_partner");
     }
   });
 
   it("names the field that failed so the form can point at it", () => {
     const result = validatePartnerApplication(baseApplication({ mobile: "5555555555" }));
     expect(result).toMatchObject({ ok: false, field: "mobile" });
-  });
-
-  it("rejects a partner type outside the vocabulary", () => {
-    expect(validatePartnerApplication(baseApplication({ partnerType: "reseller" })).ok).toBe(false);
-  });
-
-  it("validates optional fields only when they are given", () => {
-    expect(validatePartnerApplication(baseApplication({ whatsapp: "" })).ok).toBe(true);
-    expect(validatePartnerApplication(baseApplication({ whatsapp: "12345" })).ok).toBe(false);
-    expect(validatePartnerApplication(baseApplication({ whatsapp: "9876543211" })).ok).toBe(true);
-
-    expect(validatePartnerApplication(baseApplication({ pin: "12" })).ok).toBe(false);
-    expect(validatePartnerApplication(baseApplication({ pin: "800001" })).ok).toBe(true);
   });
 
   it("normalises the mobile the way the rest of the app stores it", () => {
@@ -207,6 +171,8 @@ describe("toApplicationRow", () => {
     const row = toApplicationRow(result.value, "DPA-TEST");
     expect(row.status).toBe("pending");
     expect(row.tracking_code).toBe("DPA-TEST");
+    // The chosen password never lands in the application table.
+    expect(JSON.stringify(row)).not.toContain("shop@1234");
   });
 });
 
@@ -264,8 +230,14 @@ describe("the signup path is actually wired up", () => {
   it("the public form cannot create a partner directly", () => {
     const route = readSrc("src/app/api/partner-applications/route.ts");
     expect(route).toContain("agency_partner_applications");
-    expect(route).not.toContain("auth.admin.createUser");
-    expect(route).not.toContain("provisionPartnerAccount");
+    // It makes the applicant's (not yet usable) auth user, flagged as an
+    // applicant, and never an agency_partners row.
+    expect(route).toContain('role: "partner_applicant"');
+    expect(route).not.toContain("provisionPartnerAccount(");
+    expect(route).not.toContain('.from("agency_partners").insert');
+    expect(route).not.toContain('.from("agency_partners").upsert');
+    // The password is set only once this is the one open application.
+    expect(route.indexOf(".insert(toApplicationRow")).toBeLessThan(route.indexOf("setApplicantPassword(supabase"));
   });
 
   it("the status route returns no identity documents", () => {
@@ -320,8 +292,9 @@ describe("an approved partner can actually sign in", () => {
     expect(provision).toContain("contactEmail || loginEmail");
   });
 
-  it("forces the read-out-loud password to be changed", () => {
-    expect(provision).toContain("must_change_password: true");
+  it("forces a read-out-loud password to be changed, but not one the partner chose", () => {
+    expect(provision).toContain("must_change_password: !selfPassword");
+    expect(provision).toContain("self_password");
   });
 
   it("shows the admin the username, not just a partner code", () => {

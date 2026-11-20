@@ -110,11 +110,11 @@ export function buildOnboardingChecklist(input: {
   const profileComplete = input.hasName && input.hasMobile && input.hasEmail && input.hasAddress;
 
   return [
-    { id: "profile", label: "Profile complete", complete: profileComplete, href: "/ap/profile" },
-    { id: "kyc", label: "KYC approved", complete: input.kycApproved, href: "/ap/documents" },
-    { id: "shop", label: "Shop details complete", complete: input.hasShopDetails, href: "/ap/profile" },
-    { id: "customer", label: "First customer created", complete: input.hasCustomer, href: "/ap/customers" },
-    { id: "application", label: "First application submitted", complete: input.hasApplication, href: "/ap/applications/new" },
-    { id: "commission", label: "First commission earned", complete: input.hasCommission, href: "/ap/commissions" },
+    { id: "profile", label: "Profile complete", complete: profileComplete, href: "/dc-partner/profile" },
+    { id: "kyc", label: "KYC approved", complete: input.kycApproved, href: "/dc-partner/documents" },
+    { id: "shop", label: "Shop details complete", complete: input.hasShopDetails, href: "/dc-partner/profile" },
+    { id: "customer", label: "First customer created", complete: input.hasCustomer, href: "/dc-partner/customers" },
+    { id: "application", label: "First application submitted", complete: input.hasApplication, href: "/dc-partner/applications/new" },
+    { id: "commission", label: "First commission earned", complete: input.hasCommission, href: "/dc-partner/commissions" },
   ];
 }

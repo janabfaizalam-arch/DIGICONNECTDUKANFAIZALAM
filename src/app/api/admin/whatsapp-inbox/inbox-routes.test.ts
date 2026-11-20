@@ -25,7 +25,10 @@ import { GET as getAssignees } from "@/app/api/admin/whatsapp-inbox/assignees/ro
 import { POST as postCustomer } from "@/app/api/admin/whatsapp-inbox/conversations/[id]/customer/route";
 import { __resetWhatsAppSendDedupeForTests } from "@/lib/whatsapp/client";
 
+let recentInbound = "";
+
 beforeEach(() => {
+  recentInbound = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   __resetWhatsAppSendDedupeForTests();
   process.env.META_WHATSAPP_PHONE_NUMBER_ID = "1303931342795977";
   process.env.META_WHATSAPP_ACCESS_TOKEN = "EAAG_TEST_TOKEN";
@@ -59,8 +62,10 @@ beforeEach(() => {
         message_body: "Need quote",
         message_status: "received",
         sender_type: "customer",
-        created_at: "2026-11-18T10:00:00Z",
-        timestamp: "2026-11-18T10:00:00Z",
+        // Relative to now: free-form replies are allowed only inside WhatsApp's
+        // 24-hour service window, so a fixed date made this test expire.
+        created_at: recentInbound,
+        timestamp: recentInbound,
       },
     ],
     customers: [],

@@ -18,7 +18,7 @@ export const DIGI_PARTNER_TYPE_VALUES = [
 
 export const DIGI_PARTNER_TYPES = {
   business_partner: {
-    label: "Business Partner",
+    label: "DC Partner",
     icon: "🏢",
     description: "Owns or operates a shop, digital service centre, CSC, or local business.",
   },
@@ -174,15 +174,15 @@ export function resolvePartnerDashboardPath(
   const normalized = normalizePartnerType(partnerType);
   switch (normalized) {
     case "business_partner":
-      return "/ap/dashboard";
+      return "/dc-partner/dashboard";
     case "company_partner":
-      return "/ap/dashboard";
+      return "/dc-partner/dashboard";
     case "field_executive":
-      return "/ap/dashboard";
+      return "/dc-partner/dashboard";
     case "office_staff":
-      return "/ap/dashboard";
+      return "/dc-partner/dashboard";
     default:
-      return "/ap/dashboard";
+      return "/dc-partner/dashboard";
   }
 }
 

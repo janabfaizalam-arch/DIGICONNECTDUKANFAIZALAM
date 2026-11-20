@@ -93,7 +93,7 @@ export function PasswordSetupPrompt({ mustChange }: { mustChange: boolean }) {
             type="button"
             onClick={() => {
               setOpen(false);
-              router.push("/ap/change-password");
+              router.push("/dc-partner/change-password");
             }}
             className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-bold text-white transition hover:bg-slate-800"
           >

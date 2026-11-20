@@ -38,7 +38,7 @@ const companyLinks = [
   { label: "Digital Packages & Pricing", href: "/packages", external: false },
   { label: "RNOS India (rnos.in)", href: "https://www.rnos.in", external: true },
   { label: "Become a DC Partner", href: "/digi-partner", external: false },
-  { label: "DC Partner Login", href: "/ap/login", external: false },
+  { label: "DC Partner Login", href: "/dc-partner/login", external: false },
   { label: "Contact Us", href: "/contact", external: false },
   { label: "FAQ", href: "/#faq", external: false },
 ];
@@ -210,7 +210,7 @@ export function MarketingFooter({
               { label: "Government schemes", href: "/#schemes" },
               { label: "Knowledge Center", href: "/#blog" },
               { label: "Become a DC Partner", href: "/digi-partner" },
-              { label: "Partner login", href: "/ap/login" },
+              { label: "Partner login", href: "/dc-partner/login" },
               { label: "FAQ", href: "/#faq" },
               { label: "Support", href: "/#support" },
               ...footerLegalLinks,

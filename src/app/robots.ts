@@ -24,7 +24,7 @@ export default function robots(): MetadataRoute.Robots {
           "/admin-login",
           "/agent/",
           "/agent-login",
-          "/ap/",
+          "/dc-partner/",
           "/customer/",
           "/customer-login",
           "/customer-v2/",

@@ -45,5 +45,5 @@ export async function POST(request: Request) {
   await supabase.from("profiles").update({ must_change_password: false }).eq("id", user.id);
   await supabase.from("agency_partners").update({ must_change_password: false }).eq("user_id", user.id);
 
-  return NextResponse.json({ ok: true, redirectTo: "/ap/dashboard" });
+  return NextResponse.json({ ok: true, redirectTo: "/dc-partner/dashboard" });
 }

@@ -1,5 +1,4 @@
 import { validatePartnerApplication } from "@/lib/partner-applications";
-import type { PublicApplicationPartnerType } from "@/lib/ap/partner-type";
 
 /**
  * Checking one field in the browser, with the server's own rules.
@@ -19,46 +18,34 @@ import type { PublicApplicationPartnerType } from "@/lib/ap/partner-type";
 export type ApplicationFields = {
   fullName: string;
   businessName: string;
-  partnerType: PublicApplicationPartnerType;
   mobile: string;
-  whatsapp: string;
   email: string;
-  address: string;
   district: string;
   state: string;
   pin: string;
+  password: string;
 };
 
 /** Placeholder answers that pass every rule, used only as a backdrop. */
 export const VALID_SKELETON: ApplicationFields = {
   fullName: "Valid Name",
   businessName: "Valid Business",
-  partnerType: "business_partner",
   mobile: "9000000000",
-  whatsapp: "",
-  email: "",
-  address: "",
+  email: "valid@gmail.com",
   district: "",
   state: "",
-  pin: "",
+  pin: "285001",
+  password: "validpass1",
 };
 
 /**
  * The error for one field, or null.
- *
- * `partnerType` rides along because it decides whether a business name is
- * required — checking `businessName` against the skeleton's type instead of
- * the applicant's would ask a Field Executive for a shop name.
  */
 export function errorForField(
   field: keyof ApplicationFields,
   form: ApplicationFields,
 ): string | null {
-  const probe = {
-    ...VALID_SKELETON,
-    partnerType: form.partnerType,
-    [field]: form[field],
-  };
+  const probe = { ...VALID_SKELETON, [field]: form[field] };
 
   const result = validatePartnerApplication(probe);
   if (result.ok) return null;

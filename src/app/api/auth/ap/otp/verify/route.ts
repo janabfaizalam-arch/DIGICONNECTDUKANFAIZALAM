@@ -132,8 +132,8 @@ export async function POST(request: Request) {
     json({
       ok: true,
       message: "DC Partner login successful.",
-      destination: "/ap/dashboard",
-      redirectTo: "/ap/dashboard",
+      destination: "/dc-partner/dashboard",
+      redirectTo: "/dc-partner/dashboard",
     }),
   );
 }

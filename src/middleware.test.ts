@@ -16,21 +16,21 @@ describe("partner login alias redirects", () => {
       expect(res.status).toBe(308);
       const location = res.headers.get("location");
       expect(location).not.toBeNull();
-      expect(new URL(location as string).pathname).toBe("/ap/login");
+      expect(new URL(location as string).pathname).toBe("/dc-partner/login");
     });
   }
 
   it("preserves query-string aliases but lands on the canonical route", async () => {
     const res = await middleware(requestFor("/partner/login?ref=footer"));
     expect(res.status).toBe(308);
-    expect(new URL(res.headers.get("location") as string).pathname).toBe("/ap/login");
+    expect(new URL(res.headers.get("location") as string).pathname).toBe("/dc-partner/login");
   });
 
   it("does not redirect the canonical /ap/login route to itself", async () => {
-    const res = await middleware(requestFor("/ap/login"));
+    const res = await middleware(requestFor("/dc-partner/login"));
     // Guests pass through (no 3xx redirect back to /ap/login).
     if (res.status >= 300 && res.status < 400) {
-      expect(new URL(res.headers.get("location") as string).pathname).not.toBe("/ap/login");
+      expect(new URL(res.headers.get("location") as string).pathname).not.toBe("/dc-partner/login");
     } else {
       expect(res.status).toBeLessThan(300);
     }
@@ -39,11 +39,11 @@ describe("partner login alias redirects", () => {
 
 describe("loggedOut login pages stay public", () => {
   it("does not create a redirect loop on /ap/login?loggedOut=1 for guests", async () => {
-    const res = await middleware(requestFor("/ap/login?loggedOut=1"));
+    const res = await middleware(requestFor("/dc-partner/login?loggedOut=1"));
     if (res.status >= 300 && res.status < 400) {
       const location = new URL(res.headers.get("location") as string);
-      expect(location.pathname).not.toBe("/ap/dashboard");
-      expect(location.pathname).not.toBe("/ap/login");
+      expect(location.pathname).not.toBe("/dc-partner/dashboard");
+      expect(location.pathname).not.toBe("/dc-partner/login");
       expect(location.pathname).not.toBe("/unauthorized");
     } else {
       expect(res.status).toBeLessThan(300);
@@ -66,15 +66,15 @@ describe("loggedOut login pages stay public", () => {
     expect(res.status).toBeLessThan(400);
     const location = new URL(res.headers.get("location") as string);
     expect(location.pathname).not.toBe("/unauthorized");
-    expect(["/login", "/ap/login", "/admin/login", "/customer/login"]).toContain(location.pathname);
+    expect(["/login", "/dc-partner/login", "/admin/login", "/customer/login"]).toContain(location.pathname);
   });
 
   it("sends logged-out guests from /ap/dashboard to /ap/login, not /unauthorized", async () => {
-    const res = await middleware(requestFor("/ap/dashboard"));
+    const res = await middleware(requestFor("/dc-partner/dashboard"));
     expect(res.status).toBeGreaterThanOrEqual(300);
     expect(res.status).toBeLessThan(400);
     const location = new URL(res.headers.get("location") as string);
-    expect(location.pathname).toBe("/ap/login");
+    expect(location.pathname).toBe("/dc-partner/login");
     expect(location.pathname).not.toBe("/unauthorized");
   });
 });

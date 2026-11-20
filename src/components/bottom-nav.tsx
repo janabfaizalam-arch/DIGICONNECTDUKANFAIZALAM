@@ -32,7 +32,7 @@ import { resolveSection, sectionHref, type CustomerSection } from "@/lib/custome
   "Apply", "Track" and "Sign in" cover the price they are deciding on and
   invite them away from a job they have not finished.
 */
-const hiddenPrefixes = ["/admin", "/agent", "/ap", "/staff", "/apply", "/p"];
+const hiddenPrefixes = ["/admin", "/agent", "/dc-partner", "/staff", "/apply", "/p"];
 
 
 function shouldHide(pathname: string) {
@@ -91,10 +91,10 @@ const ADMIN_TABS: Item[] = [
 
 const PARTNER_TABS: Item[] = [
   HOME_ITEM,
-  { id: "applications", label: "Applications", icon: FileText, href: "/ap/applications" },
-  { id: "apply", label: "New", icon: PlusCircle, href: "/ap/applications/new" },
-  { id: "wallet", label: "Wallet", icon: Wallet, href: "/ap/wallet" },
-  { id: "account", label: "Account", icon: UserRound, href: "/ap/profile" },
+  { id: "applications", label: "Applications", icon: FileText, href: "/dc-partner/applications" },
+  { id: "apply", label: "New", icon: PlusCircle, href: "/dc-partner/applications/new" },
+  { id: "wallet", label: "Wallet", icon: Wallet, href: "/dc-partner/wallet" },
+  { id: "account", label: "Account", icon: UserRound, href: "/dc-partner/profile" },
 ];
 
 /**

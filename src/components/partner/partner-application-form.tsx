@@ -2,26 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import {
-  Building2,
-  CheckCircle2,
-  Copy,
-  Footprints,
-  MapPin,
-  MessageCircle,
-  Search,
-  Store,
-  UserRound,
-} from "lucide-react";
+import { Building2, CheckCircle2, Copy, Lock, Mail, MapPin, Search, UserRound } from "lucide-react";
 
 import { AuthButton, TextField } from "@/components/auth/ui";
 import { FormPrivacyNotice } from "@/components/privacy/form-privacy-notice";
 import { useToast } from "@/components/providers/toast-provider";
-import {
-  DIGI_PARTNER_TYPES,
-  PUBLIC_APPLICATION_PARTNER_TYPES,
-  type PublicApplicationPartnerType,
-} from "@/lib/ap/partner-type";
 import { DIGI_PARTNER_LOGIN_ROUTE } from "@/lib/auth/partner-access";
 import { isValidMobile } from "@/lib/partner-applications";
 
@@ -50,24 +35,17 @@ import { errorForField, firstError, type ApplicationFields } from "./partner-app
  * than a second copy of it, and whatever is wrong gets focused.
  */
 
-const TYPE_ICONS: Record<PublicApplicationPartnerType, typeof Store> = {
-  business_partner: Store,
-  field_executive: Footprints,
-};
-
 type Form = ApplicationFields;
 
 const EMPTY: Form = {
   fullName: "",
   businessName: "",
-  partnerType: "business_partner",
   mobile: "",
-  whatsapp: "",
   email: "",
-  address: "",
   district: "",
   state: "",
   pin: "",
+  password: "",
 };
 
 const digits = (value: string, max: number) => value.replace(/\D/g, "").slice(0, max);
@@ -143,7 +121,7 @@ export function PartnerApplicationForm() {
   useEffect(() => {
     const draft = loadDraft(EMPTY);
     if (draft) {
-      setForm(draft);
+      setForm({ ...EMPTY, ...draft, password: "" });
       setRestored(true);
     }
   }, []);
@@ -151,7 +129,8 @@ export function PartnerApplicationForm() {
   useEffect(() => {
     // Nothing worth keeping until they have actually started.
     if (form.fullName || form.mobile || form.businessName || form.pin) {
-      saveDraft(form);
+      // The password is never written to the device.
+      saveDraft({ ...form, password: "" });
     }
   }, [form]);
 
@@ -339,7 +318,6 @@ export function PartnerApplicationForm() {
   /* ── Form ─────────────────────────────────────────────────────────────── */
 
   const errorFor = (field: keyof Form) => errors[field] ?? null;
-  const isShop = form.partnerType === "business_partner";
 
   return (
     <form
@@ -359,44 +337,6 @@ export function PartnerApplicationForm() {
         </p>
       ) : null}
 
-      <section className="flex flex-col gap-3">
-        <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
-          How you want to partner
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {PUBLIC_APPLICATION_PARTNER_TYPES.map((value) => {
-            const meta = DIGI_PARTNER_TYPES[value];
-            const Icon = TYPE_ICONS[value];
-            const active = form.partnerType === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                onClick={() => set("partnerType", value)}
-                aria-pressed={active}
-                className={`flex flex-col gap-2 rounded-2xl border p-4 text-left transition ${
-                  active
-                    ? "border-blue-500 bg-blue-50/70 shadow-[0_0_0_4px_rgba(37,99,235,0.10)]"
-                    : "border-slate-200/90 bg-white/85 hover:border-slate-300"
-                }`}
-              >
-                <span
-                  className={`flex h-9 w-9 items-center justify-center rounded-xl ${
-                    active ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
-                  }`}
-                >
-                  <Icon className="h-4.5 w-4.5" aria-hidden="true" />
-                </span>
-                <span className="text-sm font-bold text-slate-900">{meta.label}</span>
-                <span className="text-xs font-medium leading-snug text-slate-500">
-                  {meta.description}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
       <section className="flex flex-col gap-4">
         <TextField
           ref={bindRef("fullName")}
@@ -410,23 +350,17 @@ export function PartnerApplicationForm() {
           disabled={isPending}
         />
 
-        {/*
-          A shop has a name; a person walking the field does not. Asking a
-          Field Executive for one only invites an invented answer.
-        */}
-        {isShop ? (
-          <TextField
-            ref={bindRef("businessName")}
-            label="Shop / business name"
-            icon={<Building2 className="h-4 w-4" />}
-            value={form.businessName}
-            onChange={(e) => set("businessName", e.target.value)}
-            onBlur={() => checkOnBlur("businessName")}
-            error={errorFor("businessName")}
-            autoComplete="organization"
-            disabled={isPending}
-          />
-        ) : null}
+        <TextField
+          ref={bindRef("businessName")}
+          label="Shop name"
+          icon={<Building2 className="h-4 w-4" />}
+          value={form.businessName}
+          onChange={(e) => set("businessName", e.target.value)}
+          onBlur={() => checkOnBlur("businessName")}
+          error={errorFor("businessName")}
+          autoComplete="organization"
+          disabled={isPending}
+        />
 
         <TextField
           ref={bindRef("mobile")}
@@ -439,43 +373,27 @@ export function PartnerApplicationForm() {
           onBlur={() => checkOnBlur("mobile")}
           error={errorFor("mobile")}
           success={!errorFor("mobile") && isValidMobile(form.mobile)}
-          hint="We call and WhatsApp you on this. It also becomes your login username."
+          hint="This is also your login ID."
           autoComplete="tel-national"
           disabled={isPending}
         />
 
         <TextField
-          ref={bindRef("whatsapp")}
-          label="WhatsApp (optional)"
-          icon={<MessageCircle className="h-4 w-4" />}
-          type="tel"
-          inputMode="numeric"
-          value={form.whatsapp}
-          onChange={(e) => set("whatsapp", digits(e.target.value, 10))}
-          onBlur={() => checkOnBlur("whatsapp")}
-          error={errorFor("whatsapp")}
-          hint="Only if it is different from the number above."
-          disabled={isPending}
-        />
-
-        <TextField
           ref={bindRef("email")}
-          label="Email (optional)"
+          label="Email (Gmail)"
+          icon={<Mail className="h-4 w-4" />}
           type="email"
           value={form.email}
           onChange={(e) => set("email", e.target.value)}
           onBlur={() => checkOnBlur("email")}
           error={errorFor("email")}
           autoComplete="email"
+          hint="Password reset links are sent here."
           disabled={isPending}
         />
       </section>
 
       <section className="flex flex-col gap-4">
-        <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
-          Where you work
-        </p>
-
         <TextField
           ref={bindRef("pin")}
           label="PIN code"
@@ -490,10 +408,10 @@ export function PartnerApplicationForm() {
             pinState === "looking"
               ? "Looking up your area…"
               : pinState === "found"
-                ? `${form.district}, ${form.state}`
+                ? `City: ${form.district} · State: ${form.state}`
                 : pinState === "unknown"
-                  ? "We could not find that PIN. Type your district and state below."
-                  : "Six digits — district and state fill themselves."
+                  ? "PIN not found. Type your city and state below."
+                  : "City and state fill in automatically."
           }
           disabled={isPending}
         />
@@ -507,7 +425,7 @@ export function PartnerApplicationForm() {
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField
               ref={bindRef("district")}
-              label="District / city"
+              label="City"
               value={form.district}
               onChange={(e) => set("district", e.target.value)}
               disabled={isPending}
@@ -523,10 +441,16 @@ export function PartnerApplicationForm() {
         ) : null}
 
         <TextField
-          ref={bindRef("address")}
-          label={isShop ? "Shop address (optional)" : "Address (optional)"}
-          value={form.address}
-          onChange={(e) => set("address", e.target.value)}
+          ref={bindRef("password")}
+          label="Create password"
+          secure
+          icon={<Lock className="h-4 w-4" />}
+          value={form.password}
+          onChange={(e) => set("password", e.target.value)}
+          onBlur={() => checkOnBlur("password")}
+          error={errorFor("password")}
+          autoComplete="new-password"
+          hint="At least 8 characters. You sign in with your mobile number and this password once approved."
           disabled={isPending}
         />
       </section>

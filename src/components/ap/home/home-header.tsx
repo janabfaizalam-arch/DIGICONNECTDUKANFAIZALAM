@@ -90,7 +90,7 @@ export function HomeHeader({ identity, className }: HomeHeaderProps) {
           <p className="mt-1.5 text-[11.5px] font-medium text-white/70">{identity.heroCaption}</p>
 
           <Link
-            href="/ap/applications/new"
+            href="/dc-partner/applications/new"
             prefetch
             className="dcp-btn mt-3 bg-white text-[var(--dcp-brand-deep)] shadow-[0_8px_20px_-8px_rgba(0,0,0,0.6)] hover:bg-white/90"
           >

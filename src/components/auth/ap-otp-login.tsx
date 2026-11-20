@@ -131,7 +131,7 @@ export function APOtpLogin({
       trackLogin("agent_email");
       success("Login ho gaya!");
       setDone(true);
-      window.location.assign(result.data?.destination || "/ap/dashboard");
+      window.location.assign(result.data?.destination || "/dc-partner/dashboard");
     } catch {
       setError("Code verify nahi hua. Dobara try kijiye.");
     } finally {

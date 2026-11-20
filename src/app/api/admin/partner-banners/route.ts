@@ -170,7 +170,7 @@ export async function POST(request: Request) {
   const { data, error } = await supabase.from("partner_announcement_banners").insert(payload).select("*").single();
   if (error) return jsonError(error.message, 500);
 
-  revalidatePath("/ap/dashboard");
+  revalidatePath("/dc-partner/dashboard");
   revalidatePath("/admin/partner-banners");
   return NextResponse.json({ banner: data, message: "Banner created.", partnerTypeOptions: DIGI_PARTNER_TYPE_VALUES });
 }

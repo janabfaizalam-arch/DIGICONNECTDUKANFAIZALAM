@@ -47,7 +47,7 @@ describe("every login route answers in the shape the forms read", () => {
   it("agent-login sends it alongside the destination the form navigates to", () => {
     // Both are needed: the flag to be believed, the destination to go anywhere.
     const source = readCode("src/app/api/auth/agent-login/route.ts");
-    expect(source).toMatch(/ok:\s*true[\s\S]{0,200}destination:\s*"\/ap\/dashboard"/);
+    expect(source).toMatch(/ok:\s*true[\s\S]{0,200}destination:\s*"\/dc-partner\/dashboard"/);
   });
 });
 

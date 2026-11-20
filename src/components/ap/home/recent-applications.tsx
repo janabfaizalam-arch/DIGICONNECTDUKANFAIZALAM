@@ -58,7 +58,7 @@ export function RecentApplications({ items, className }: RecentApplicationsProps
       <div className="flex items-center justify-between gap-3">
         <h2 className="dcp-h2">Recent applications</h2>
         <Link
-          href="/ap/applications"
+          href="/dc-partner/applications"
           className="shrink-0 rounded-lg bg-[var(--dcp-brand-soft)] px-2.5 py-1 text-[11.5px] font-bold text-[var(--dcp-brand-deep)] transition hover:brightness-95"
         >
           {hidden > 0 ? `See all · ${items.length}` : "See all"}

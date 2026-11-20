@@ -401,7 +401,7 @@ export function getRoleHome(role: AppRole | string | null | undefined) {
   }
 
   if (normalizeAppRole(role) === "agency_partner") {
-    return "/ap/dashboard";
+    return "/dc-partner/dashboard";
   }
 
   return getCustomerHome();
