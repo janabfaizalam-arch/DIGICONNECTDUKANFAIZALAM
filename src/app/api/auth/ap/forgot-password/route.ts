@@ -18,12 +18,12 @@ export const dynamic = "force-dynamic";
  * agency_partners — to the Auth user, mints a recovery token for it and
  * mails the link to the address they typed, which is where they read mail.
  *
- * The answer is the same whether or not the address belongs to a partner,
- * so the form cannot be used to find out who is one.
+ * An address with no DC Partner behind it is told so (the business asked
+ * for that over a silent answer); per-IP and per-address limits keep the
+ * form from being walked.
  */
 
-const SENT =
-  "Agar ye email kisi DC Partner ka registered email hai to us par password reset ka link bhej diya gaya hai. Inbox aur Spam dono dekhiye.";
+const NOT_REGISTERED = "No DC Partner account is registered with this email.";
 
 const json = (body: Record<string, unknown>, status = 200) => NextResponse.json(body, { status });
 
@@ -39,17 +39,17 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => null)) as { email?: unknown } | null;
   const email = String(body?.email ?? "").trim().toLowerCase();
-  if (!isValidLoginEmail(email)) return json({ ok: false, error: "Sahi email address daaliye." }, 400);
+  if (!isValidLoginEmail(email)) return json({ ok: false, error: "Enter a valid email address." }, 400);
 
   if (!smtpConfigured()) {
-    return json({ ok: false, error: "Email se reset abhi chalu nahi hai. WhatsApp wala option use kijiye." }, 503);
+    return json({ ok: false, error: "Email reset is not available right now. Please use WhatsApp." }, 503);
   }
 
   const admin = getSupabaseAdmin();
   if (!admin) return json({ ok: false, error: "Service unavailable." }, 503);
 
   const perAddress = checkRateLimit(`ap-forgot-email-to:${email}`, 3, 60 * 60_000);
-  if (!perAddress.ok) return json({ ok: true, message: SENT });
+  if (!perAddress.ok) return json({ ok: false, error: "Too many attempts. Please try again later." }, 429);
 
   const authEmail =
     (await resolvePartnerContactEmailToAuthEmail(admin as unknown as PartnerLookupClient, email)) ?? email;
@@ -57,25 +57,24 @@ export async function POST(request: Request) {
   const { data, error } = await admin.auth.admin.generateLink({ type: "recovery", email: authEmail });
   const tokenHash = String(data?.properties?.hashed_token ?? "");
   if (error || !tokenHash || !data?.user) {
-    // Not an account: same answer as success.
-    return json({ ok: true, message: SENT });
+    return json({ ok: false, error: NOT_REGISTERED }, 404);
   }
 
-  // Only partners reset here; anybody else gets the same silent answer.
+  // Only partners reset here.
   const access = await getAgentAccessStatus(data.user);
   if (!access.ok) {
     console.warn("[ap-forgot-email] not_a_partner_or_refused", { reason: access.reason });
-    return json({ ok: true, message: SENT });
+    return json({ ok: false, error: NOT_REGISTERED }, 404);
   }
 
   const link = `${siteUrl(request)}/ap/reset-password?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`;
   const sent = await sendMail({
     to: email,
-    subject: "DC Partner password reset",
-    text: `Apna DC Partner password badalne ke liye ye link kholiye (1 ghante tak chalega):\n${link}\n\nAgar aapne ye nahi maanga tha to is email ko ignore kar dijiye.\n\nDigiConnect Dukan`,
-    html: `<p>Apna DC Partner password badalne ke liye neeche ka button dabaiye. Ye link 1 ghante tak chalega.</p><p><a href="${link}" style="display:inline-block;padding:12px 20px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:bold">Naya password banaiye</a></p><p style="color:#64748b;font-size:13px">Agar aapne ye nahi maanga tha to is email ko ignore kar dijiye.</p><p>DigiConnect Dukan</p>`,
+    subject: "Reset your DC Partner password",
+    text: `Open this link to set a new DC Partner password (valid for 1 hour):\n${link}\n\nIf you did not ask for this, ignore this email.\n\nDigiConnect Dukan`,
+    html: `<p>Click the button to set a new DC Partner password. The link is valid for 1 hour.</p><p><a href="${link}" style="display:inline-block;padding:12px 20px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:bold">Set new password</a></p><p style="color:#64748b;font-size:13px">If you did not ask for this, ignore this email.</p><p>DigiConnect Dukan</p>`,
   });
-  if (!sent) return json({ ok: false, error: "Email bhej nahi paaye. Thodi der baad try kijiye, ya WhatsApp wala option use kijiye." }, 502);
+  if (!sent) return json({ ok: false, error: "Could not send the email. Please try again." }, 502);
 
-  return json({ ok: true, message: SENT });
+  return json({ ok: true, message: `Reset link sent to ${email}. Check Inbox and Spam.` });
 }

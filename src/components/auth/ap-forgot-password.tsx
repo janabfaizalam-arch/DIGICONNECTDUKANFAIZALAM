@@ -35,18 +35,18 @@ export function ApForgotPassword() {
 
   async function sendEmail() {
     if (emailBusy) return;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setEmailError("Sahi email address daaliye.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setEmailError("Enter a valid email address.");
     setEmailBusy(true);
     setEmailError(null);
     try {
       const result = await postJson<{ message?: string; error?: string }>("/api/auth/ap/forgot-password", { email: email.trim() });
       if (!result.ok) {
-        setEmailError(result.timedOut ? "Request time out ho gaya. Dobara try kijiye." : result.data?.error || "Email bhej nahi paaye. Dobara try kijiye.");
+        setEmailError(result.timedOut ? "Request timed out. Try again." : result.data?.error || "Could not send the email. Try again.");
         return;
       }
-      setEmailNote(result.data?.message ?? "Reset link bhej diya gaya hai. Inbox aur Spam dekhiye.");
+      setEmailNote(result.data?.message ?? "Reset link sent. Check Inbox and Spam.");
     } catch {
-      setEmailError("Email bhej nahi paaye. Dobara try kijiye.");
+      setEmailError("Could not send the email. Try again.");
     } finally {
       setEmailBusy(false);
     }
@@ -54,8 +54,8 @@ export function ApForgotPassword() {
 
   async function save() {
     if (savingRef.current) return;
-    if (password.length < 8) return setError("Password kam se kam 8 character ka rakhiye.");
-    if (password !== confirm) return setError("Dono password ek jaise nahi hain.");
+    if (password.length < 8) return setError("Use at least 8 characters.");
+    if (password !== confirm) return setError("Passwords do not match.");
     savingRef.current = true;
     setBusy(true);
     setError(null);
@@ -65,14 +65,14 @@ export function ApForgotPassword() {
         confirmPassword: confirm,
       });
       if (!result.ok) {
-        setError(result.timedOut ? "Request time out ho gaya. Dobara try kijiye." : result.data?.error || "Password badal nahi paaye. Dobara try kijiye.");
+        setError(result.timedOut ? "Request timed out. Try again." : result.data?.error || "Could not save the password. Try again.");
         return;
       }
       setStage("done");
-      success("Naya password set ho gaya!");
+      success("New password saved.");
       window.location.assign(result.data?.redirectTo || "/ap/dashboard");
     } catch {
-      setError("Password badal nahi paaye. Dobara try kijiye.");
+      setError("Could not save the password. Try again.");
     } finally {
       savingRef.current = false;
       setBusy(false);
@@ -82,13 +82,13 @@ export function ApForgotPassword() {
   return (
     <GlassCard>
       <AuthHeading
-        title="Password bhool gaye?"
+        title="Forgot password?"
         subtitle={
           stage !== "verify"
-            ? "Number verify ho gaya. Ab naya password bana lijiye."
+            ? "Verified. Now set a new password."
             : method === "email"
-              ? "Apna registered email (Gmail) daaliye. Us par password badalne ka link aayega."
-              : "Apna registered mobile number daaliye. WhatsApp par code aayega, phir naya password bana lijiye."
+              ? "Enter the email you registered with. We will send a reset link."
+              : "Enter your registered mobile. We will send a code on WhatsApp."
         }
       />
 
@@ -125,20 +125,20 @@ export function ApForgotPassword() {
               value={email}
               disabled={emailBusy}
               error={emailError}
-              hint="Wahi email jo DC Partner banate waqt diya tha"
+              hint="The email used to create your DC Partner account"
               onChange={(e) => {
                 setEmail(e.target.value);
                 if (emailError) setEmailError(null);
               }}
             />
-            <AuthButton type="submit" loading={emailBusy} loadingText="Link bhej rahe hain…">
+            <AuthButton type="submit" loading={emailBusy} loadingText="Sending…">
               <Mail className="h-4 w-4" />
-              Email par reset link bhejiye
+              Send reset link
             </AuthButton>
           </form>
         )
       ) : stage === "verify" ? (
-        <APOtpLogin verifyLabel="Code verify kijiye" onVerified={() => setStage("password")} />
+        <APOtpLogin verifyLabel="Verify code" onVerified={() => setStage("password")} />
       ) : (
         <form
           className="flex flex-col gap-5"
@@ -148,20 +148,20 @@ export function ApForgotPassword() {
           }}
         >
           <TextField
-            label="Naya password"
+            label="New password"
             secure
             autoComplete="new-password"
             icon={<Lock className="h-4 w-4" />}
             value={password}
             disabled={busy}
-            hint="Kam se kam 8 character"
+            hint="At least 8 characters"
             onChange={(e) => {
               setPassword(e.target.value);
               if (error) setError(null);
             }}
           />
           <TextField
-            label="Naya password dobara"
+            label="Confirm new password"
             secure
             autoComplete="new-password"
             icon={<Lock className="h-4 w-4" />}
@@ -173,16 +173,16 @@ export function ApForgotPassword() {
               if (error) setError(null);
             }}
           />
-          <AuthButton type="submit" loading={busy} loadingText="Save kar rahe hain…" status={stage === "done" ? "success" : "idle"}>
-            Naya password save kijiye
+          <AuthButton type="submit" loading={busy} loadingText="Saving…" status={stage === "done" ? "success" : "idle"}>
+            Save new password
           </AuthButton>
-          <p className="text-center text-xs text-slate-500">Aap login ho chuke hain. Password baad mein bhi dashboard se badal sakte hain.</p>
+          <p className="text-center text-xs text-slate-500">You are signed in. You can also change it later from the dashboard.</p>
         </form>
       )}
 
       <Link href="/ap/login" className="inline-flex min-h-11 items-center justify-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-900 hover:underline">
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-        Login par wapas jaiye
+        Back to login
       </Link>
     </GlassCard>
   );

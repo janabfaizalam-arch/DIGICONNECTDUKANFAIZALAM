@@ -2914,3 +2914,16 @@ input[id*="email"],
   font-family: var(--font-dcp), var(--font-body), ui-sans-serif, system-ui, sans-serif;
   font-feature-settings: "cv05" 1;
 }
+
+/*
+ * iOS Safari zooms the page when a focused field's text is under 16px, and
+ * leaves it zoomed after the keyboard closes. Fields on touch iPhones/iPads
+ * get 16px; pinch zoom stays available (no maximum-scale lock).
+ */
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
