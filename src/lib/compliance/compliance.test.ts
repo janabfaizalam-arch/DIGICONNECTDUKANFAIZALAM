@@ -65,7 +65,7 @@ describe("tracking is consent-gated", () => {
   it("GA and the Pixel mount only behind their consent flags", () => {
     const source = read("src/components/privacy/tracking-scripts.tsx");
     expect(source).toContain("gaMeasurementId && analyticsAllowed ? <GoogleAnalytics");
-    expect(source).toContain("metaPixelId && marketingAllowed ?");
+    expect(source).toContain("metaPixelId && marketingAllowed && pixelPage ?");
   });
 
   it("GA never defaults analytics or ad storage to granted before consent", () => {

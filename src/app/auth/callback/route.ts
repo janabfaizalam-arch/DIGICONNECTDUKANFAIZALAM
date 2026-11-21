@@ -4,14 +4,17 @@ import { cookies } from "next/headers";
 import { getCurrentUserRole, getRoleHome, isCustomerRole, syncUserProfile } from "@/lib/auth";
 import { parsePendingCustomerOAuthData, pendingCustomerOAuthCookie } from "@/lib/customer-oauth";
 import { attachReferralOnSignup, validateReferralCode } from "@/lib/referrals";
+import { getSafeNext } from "@/lib/safe-next";
 import { getSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 
-function getSafeNext(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/";
-  }
-
-  return value;
+/** JSON for inside a <script>: "</script>" in a value must not close the tag. */
+function scriptJson(value: string): string {
+  return JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
 }
 
 function redirectHashTokensToNext(next: string | null) {
@@ -28,7 +31,7 @@ function redirectHashTokensToNext(next: string | null) {
   <body>
     <p>Redirecting...</p>
     <script>
-      const nextPath = ${JSON.stringify(destination)};
+      const nextPath = ${scriptJson(destination)};
       const hash = window.location.hash || "";
       window.location.replace(nextPath + hash);
     </script>
