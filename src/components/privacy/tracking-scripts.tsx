@@ -2,10 +2,12 @@
 
 import { Suspense, useEffect } from "react";
 import Script from "next/script";
+import { usePathname } from "next/navigation";
 
 import { VisitTracker } from "@/components/analytics/visit-tracker";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { MetaPixelEvents } from "@/components/meta-pixel-events";
+import { isPixelAllowedPath } from "@/lib/meta-pixel";
 import { useConsent } from "@/lib/consent/use-consent";
 
 type TrackingScriptsProps = {
@@ -29,6 +31,9 @@ type TrackingScriptsProps = {
 export function TrackingScripts({ gaMeasurementId, metaPixelId }: TrackingScriptsProps) {
   const consent = useConsent();
   const analyticsAllowed = consent?.analytics === true;
+  const pathname = usePathname();
+  // Only public marketing pages: see isPixelAllowedPath.
+  const pixelPage = isPixelAllowedPath(pathname);
   const marketingAllowed = consent?.marketing === true;
   const analyticsDeclined = consent !== undefined && consent !== null && !consent.analytics;
 
@@ -46,14 +51,16 @@ export function TrackingScripts({ gaMeasurementId, metaPixelId }: TrackingScript
     const fbq = (window as unknown as { fbq?: (...args: unknown[]) => void }).fbq;
     // A Pixel already on the page (consent withdrawn, then given again without
     // a reload) is switched back on here; the loader below will not re-run.
-    if (typeof fbq === "function") fbq("consent", marketingAllowed ? "grant" : "revoke");
-  }, [consent, marketingAllowed]);
+    // Also off on a private page reached by client-side navigation from a
+    // public one, where the Pixel is already loaded.
+    if (typeof fbq === "function") fbq("consent", marketingAllowed && pixelPage ? "grant" : "revoke");
+  }, [consent, marketingAllowed, pixelPage]);
 
   return (
     <>
       {gaMeasurementId && analyticsAllowed ? <GoogleAnalytics measurementId={gaMeasurementId} /> : null}
 
-      {metaPixelId && marketingAllowed ? (
+      {metaPixelId && marketingAllowed && pixelPage ? (
         <>
           <Script
             id="meta-pixel"
@@ -68,6 +75,8 @@ export function TrackingScripts({ gaMeasurementId, metaPixelId }: TrackingScript
                 t.src=v;s=b.getElementsByTagName(e)[0];
                 s.parentNode.insertBefore(t,s)}(window, document,'script',
                 'https://connect.facebook.net/en_US/fbevents.js');
+                fbq.disablePushState = true;
+                fbq('set', 'autoConfig', false, ${JSON.stringify(metaPixelId)});
                 fbq('consent', 'grant');
                 fbq('init', ${JSON.stringify(metaPixelId)});
                 fbq('track', 'PageView');

@@ -99,7 +99,8 @@ describe("email/password customer auth", () => {
     // `next` arrives from the URL, so an absolute value would make the login
     // flow an open redirect.
     const callback = readSrc("src/app/auth/callback/route.ts");
-    expect(callback).toMatch(/startsWith\("\/\/"\)/);
+    expect(callback).toContain("getSafeNext(");
+    expect(readSrc("src/lib/safe-next.ts")).toMatch(/startsWith\("\/\/"\)/);
   });
 
   it("never blocks signup when the pincode lookup is down", () => {

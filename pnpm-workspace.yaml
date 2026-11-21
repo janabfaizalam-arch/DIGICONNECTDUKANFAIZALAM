@@ -6,3 +6,10 @@ allowBuilds:
   sharp: true
   supabase: set this to true or false
   unrs-resolver: true
+overrides:
+  axios: ^1.21.1
+  follow-redirects: ^1.16.2
+  nanoid@3: ^3.3.20
+  postcss: ^8.5.33
+  sharp: ^0.35.5
+  source-map-js: ^1.2.2
