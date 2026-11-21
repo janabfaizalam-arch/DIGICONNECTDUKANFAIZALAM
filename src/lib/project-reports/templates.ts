@@ -168,6 +168,73 @@ const HAND_BUILT: Omit<ProjectTemplate, "group" | "notFor">[] = [
     },
   },
   {
+    id: "oil-flour-mill",
+    label: "Tel ghani + aata chakki (oil and flour mill, solar ke saath)",
+    activity: "manufacturing of mustard oil, wheat flour, besan and millet flour",
+    sector: "manufacturing",
+    capitalItems: [
+      m("Oil expeller with motor (kachi ghani)", 300000),
+      m("Atta chakki (flour mill) 20 HP with motor and starter", 250000),
+      m("Besan / dal grinder with sieve", 60000),
+      m("Millet cleaning and grading machine", 50000),
+      m("Solar panel system with inverter and mounting", 180000),
+      m("Bag packing and stitching machine", 60000),
+      m("Electronic weighing scale (platform)", 20000),
+      asset("electrical", "Electrical wiring, panel and power connection", 50000),
+      asset("furniture", "Storage racks, table and stools", 15000),
+      asset("preliminary", "Registration, project report and pre-operative expenses", 15000),
+    ],
+    products: [
+      { name: "Kachi ghani mustard oil", unit: "kg", capacity: 9700, price: 180 },
+      { name: "Mustard oil cake (khali)", unit: "kg", capacity: 3400, price: 30 },
+      { name: "Wheat flour (atta)", unit: "kg", capacity: 92000, price: 32 },
+      { name: "Besan", unit: "kg", capacity: 6900, price: 80 },
+      { name: "Millet flour (shree anna)", unit: "kg", capacity: 9400, price: 45 },
+    ],
+    rawMaterials: [
+      { name: "Mustard seed (sarso)", unit: "kg", quantity: 9800, rate: 90 },
+      { name: "Wheat", unit: "kg", quantity: 84000, rate: 24 },
+      { name: "Gram (chana)", unit: "kg", quantity: 6900, rate: 50 },
+      { name: "Millets (raw)", unit: "kg", quantity: 9450, rate: 30 },
+    ],
+    staff: [direct("Skilled machine operator", 2, 9000)],
+    overheads: [
+      cost("Diesel / power (solar ke baad)", 3000, true, true),
+      cost("Packing material (bags, pouches, tins)", 4000, true, true),
+      cost("Repairs and maintenance", 1500, false, true),
+      cost("Office, telephone and stationery", 1500, false, false),
+      cost("Transport and marketing", 4000, true, false),
+    ],
+    rawMaterialDays: 25,
+    finishedGoodsDays: 10,
+    debtorDays: 20,
+    creditorDays: 20,
+    text: {
+      market:
+        "The unit serves one customer with four staples instead of one. Wheat flour is eaten daily by every household in Uttar Pradesh, mustard oil is the region's cooking oil, besan goes to households and every namkeen and sweet shop, and millet flour has grown quickly since the millet year as buyers return to jowar, bajra and ragi for health. A single shop supplying all four earns the household's whole grain and oil purchase rather than a share of it, and the four products peak in different seasons, so the machinery does not sit idle.",
+      process:
+        "Wheat is cleaned, conditioned and ground in the chakki, sieved to separate bran and packed. Mustard seed is cleaned, dried and crushed in the expeller; the oil is settled, filtered and filled, and the cake sold to dairy farmers. Gram is cleaned, roasted lightly and ground to besan. Millets are cleaned and graded on the grading machine before milling. All four are simple, proven processes that run on the same semi-skilled labour.",
+      machinery:
+        "The unit will install an oil expeller with motor, a 20 HP flour mill, a besan grinder with sieve and a millet cleaning and grading machine, with a packing and stitching machine and platform weighing scale. A rooftop solar system with inverter runs the plant during daylight, which cuts the power bill and keeps milling going through the load-shedding hours when a mill otherwise stops. Machines are available from established manufacturers in Kanpur, Agra and Rajasthan, and quotations have been obtained.",
+      rawMaterialSource:
+        "Wheat, mustard, gram and millets are all grown in the district and bought from local mandis and farmers. Wheat and mustard are stocked after the rabi harvest when rates are lowest; gram and millets are bought through the year as needed.",
+      marketing:
+        "Sales will be direct to households and through kirana shops, namkeen and sweet shops, dhabas and cattle-feed dealers, under the unit's own label, with home delivery for bulk orders. Job-grinding for households keeps the chakki busy in the lean season.",
+      licences: [...COMMON_LICENCES, "FSSAI licence (flour, edible oil and besan)", "Legal Metrology registration for packed commodities", "Electricity connection (commercial / industrial load)", "Net-metering approval for the solar system"],
+      risks: [
+        ["Grain and mustard price fluctuation", "Bulk buying after harvest; selling rates revised with mandi rates."],
+        ["Competition from branded atta and refined oil", "Freshness, local trust, transparent pressing and home delivery."],
+        ["Power cuts stopping the mill", "Rooftop solar runs the plant through daylight hours."],
+      ],
+      swot: {
+        strengths: ["Four staples from one unit", "Seasons do not overlap, so machinery stays busy", "Solar cuts the biggest running cost", "Raw material grown in the district"],
+        weaknesses: ["More machines to maintain than a single-product mill", "Working capital needed to stock grain and seed"],
+        opportunities: ["Branded packed atta, oil and besan", "Millet products as a health line", "Supply to hostels, canteens and sweet shops"],
+        threats: ["Edible oil and wheat price swings", "Branded packed atta"],
+      },
+    },
+  },
+  {
     id: "masala",
     label: "Masala pisai aur packing (spices)",
     activity: "grinding, blending and packing of spices (masala)",
@@ -780,6 +847,7 @@ const HAND_BUILT: Omit<ProjectTemplate, "group" | "notFor">[] = [
 const HAND_BUILT_GROUP: Record<string, ActivityGroup> = {
   "flour-mill": "food",
   "oil-mill": "food",
+  "oil-flour-mill": "food",
   masala: "food",
   bakery: "food",
   dairy: "food",
