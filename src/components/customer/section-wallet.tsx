@@ -148,7 +148,7 @@ export function WalletSection({ walletSnapshot, stats }: CustomerPortalData) {
       try {
         await navigator.share({
           title: "DigiConnect Dukan",
-          text: "Get help with GST, ITR, passport and government filings — and we both earn.",
+          text: "DigiConnect Dukan — help with GST, ITR, passport and document filings.",
           url: link,
         });
         return;

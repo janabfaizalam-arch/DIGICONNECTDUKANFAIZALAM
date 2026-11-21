@@ -80,7 +80,7 @@ export const NAV_CATEGORIES: NavCategory[] = [
     blurb: "Accounts, credit cards and CIBIL support",
     icon: Landmark,
     featured: [
-      { label: "CIBIL Report & Increase", slug: "cibil-report-increase" },
+      { label: "CIBIL Report & Credit Guidance", slug: "cibil-report" },
       { label: "Credit Cards", slug: "credit-cards" },
     ],
   },
@@ -124,6 +124,6 @@ export const NAV_POPULAR: { label: string; slug: string }[] = [
   { label: "ITR Filing", slug: "itr-filing" },
   { label: "Passport", slug: "passport" },
   { label: "Driving Licence", slug: "learning-driving-license" },
-  { label: "CIBIL Report", slug: "cibil-report-increase" },
+  { label: "CIBIL Report", slug: "cibil-report" },
   { label: "PVC Card", slug: "pvc-card" },
 ];

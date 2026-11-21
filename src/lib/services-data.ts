@@ -182,7 +182,7 @@ export const serviceCategories: ServiceCategory[] = [
     heading: "Banking & Credit Services",
     description: "Credit card applications, Savings & Current accounts, and CIBIL report consultation.",
     icon: Landmark,
-    featuredSlugs: ["credit-cards", "cibil-report-increase"],
+    featuredSlugs: ["credit-cards", "cibil-report"],
   },
   {
     title: "Passport & Licence",
@@ -357,7 +357,7 @@ const rawServices: RawService[] = [
     title: "PVC Card",
     slug: "pvc-card",
     categorySlug: "cards",
-    shortDescription: "Get your digital Aadhaar, PAN, Voter or DL printed on premium waterproof PVC smart cards.",
+    shortDescription: "Print of your own e-Aadhaar, e-PAN, e-Voter or DL (downloaded from the official portal) on a wallet-size PVC card. For personal use; it is not an officially issued card.",
     
     
     iconKey: "card",
@@ -490,10 +490,10 @@ const rawServices: RawService[] = [
     badge: "Business",
   },
   {
-    title: "CIBIL Report & Increase",
-    slug: "cibil-report-increase",
+    title: "CIBIL Report & Credit Guidance",
+    slug: "cibil-report",
     categorySlug: "banking",
-    shortDescription: "TransUnion CIBIL membership, comprehensive score analysis, and negative remarks disputing guide.",
+    shortDescription: "Get your CIBIL report, understand your score, and get guidance on correcting errors with the bureau.",
     
     
     iconKey: "cibil",
@@ -831,8 +831,9 @@ export function getServiceBySlug(slug: string) {
     "income-tax-return-filing": "itr-filing",
     itr: "itr-filing",
     "income-tax-return": "itr-filing",
-    "cibil-report-analysis-and-credit-health-consultation": "cibil-report-increase",
-    "cibil-credit-score-guidance": "cibil-report-increase",
+    "cibil-report-analysis-and-credit-health-consultation": "cibil-report",
+    "cibil-credit-score-guidance": "cibil-report",
+    "cibil-report-increase": "cibil-report",
     "credit-cards-all-banks": "credit-cards",
     "credit-cards---all-banks": "credit-cards",
     "savings-account-opening": "saving-account-opening",

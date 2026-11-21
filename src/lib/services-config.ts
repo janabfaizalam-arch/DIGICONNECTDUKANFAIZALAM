@@ -407,7 +407,7 @@ export const SERVICES_CONFIG_REGISTRY: ServiceConfig[] = [
 
 // Fallback configuration generator based on category
 export function getDynamicServiceConfig(slug: string, categorySlug = "cards"): ServiceConfig {
-  const matched = SERVICES_CONFIG_REGISTRY.find((s) => s.slug === slug || (s.slug === `cibil-report-increase` && slug === `cibil-report-analysis-and-credit-health-consultation`));
+  const matched = SERVICES_CONFIG_REGISTRY.find((s) => s.slug === slug || (s.slug === `cibil-report` && slug === `cibil-report-analysis-and-credit-health-consultation`));
   if (matched) return matched;
 
   // Dynamically yield generic category configurations

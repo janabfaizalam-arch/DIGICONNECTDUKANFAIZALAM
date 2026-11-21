@@ -63,7 +63,7 @@ const fallbackBanners = [
   {
     title: "PVC Smart Card Printing",
     tag: "Identity Print",
-    desc: "Order high-resolution, waterproof wallet-sized PVC smart card of Aadhaar/PAN.",
+    desc: "Wallet-size PVC print of your own e-Aadhaar / e-PAN. Personal copy, not an official card.",
     cta: "Order PVC",
     gradient: "from-[#164e63] via-[#0891b2] to-[#06b6d4]",
     accent: "bg-[#FF8A00]",

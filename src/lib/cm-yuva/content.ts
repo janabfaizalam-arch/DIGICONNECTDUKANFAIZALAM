@@ -530,9 +530,9 @@ export const RELATED_SERVICES = [
     detail: "GSTIN for compliance, tenders and supplier accounts.",
   },
   {
-    slug: "cibil-report-increase",
+    slug: "cibil-report",
     title: "CIBIL report & score help",
-    detail: "See what the branch will see, and clean it up before they pull it.",
+    detail: "See what the branch will see, and get errors corrected with the bureau first.",
   },
 ] as const;
 
