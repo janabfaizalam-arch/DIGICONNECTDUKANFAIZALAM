@@ -49,6 +49,13 @@ import {
   templateById,
   TEMPLATES,
 } from "@/lib/project-reports/templates";
+import {
+  CapitalItemRows,
+  NumberBox,
+  ProductRows,
+  RawMaterialRows,
+  StaffRows,
+} from "@/components/admin/project-report-rows";
 import { cn } from "@/lib/utils";
 
 /**
@@ -78,59 +85,6 @@ function firstEligible(
 }
 
 /** A number box that keeps what is being typed and reports a number. */
-function NumberBox({
-  value,
-  onChange,
-  label,
-  nullable = false,
-  placeholder,
-  className,
-  suffix,
-}: {
-  value: number | null;
-  onChange: (value: number | null) => void;
-  label: string;
-  nullable?: boolean;
-  placeholder?: string;
-  className?: string;
-  suffix?: string;
-}) {
-  const [text, setText] = useState(value === null ? "" : String(value));
-  useEffect(() => {
-    const parsed =
-      text.replace(/,/g, "").trim() === ""
-        ? null
-        : Number(text.replace(/,/g, ""));
-    if (parsed !== value && !(parsed === null && value === 0 && !nullable))
-      setText(value === null ? "" : String(value));
-    // Only follow outside changes, never re-format while typing.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
-  return (
-    <div className={cn("relative", className)}>
-      <AdminInput
-        aria-label={label}
-        inputMode="decimal"
-        value={text}
-        placeholder={placeholder}
-        onChange={(event) => {
-          const next = event.target.value;
-          setText(next);
-          const cleaned = next.replace(/,/g, "").trim();
-          if (cleaned === "") onChange(nullable ? null : 0);
-          else if (Number.isFinite(Number(cleaned))) onChange(Number(cleaned));
-        }}
-        className={cn("tabular-nums", suffix && "pr-10")}
-      />
-      {suffix ? (
-        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ds-text-muted">
-          {suffix}
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
 const IMPORTANCE_TONE: Record<
   Importance,
   "danger" | "warning" | "neutral" | "info"
@@ -1013,6 +967,33 @@ export function ProjectReportForm({
                   </Field>
                 </div>
               </div>
+
+              {input.products.length > 0 ? (
+                <>
+                  <CapitalItemRows
+                    items={input.capitalItems}
+                    onChange={(items) => set("capitalItems", items)}
+                  />
+                  <ProductRows
+                    products={input.products}
+                    onChange={(products) => set("products", products)}
+                  />
+                  <RawMaterialRows
+                    materials={input.rawMaterials}
+                    onChange={(materials) => set("rawMaterials", materials)}
+                  />
+                  <StaffRows
+                    staff={input.staff}
+                    onChange={(staff) => set("staff", staff)}
+                  />
+                </>
+              ) : (
+                <p className="mt-6 rounded-ds-md bg-ds-surface-sunken px-3 py-2.5 text-xs text-ds-text-muted">
+                  Machinery, products, kachcha maal aur staff ki list
+                  &quot;DPR banaiye&quot; dabane ke baad yahan khulegi — business
+                  chunte hi wo bhar jaati hai, phir aap har row badal sakte hain.
+                </p>
+              )}
             </div>
           </div>
         </AdminCard>
