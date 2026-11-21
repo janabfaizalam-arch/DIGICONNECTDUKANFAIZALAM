@@ -99,7 +99,7 @@ export const SERVICE_DIRECTORY_META: Record<string, ServiceDirectoryMeta> = {
     eligibility: "Sole proprietorships, partnerships and corporate entities",
     weight: 88,
   },
-  "cibil-report-increase": {
+  "cibil-report": {
     processingTime: "5–7 days",
     eligibility: "Anyone tracking or disputing their credit bureau record",
     weight: 98,

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Gift, ArrowRight, Check, Copy, MessageCircle, HelpCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import {
-  FIRST_SERVICE_CASHBACK_PERCENT,
   REPEAT_CASHBACK_PERCENT,
   REFERRER_SIGNUP_BONUS_AMOUNT,
   REFERRER_FIRST_SERVICE_BONUS_AMOUNT,
@@ -81,7 +80,7 @@ export function RewardCenter() {
     },
     {
       text: "First eligible service",
-      highlight: `${FIRST_SERVICE_CASHBACK_PERCENT}% welcome cashback`,
+      highlight: "Welcome wallet cashback",
       desc: "when the reward rules apply to your account.",
     },
     {

@@ -46,7 +46,7 @@ export const SERVICE_SYNONYMS: Record<string, string[]> = {
   "credit-cards": ["credit card", "credit cards", "cc", "bank card", "apply card", "card apply"],
   "saving-account-opening": ["savings account", "saving account", "zero balance", "bank account", "account opening", "khata", "open account"],
   "current-account-opening": ["current account", "business account", "firm account", "current bank account", "firm khata"],
-  "cibil-report-increase": ["cibil", "cibil score", "credit score", "credit repair", "credit report", "cibil check", "cibil status", "finance", "cibil report increase", "credit health", "repair score"],
+  "cibil-report": ["cibil", "cibil score", "credit score", "credit report", "cibil check", "cibil status", "finance", "credit health"],
   dsc: ["dsc", "digital signature", "class 3", "signature token"],
   "msme-registration": ["msme", "udyam", "udyam registration", "msme registration", "udyam certificate"],
   "iso-certification": ["iso", "iso certificate", "iso certification", "quality standards"],

@@ -139,7 +139,7 @@ export function HomepagePvcWidget() {
                 Waterproof Polymer Card
               </h4>
               <p className="mt-1 text-[9px] font-semibold text-slate-500 leading-tight line-clamp-2">
-                Aadhaar, PAN, Voter or DL printed on premium wallet-sized PVC.
+                Your own e-Aadhaar / e-PAN printed on a wallet-size PVC card. Personal copy, not an official card.
               </p>
             </div>
             <Link

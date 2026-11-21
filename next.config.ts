@@ -109,6 +109,9 @@ const nextConfig: NextConfig = {
         destination: "/services/cm-yuva-loan",
         permanent: true,
       },
+      // "Increase" read as a credit-repair claim; the service is report + guidance.
+      { source: "/services/cibil-report-increase", destination: "/services/cibil-report", permanent: true },
+      { source: "/apply/cibil-report-increase", destination: "/apply/cibil-report", permanent: true },
       {
         source: "/services/dpr-report",
         destination: "/services/detailed-project-report",

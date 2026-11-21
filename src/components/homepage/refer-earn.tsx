@@ -85,7 +85,7 @@ export function ReferEarn() {
   }, []);
 
   const linkToShare = refLink || `https://rnos.in/signup?ref=${refCode || "DIGI777"}`;
-  const shareText = `Join DigiConnect Dukan using my link to get 100% cashback rewards on your first digital/gov service application: ${linkToShare}`;
+  const shareText = `DigiConnect Dukan — GST, ITR, passport and document help by RNOS India Pvt Ltd. Join with my link: ${linkToShare}`;
 
   const handleCopy = async () => {
     try {

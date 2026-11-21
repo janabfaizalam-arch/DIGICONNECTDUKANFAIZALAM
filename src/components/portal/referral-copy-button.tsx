@@ -47,7 +47,7 @@ export function ReferralShareButton({
   async function handleShare() {
     if (!link) return;
 
-    const shareText = `Join DigiConnect Dukan with my referral code ${code} and get ₹500 wallet bonus! Sign up here: ${link}`;
+    const shareText = `DigiConnect Dukan — GST, ITR, passport and document help. My referral code: ${code}. Sign up: ${link}`;
 
     if (typeof navigator.share === "function") {
       try {
