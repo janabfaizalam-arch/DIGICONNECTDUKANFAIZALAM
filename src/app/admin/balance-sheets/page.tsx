@@ -26,7 +26,7 @@ export default async function BalanceSheetsPage({ searchParams }: { searchParams
   return (
     <PageContainer className="space-y-6">
       <AdminPageHeader
-        eyebrow="Money"
+        eyebrow="Accountant"
         title="Balance Sheets"
         description="Bank-ready Trading and P&L Account and Balance Sheet for a customer's loan file."
         action={
