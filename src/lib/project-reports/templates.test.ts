@@ -33,6 +33,51 @@ describe("project templates", () => {
     }
   }
 
+  /**
+   * The combined mill a PMFME file in this district actually describes: one
+   * unit pressing oil, milling wheat and millets and grinding besan, running
+   * on rooftop solar. Picking "oil-mill" or "flour-mill" for it would put two
+   * products in the sales table where the business sells five, and every
+   * statement built on that table would describe a different business.
+   */
+  describe("oil + flour mill", () => {
+    const input = quick("oil-flour-mill", 1000000);
+
+    it("sells all five products the unit actually makes", () => {
+      expect(input.products.map((p) => p.name)).toEqual([
+        "Kachi ghani mustard oil",
+        "Mustard oil cake (khali)",
+        "Wheat flour (atta)",
+        "Besan",
+        "Millet flour (shree anna)",
+      ]);
+    });
+
+    it("buys the four grains those products are made from", () => {
+      expect(input.rawMaterials.map((m) => m.name)).toEqual([
+        "Mustard seed (sarso)",
+        "Wheat",
+        "Gram (chana)",
+        "Millets (raw)",
+      ]);
+    });
+
+    it("carries the solar system in the machinery, not just in the write-up", () => {
+      // "with solar" on the cover has to be a line a bank can match against a
+      // quotation, not a sentence in the market section.
+      const solar = input.capitalItems.filter((i) => /solar/i.test(i.description));
+      expect(solar).toHaveLength(1);
+      expect(solar[0].kind).toBe("machinery");
+      expect(solar[0].rate).toBeGreaterThan(0);
+    });
+
+    it("is offered to PMFME, which funds food processing only", () => {
+      const template = TEMPLATES.find((t) => t.id === "oil-flour-mill")!;
+      expect(template.group).toBe("food");
+      expect(template.notFor).not.toContain("pmfme");
+    });
+  });
+
   it("keeps the business and promoter already typed", () => {
     const input = quick("dairy", 1000000);
     expect(input.businessName).toBe("Test Unit");
