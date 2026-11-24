@@ -53,20 +53,11 @@ export async function GET(request: Request) {
     // 3. Initialize Supabase Client
     const supabase = getSupabaseAdmin();
     if (!supabase) {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      const dbDiagnostics = {
-        hasSupabaseUrl: !!supabaseUrl,
-        hasServiceRoleKey: !!serviceRoleKey,
-        supabaseUrlValue: supabaseUrl ? supabaseUrl.substring(0, 15) + "..." : "undefined",
-      };
-      addLog(`Supabase Admin client initialization failed. Diagnostics: ${JSON.stringify(dbDiagnostics)}`, true);
+      // Logged here, never sent: an agent's screen is not where the
+      // server's own configuration belongs.
+      addLog("Supabase Admin client initialization failed.", true);
       return NextResponse.json(
-        {
-          error: "Supabase service role configuration is missing on the server",
-          diagnostics: dbDiagnostics,
-          serverLogs,
-        },
+        { error: "The server is not configured to read print jobs right now.", serverLogs },
         { status: 500 }
       );
     }
@@ -230,12 +221,6 @@ export async function GET(request: Request) {
       return NextResponse.json(
         { 
           error: "Failed to query print jobs due to a database error", 
-          details: {
-            message: jobsError.message,
-            code: jobsError.code,
-            details: jobsError.details,
-            hint: jobsError.hint,
-          },
           serverLogs,
         },
         { status: 500 }
@@ -279,7 +264,6 @@ export async function GET(request: Request) {
     return NextResponse.json(
       { 
         error: "An unexpected error occurred on the server",
-        details: errorMsg,
         serverLogs,
       },
       { status: 500 }

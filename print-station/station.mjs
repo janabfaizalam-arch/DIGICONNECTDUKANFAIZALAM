@@ -5,7 +5,9 @@ import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { adoptedBundledKey, configPath, configProblems, isReady, loadConfig, saveConfig } from "./lib/config.mjs";
+import { adoptedBundledKey, configPath, configProblems, isReady, loadConfig, redactConfig, saveConfig } from "./lib/config.mjs";
+import { isAllowedHost, isAllowedWrite, tokenFromForm } from "./lib/local-guard.mjs";
+import { secureBundledKey } from "./lib/secure-key.mjs";
 import { createApi } from "./lib/api.mjs";
 import { createLog } from "./lib/log.mjs";
 import { choosePrinter, createWorker, diagnose } from "./lib/worker.mjs";
@@ -181,6 +183,23 @@ async function readBody(request) {
 const server = createServer(async (request, response) => {
   const url = new URL(request.url, "http://localhost");
 
+  // See lib/local-guard.mjs: no other website may read or change this page.
+  if (!isAllowedHost(request.headers.host, PORT)) {
+    json(response, 403, { error: "Forbidden" });
+    return;
+  }
+  if (
+    !isAllowedWrite({
+      method: request.method,
+      origin: request.headers.origin,
+      contentType: request.headers["content-type"],
+      port: PORT,
+    })
+  ) {
+    json(response, 403, { error: "Forbidden" });
+    return;
+  }
+
   if (url.pathname === "/" && request.method === "GET") {
     const page = renderPage();
     response.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
@@ -191,7 +210,8 @@ const server = createServer(async (request, response) => {
   if (url.pathname === "/api/state" && request.method === "GET") {
     json(response, 200, {
       ...state,
-      config,
+      // The key is never sent back, even to this page: shown masked.
+      config: redactConfig(config),
       printers,
       version: PRINT_STATION_VERSION,
       problems: configProblems(config),
@@ -206,7 +226,7 @@ const server = createServer(async (request, response) => {
     // The token field is left untouched when the form sends back nothing —
     // a partner editing the poll interval should not have to fetch their key
     // out of a drawer.
-    config = saveConfig({ ...config, ...body, agentToken: String(body.agentToken ?? config.agentToken) });
+    config = saveConfig({ ...config, ...body, agentToken: tokenFromForm(body.agentToken, config.agentToken) });
     printers = await listPrinters();
     log.push("info", "Settings saved.");
     startWorker();
@@ -279,6 +299,33 @@ server.listen(PORT, "127.0.0.1", async () => {
 
   if (adoptedBundledKey(config)) {
     log.push("info", "Key taken from this downloaded folder.");
+  }
+
+  /*
+    Retire the zip's key before printing anything with it. Retried every
+    minute while the internet is down; printing does not wait for it — the
+    old key keeps working until the swap succeeds.
+  */
+  const secure = async () => {
+    try {
+      const before = config.agentToken;
+      config = await secureBundledKey({
+        config,
+        save: saveConfig,
+        makeApi: (agentToken) => createApi({ serverUrl: config.serverUrl, agentToken }),
+        log: log.push,
+      });
+      if (config.agentToken !== before) startWorker();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  if (!(await secure())) {
+    const retry = setInterval(async () => {
+      if (await secure()) clearInterval(retry);
+    }, 60_000);
+    retry.unref();
   }
 
   printers = await listPrinters();

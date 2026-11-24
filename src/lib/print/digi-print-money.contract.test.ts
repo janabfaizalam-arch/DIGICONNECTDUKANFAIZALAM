@@ -91,3 +91,31 @@ describe("a paid job always prints", () => {
     expect(agentJobs).toContain('station ? null : searchParams.get("printers")');
   });
 });
+
+describe("the customer cannot set their own price", () => {
+  const create = readCode("src/app/api/print/jobs/create/route.ts");
+  const upload = readCode("src/app/api/print/jobs/upload/route.ts");
+
+  it("builds every order from the upload route's signed receipt", () => {
+    expect(create).toContain("readUploadReceipt(body.upload_receipt)");
+    expect(create).toContain("storage_path: upload.path");
+    expect(create).toContain("Math.max(claimedPages, upload.pages)");
+  });
+
+  it("never bills fewer sheets than the file's real pages", () => {
+    expect(create).toMatch(/sheetCount = Math\.max\([^;]*upload\.pages\)/);
+  });
+
+  it("counts PDF pages with a real parser before signing", () => {
+    expect(upload).toContain("countPdfPages(buffer)");
+    expect(upload).toContain("issueUploadReceipt");
+  });
+
+  it("lets one uploaded file back only one order", () => {
+    expect(create).toContain('.eq("storage_path", upload.path)');
+  });
+
+  it("does not let anyone walk orders by sequential job number", () => {
+    expect(readCode("src/app/api/print/jobs/status/route.ts")).not.toContain('eq("job_number"');
+  });
+});

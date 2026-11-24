@@ -46,7 +46,8 @@ export async function GET() {
     serverUrl: getSiteUrl(),
     agentToken,
     printerName: station.printer_name ?? "",
-    pollSeconds: 5,
+    // Three seconds: a paid job starts printing almost as the customer looks up.
+    pollSeconds: 3,
     duplex: false,
     sumatraPath: "",
   };

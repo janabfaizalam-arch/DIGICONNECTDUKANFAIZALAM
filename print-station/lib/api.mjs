@@ -137,6 +137,10 @@ export function createApi({ serverUrl, agentToken, fetchImpl = fetch, timeoutMs 
     /** "Is this key any good, and whose counter is it?" */
     whoami: () => call("/api/print/agent/whoami"),
 
+    /** Swap the zip's key for one only this computer knows (see secure-key.mjs). */
+    rotateKey: (newKeyHash) =>
+      call("/api/print/agent/rotate-key", { method: "POST", body: { new_key_hash: newKeyHash } }),
+
     /** Say what happened. The customer's screen is watching this. */
     report: (jobId, status, errorMessage) =>
       call("/api/print/agent/update-status", {

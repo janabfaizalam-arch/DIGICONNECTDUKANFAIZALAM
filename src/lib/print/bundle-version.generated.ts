@@ -2,4 +2,4 @@
 // Mirrors print-station/lib/version.mjs so the download's filename and
 // the version the program logs can never disagree.
 
-export const PRINT_STATION_VERSION = "2.0.0";
+export const PRINT_STATION_VERSION = "2.1.0";

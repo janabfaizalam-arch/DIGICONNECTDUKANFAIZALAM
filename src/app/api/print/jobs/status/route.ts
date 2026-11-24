@@ -5,11 +5,17 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const jobId = searchParams.get("job_id");
-    const jobNumber = searchParams.get("job_number");
+    const jobId = String(searchParams.get("job_id") ?? "").trim();
 
-    if (!jobId && !jobNumber) {
-      return NextResponse.json({ error: "Job ID or Job Number is required" }, { status: 400 });
+    /*
+      By job id only.
+
+      Job numbers are sequential (PJ-101, PJ-102…), so a lookup by number let
+      anybody walk every order on the platform. The id is a random UUID that
+      only the customer's own screen holds.
+    */
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(jobId)) {
+      return NextResponse.json({ error: "Job ID is required" }, { status: 400 });
     }
 
     const supabase = getSupabaseAdmin();
@@ -20,7 +26,6 @@ export async function GET(request: Request) {
     let query = supabase.from("print_jobs").select(`
       id,
       job_number,
-      customer_mobile,
       copies,
       pages,
       paper_size,
@@ -31,11 +36,7 @@ export async function GET(request: Request) {
       created_at
     `);
 
-    if (jobId) {
-      query = query.eq("id", jobId);
-    } else {
-      query = query.eq("job_number", jobNumber);
-    }
+    query = query.eq("id", jobId);
 
     const { data: job, error } = await query.maybeSingle();
 
@@ -43,17 +44,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Print job not found" }, { status: 404 });
     }
 
-    // Mask customer mobile for privacy: 9876543210 -> 987****210
-    const mobileStr = String(job.customer_mobile);
-    const maskedMobile =
-      mobileStr.length >= 6
-        ? mobileStr.slice(0, 3) + "*".repeat(mobileStr.length - 6) + mobileStr.slice(-3)
-        : "***";
-
     return NextResponse.json({
       id: job.id,
       job_number: job.job_number,
-      customer_mobile: maskedMobile,
       copies: job.copies,
       pages: job.pages,
       paper_size: job.paper_size,

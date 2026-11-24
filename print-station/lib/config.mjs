@@ -48,6 +48,12 @@ export const DEFAULTS = {
     clobber a hand-entered one on every restart.
   */
   seededFrom: "",
+  /*
+    A key this computer made for itself and is swapping in for the one that
+    came in the zip (see secure-key.mjs). Saved before the server is asked,
+    so a reply lost on the way back cannot lock the shop out.
+  */
+  pendingToken: "",
 };
 
 export function configDir() {
@@ -99,6 +105,7 @@ export function normalizeConfig(raw) {
     duplex: Boolean(input.duplex),
     sumatraPath: String(input.sumatraPath ?? "").trim(),
     seededFrom: String(input.seededFrom ?? "").trim(),
+    pendingToken: String(input.pendingToken ?? "").trim(),
   };
 }
 
@@ -203,5 +210,7 @@ export function redactConfig(config) {
   return {
     ...config,
     agentToken: token ? `${token.slice(0, 8)}…${token.slice(-4)}` : "",
+    pendingToken: config.pendingToken ? "…" : "",
+    seededFrom: config.seededFrom ? "…" : "",
   };
 }

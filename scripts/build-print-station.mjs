@@ -50,6 +50,8 @@ export const SHIPPED_FILES = [
   "lib/run-hidden.vbs",
   "lib/run-hidden.ps1",
   "lib/keepalive-station.mjs",
+  "lib/local-guard.mjs",
+  "lib/secure-key.mjs",
 ];
 
 /**

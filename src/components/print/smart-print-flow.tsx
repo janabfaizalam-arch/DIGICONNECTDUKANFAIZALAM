@@ -86,7 +86,15 @@ export type SmartStationView = {
 
 type Step = "service" | "build" | "done";
 
-type Uploaded = { file_name: string; file_size: number; mime_type: string; storage_path: string; pages?: number };
+type Uploaded = {
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  storage_path: string;
+  pages?: number;
+  /** Signed by the server; the order is built from this, not from the fields above. */
+  upload_receipt?: string;
+};
 
 /**
  * One uploaded picture and everything we have made of it.
@@ -529,6 +537,7 @@ export function SmartPrintFlow({ station }: { station: SmartStationView }) {
           file_size: uploaded.file_size,
           mime_type: uploaded.mime_type,
           storage_path: uploaded.storage_path,
+          upload_receipt: uploaded.upload_receipt,
           station_code: station.code,
           service_type: service.id,
           settings,
