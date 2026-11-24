@@ -55,7 +55,8 @@ interface CustomerForm {
   pincode:   string;
   state:     string;
   district:  string;
-  address:   string;
+  village:   string;   // post office / village, picked from the pincode lookup
+  address:   string;   // optional: house no., street
   note:      string;
 }
 
@@ -129,11 +130,15 @@ export function PartnerApplicationWizard({
     pincode:   initialProfileFields?.pincode  ?? "",
     state:     initialProfileFields?.state    ?? "",
     district:  initialProfileFields?.city     ?? "",
+    village:   "",
     address:   "",
     note:      "",
   });
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [pincodeLoading,   setPincodeLoading]   = useState(false);
+  // Post offices (villages / localities) the pincode covers, for the picker.
+  const [pincodeOffices,   setPincodeOffices]   = useState<string[]>([]);
+  const [pincodeError,     setPincodeError]     = useState<string | null>(null);
 
   // Dynamic layout heights measurement using ResizeObserver
   useWizardLayoutMetrics([currentStep]);
@@ -318,9 +323,13 @@ export function PartnerApplicationWizard({
         const d = JSON.parse(localStorage.getItem("ap_wizard_draft") ?? "null");
         if (d?.cart?.length) {
           setCart(d.cart);
-          if (d.customer)    setCustomer(d.customer);
-          // A draft saved on the old Documents step (3) resumes on Review.
-          if (d.currentStep) setCurrentStep(d.currentStep === 3 ? 4 : d.currentStep);
+          if (d.customer)    setCustomer(prev => ({ ...prev, ...d.customer, village: d.customer.village ?? "" }));
+          // A draft without a village (saved before it existed) goes back to
+          // Customer so the village is picked; the old Documents step (3) is Review.
+          if (d.currentStep) {
+            const step = d.currentStep === 3 ? 4 : d.currentStep;
+            setCurrentStep(step > 2 && !d.customer?.village ? 2 : step);
+          }
         }
       } catch { /* ignore */ }
     } else {
@@ -469,22 +478,50 @@ export function PartnerApplicationWizard({
   }, []);
 
   // ── Pincode auto-fill ─────────────────────────────────────────────────────
+  /*
+    Village, city / district and state come from the pincode and nowhere else.
+    Changing the pincode clears them, so a half-typed or wrong pincode can never
+    leave the previous customer's place behind.
+  */
   const handlePincodeChange = useCallback(async (pincode: string) => {
-    setCustomer(p => ({ ...p, pincode }));
+    setCustomer(p => ({ ...p, pincode, village: "", state: "", district: "" }));
+    setPincodeOffices([]);
+    setPincodeError(null);
     if (!/^\d{6}$/.test(pincode)) return;
     setPincodeLoading(true);
     try {
       const r = await fetch(`/api/pincode?pincode=${pincode}`);
       const d = await r.json();
-      if (d?.state || d?.district) {
-        setCustomer(p => ({
-          ...p,
-          state:    d.state    ?? p.state,
-          district: d.district ?? d.city ?? p.district,
-        }));
+      if (!r.ok || !d?.ok || !(d.state && (d.district || d.city))) {
+        setPincodeError("Pincode not found. Please check the number.");
+        return;
       }
-    } catch { /* silent */ } finally { setPincodeLoading(false); }
+      const offices: string[] = Array.isArray(d.postOffices)
+        ? Array.from(new Set((d.postOffices as { name?: string }[]).map(o => String(o?.name ?? "").trim()).filter(Boolean)))
+        : [];
+      // No post-office list: the city itself is the only choice.
+      if (offices.length === 0) offices.push(String(d.city || d.district));
+      setPincodeOffices(offices);
+      setCustomer(p => p.pincode !== pincode ? p : ({
+        ...p,
+        state:    String(d.state),
+        district: String(d.district || d.city),
+        // One office: nothing to choose. Several: the partner picks the village.
+        village:  offices.length === 1 ? offices[0] : "",
+      }));
+    } catch {
+      setPincodeError("Could not fetch pincode details. Check the connection and try again.");
+    } finally { setPincodeLoading(false); }
   }, []);
+
+  // A pincode that arrived some other way (draft, customer autofill, link)
+  // still has to be looked up, so its village list exists.
+  useEffect(() => {
+    if (/^\d{6}$/.test(customer.pincode) && pincodeOffices.length === 0 && !pincodeLoading && !pincodeError) {
+      void handlePincodeChange(customer.pincode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customer.pincode]);
 
   // ── Customer validation ───────────────────────────────────────────────────
   const validateCustomer = useCallback((): boolean => {
@@ -492,12 +529,13 @@ export function PartnerApplicationWizard({
     if (!customer.name.trim())                        e.name     = "Full name is required.";
     if (!/^[6-9]\d{9}$/.test(customer.mobile))       e.mobile   = "Enter valid 10-digit mobile.";
     if (!/^\d{6}$/.test(customer.pincode))            e.pincode  = "Enter valid 6-digit pincode.";
-    if (!customer.state.trim())                       e.state    = "State is required.";
-    if (!customer.district.trim())                    e.district = "City / District is required.";
-    if (!customer.address.trim())                     e.address  = "Address is required.";
+    else if (!customer.state.trim() || !customer.district.trim())
+                                                      e.pincode  = pincodeError ?? "Wait for the pincode details to load.";
+    else if (!customer.village.trim())                e.village  = "Select the village / post office.";
+    // Address is optional.
     setValidationErrors(e);
     return Object.keys(e).length === 0;
-  }, [customer]);
+  }, [customer, pincodeError]);
 
   // Auto-fill from Customer 360
   const applyCustomer360Autofill = useCallback(() => {
@@ -506,13 +544,11 @@ export function PartnerApplicationWizard({
     setCustomer(prev => ({
       ...prev,
       name:     p.name     || prev.name,
-      pincode:  p.pincode  || prev.pincode,
-      state:    p.state    || prev.state,
-      district: p.district || p.city || prev.district,
       address:  p.address  || prev.address,
     }));
+    if (/^\d{6}$/.test(p.pincode)) void handlePincodeChange(p.pincode);
     toastSuccess?.("Details auto-filled from customer profile!");
-  }, [customer360, toastSuccess]);
+  }, [customer360, toastSuccess, handlePincodeChange]);
 
   // ── Final submission (called after Razorpay verification) ─────────────────
   const handleFinalSubmit = useCallback(async (
@@ -533,7 +569,8 @@ export function PartnerApplicationWizard({
           message: customer.note || "",
         },
         details: {
-          address:      customer.address,
+          address:      [customer.address.trim(), customer.village].filter(Boolean).join(", "),
+          village:      customer.village,
           pincode:      customer.pincode,
           state:        customer.state,
           district:     customer.district,
@@ -602,7 +639,8 @@ export function PartnerApplicationWizard({
               city:   customer.district || customer.state,
             },
             details: {
-              address:  customer.address,
+              address:  [customer.address.trim(), customer.village].filter(Boolean).join(", "),
+              village:  customer.village,
               pincode:  customer.pincode,
               state:    customer.state,
               district: customer.district,
@@ -841,7 +879,8 @@ export function PartnerApplicationWizard({
               city:   customer.district || customer.state,
             },
             details: {
-              address:  customer.address,
+              address:  [customer.address.trim(), customer.village].filter(Boolean).join(", "),
+              village:  customer.village,
               pincode:  customer.pincode,
               state:    customer.state,
               district: customer.district,
@@ -1343,44 +1382,58 @@ export function PartnerApplicationWizard({
                         <RefreshCw className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-blue-500 animate-spin" />
                       )}
                     </div>
-                    {validationErrors.pincode && <p className="text-[10px] text-red-500 mt-1 font-semibold">{validationErrors.pincode}</p>}
+                    {(validationErrors.pincode || pincodeError) && (
+                      <p className="text-[10px] text-red-500 mt-1 font-semibold">{validationErrors.pincode || pincodeError}</p>
+                    )}
                   </div>
 
-                  {/* State */}
+                  {/* Village / post office — from the pincode, required */}
+                  <div className="sm:col-span-2">
+                    <label className="text-[10px] font-black text-[var(--dcp-ink-3)] uppercase tracking-wide block mb-1">Village / Post Office *</label>
+                    <select
+                      value={customer.village}
+                      disabled={pincodeOffices.length === 0}
+                      onChange={e => setCustomer(p => ({ ...p, village: e.target.value }))}
+                      className={cn(
+                        "w-full px-3 py-2.5 bg-[var(--dcp-surface-2)] border rounded-xl text-sm font-medium focus:outline-none focus:border-[var(--dcp-brand)] focus:bg-white transition-all disabled:opacity-60",
+                        validationErrors.village ? "border-red-400 bg-red-50/30" : "border-[var(--dcp-line)]"
+                      )}
+                    >
+                      <option value="">{pincodeOffices.length ? "Select village / post office" : "Enter pincode first"}</option>
+                      {pincodeOffices.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                    {validationErrors.village && <p className="text-[10px] text-red-500 mt-1 font-semibold">{validationErrors.village}</p>}
+                  </div>
+
+                  {/* City / District — from the pincode, read-only */}
+                  <div>
+                    <label className="text-[10px] font-black text-[var(--dcp-ink-3)] uppercase tracking-wide block mb-1">City / District *</label>
+                    <input
+                      type="text"
+                      readOnly
+                      tabIndex={-1}
+                      placeholder="From pincode"
+                      value={customer.district}
+                      className="w-full px-3 py-2.5 bg-[var(--dcp-surface-3)] border border-[var(--dcp-line)] rounded-xl text-sm font-semibold text-[var(--dcp-ink-2)] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* State — from the pincode, read-only */}
                   <div>
                     <label className="text-[10px] font-black text-[var(--dcp-ink-3)] uppercase tracking-wide block mb-1">State *</label>
                     <input
                       type="text"
-                      placeholder="Auto-filled from pincode"
+                      readOnly
+                      tabIndex={-1}
+                      placeholder="From pincode"
                       value={customer.state}
-                      onChange={e => setCustomer(p => ({ ...p, state: e.target.value }))}
-                      className={cn(
-                        "w-full px-3 py-2.5 bg-[var(--dcp-surface-2)] border rounded-xl text-sm font-medium focus:outline-none focus:border-[var(--dcp-brand)] focus:bg-white transition-all",
-                        validationErrors.state ? "border-red-400 bg-red-50/30" : "border-[var(--dcp-line)]"
-                      )}
+                      className="w-full px-3 py-2.5 bg-[var(--dcp-surface-3)] border border-[var(--dcp-line)] rounded-xl text-sm font-semibold text-[var(--dcp-ink-2)] focus:outline-none"
                     />
-                    {validationErrors.state && <p className="text-[10px] text-red-500 mt-1 font-semibold">{validationErrors.state}</p>}
-                  </div>
-
-                  {/* District */}
-                  <div className="sm:col-span-2">
-                    <label className="text-[10px] font-black text-[var(--dcp-ink-3)] uppercase tracking-wide block mb-1">District / City *</label>
-                    <input
-                      type="text"
-                      placeholder="Auto-filled from pincode"
-                      value={customer.district}
-                      onChange={e => setCustomer(p => ({ ...p, district: e.target.value }))}
-                      className={cn(
-                        "w-full px-3 py-2.5 bg-[var(--dcp-surface-2)] border rounded-xl text-sm font-medium focus:outline-none focus:border-[var(--dcp-brand)] focus:bg-white transition-all",
-                        validationErrors.district ? "border-red-400 bg-red-50/30" : "border-[var(--dcp-line)]"
-                      )}
-                    />
-                    {validationErrors.district && <p className="text-[10px] text-red-500 mt-1 font-semibold">{validationErrors.district}</p>}
                   </div>
 
                   {/* Address */}
                   <div className="sm:col-span-2">
-                    <label className="text-[10px] font-black text-[var(--dcp-ink-3)] uppercase tracking-wide block mb-1">Address *</label>
+                    <label className="text-[10px] font-black text-[var(--dcp-ink-3)] uppercase tracking-wide block mb-1">Address (Optional)</label>
                     <textarea
                       rows={2}
                       placeholder="House / flat no., street, area..."
@@ -1388,10 +1441,9 @@ export function PartnerApplicationWizard({
                       onChange={e => setCustomer(p => ({ ...p, address: e.target.value }))}
                       className={cn(
                         "w-full px-3 py-2.5 bg-[var(--dcp-surface-2)] border rounded-xl text-sm font-medium focus:outline-none focus:border-[var(--dcp-brand)] focus:bg-white transition-all resize-none",
-                        validationErrors.address ? "border-red-400 bg-red-50/30" : "border-[var(--dcp-line)]"
+                        "border-[var(--dcp-line)]"
                       )}
                     />
-                    {validationErrors.address && <p className="text-[10px] text-red-500 mt-1 font-semibold">{validationErrors.address}</p>}
                   </div>
 
                   {/* Note */}
@@ -1427,7 +1479,7 @@ export function PartnerApplicationWizard({
                       {customer.altMobile && <div><span className="text-[var(--dcp-ink-4)]">Alt: </span><span className="font-bold">{customer.altMobile}</span></div>}
                       <div className="col-span-2">
                         <span className="text-[var(--dcp-ink-4)]">Address: </span>
-                        <span className="font-bold">{customer.address}, {customer.district}, {customer.state} — {customer.pincode}</span>
+                        <span className="font-bold">{[customer.address.trim(), customer.village, customer.district, customer.state].filter(Boolean).join(", ")} — {customer.pincode}</span>
                       </div>
                       {customer.note && (
                         <div className="col-span-2"><span className="text-[var(--dcp-ink-4)]">Note: </span><span className="font-bold">{customer.note}</span></div>
