@@ -5,6 +5,7 @@ import { getCurrentUser, isActiveAgent } from "@/lib/auth";
 import {
   createStation,
   getStationForPartner,
+  requestAgentUpdate,
   rotateAgentToken,
   updateStation,
 } from "@/lib/print/stations";
@@ -85,6 +86,12 @@ export async function PATCH(request: Request) {
     explicitly. Rotating silently on every save would break a working shop's
     printer every time somebody corrected a typo in the address.
   */
+  if (body.action === "request_update") {
+    const ok = await requestAgentUpdate(partner.id);
+    if (!ok) return NextResponse.json({ error: "Update request save nahi hua." }, { status: 503 });
+    return NextResponse.json({ data: await getStationForPartner(partner.id) });
+  }
+
   if (body.action === "rotate_token") {
     const token = await rotateAgentToken(partner.id);
     if (!token) return NextResponse.json({ error: "Could not issue a new key." }, { status: 503 });
@@ -106,6 +113,8 @@ export async function PATCH(request: Request) {
         ? undefined
         : (body.smartPrintDefaults as PartnerDefaults),
     require_approval: body.requireApproval === undefined ? undefined : Boolean(body.requireApproval),
+    offer_a3: body.offerA3 === undefined ? undefined : Boolean(body.offerA3),
+    offer_color: body.offerColor === undefined ? undefined : Boolean(body.offerColor),
     rates: {
       a4_mono: rates.a4_mono === undefined ? undefined : Number(rates.a4_mono),
       a4_color: rates.a4_color === undefined ? undefined : Number(rates.a4_color),

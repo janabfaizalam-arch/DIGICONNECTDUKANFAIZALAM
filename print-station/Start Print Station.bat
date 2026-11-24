@@ -58,7 +58,10 @@ echo   Starting DigiConnect Print Station...
 echo   Leave this window open.
 echo.
 
+:run
 "%NODE%" "%~dp0station.mjs"
+REM  75 means "updated itself, start me again".
+if errorlevel 75 if not errorlevel 76 goto :run
 
 REM  If the program stops, the window stays so the reason can be read.
 echo.

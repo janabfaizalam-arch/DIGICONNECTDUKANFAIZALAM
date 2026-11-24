@@ -4,6 +4,7 @@ import { createHash, randomBytes, randomInt } from "crypto";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { isMissingColumnError } from "@/lib/supabase/schema-drift";
+import { PRINT_STATION_VERSION } from "@/lib/print/bundle-version.generated";
 import type { PartnerDefaults } from "@/lib/print/smart-print";
 
 /**
@@ -46,6 +47,13 @@ export type PrintStation = {
   smart_print_defaults: PartnerDefaults;
   /** When true, a paid job waits for the partner before it prints. */
   require_approval: boolean;
+  /** Shop's switches: does this counter sell A3 / colour at all. */
+  offer_a3: boolean;
+  offer_color: boolean;
+  /** Version the shop's connector last reported, if any. */
+  agent_version: string | null;
+  /** The partner asked the connector to update itself and it has not yet. */
+  update_requested: boolean;
 };
 
 /**
@@ -159,6 +167,11 @@ function toStation(row: StationRow): PrintStation {
         ? (row.smart_print_defaults as PartnerDefaults)
         : {},
     require_approval: row.require_approval === true,
+    // Missing column (older schema) reads as "on" — what every shop had before.
+    offer_a3: row.offer_a3 !== false,
+    offer_color: row.offer_color !== false,
+    agent_version: typeof row.agent_version === "string" ? row.agent_version : null,
+    update_requested: Boolean(row.update_requested_at),
   };
 }
 
@@ -336,6 +349,8 @@ export async function updateStation(
     /** Per-service Smart Print defaults, merged over what the shop already had. */
     smart_print_defaults?: PartnerDefaults;
     require_approval?: boolean;
+    offer_a3?: boolean;
+    offer_color?: boolean;
   },
 ): Promise<PrintStation | null> {
   const supabase = getSupabaseAdmin();
@@ -363,6 +378,8 @@ export async function updateStation(
   }
 
   if (patch.require_approval !== undefined) update.require_approval = Boolean(patch.require_approval);
+  if (patch.offer_a3 !== undefined) update.offer_a3 = Boolean(patch.offer_a3);
+  if (patch.offer_color !== undefined) update.offer_color = Boolean(patch.offer_color);
 
   /*
     Merged, not replaced.
@@ -396,6 +413,8 @@ export async function updateStation(
       delete core.color_printer_name;
       delete core.smart_print_defaults;
       delete core.require_approval;
+      delete core.offer_a3;
+      delete core.offer_color;
       ({ data, error } = await supabase
         .from("print_stations")
         .update(core)
@@ -445,6 +464,36 @@ export async function rotateAgentToken(partnerId: string): Promise<string | null
 }
 
 /**
+ * Compare two "x.y.z" versions. Negative when a < b. Anything unparseable
+ * counts as 0.0.0, so an unknown connector is always offered the update.
+ */
+export function compareVersions(a: string | null | undefined, b: string | null | undefined): number {
+  const parts = (value: string | null | undefined) =>
+    String(value ?? "0.0.0")
+      .split(".")
+      .map((part) => Number.parseInt(part, 10) || 0);
+  const left = parts(a);
+  const right = parts(b);
+  for (let index = 0; index < 3; index += 1) {
+    const diff = (left[index] ?? 0) - (right[index] ?? 0);
+    if (diff) return diff;
+  }
+  return 0;
+}
+
+/** The partner pressed "Update install karo". */
+export async function requestAgentUpdate(partnerId: string): Promise<boolean> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase || !partnerId) return false;
+  const { data, error } = await supabase
+    .from("print_stations")
+    .update({ update_requested_at: new Date().toISOString() })
+    .eq("partner_id", partnerId)
+    .select("id");
+  return !error && Boolean(data && data.length);
+}
+
+/**
  * Clean a printer list reported by a counter PC.
  *
  * It arrives in a query string the PC controls, so it is bounded before it is
@@ -464,17 +513,26 @@ export function cleanPrinterList(raw: string | null | undefined): string[] | nul
  * when the agent sent one, what printers its computer has, so the partner can
  * pick one from the panel instead of at the counter PC.
  */
-export async function touchAgent(stationId: string, printers?: string[] | null): Promise<void> {
+export async function touchAgent(
+  stationId: string,
+  printers?: string[] | null,
+  agentVersion?: string | null,
+): Promise<void> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return;
   const seenAt = new Date().toISOString();
   const update: Record<string, unknown> = { agent_last_seen_at: seenAt };
   if (printers && printers.length) update.available_printers = printers;
+  if (agentVersion) {
+    update.agent_version = agentVersion;
+    // Up to date: whatever update was asked for has happened.
+    if (agentVersion === PRINT_STATION_VERSION) update.update_requested_at = null;
+  }
   try {
     const { error } = await supabase.from("print_stations").update(update).eq("id", stationId);
     // The heartbeat is what lets customers pay at this counter. It must not
-    // be lost because the optional printer list has nowhere to go.
-    if (error && update.available_printers && isMissingColumnError(error)) {
+    // be lost because an optional column has nowhere to go.
+    if (error && isMissingColumnError(error)) {
       await supabase.from("print_stations").update({ agent_last_seen_at: seenAt }).eq("id", stationId);
     }
   } catch {

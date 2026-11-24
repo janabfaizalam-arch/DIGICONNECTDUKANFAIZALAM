@@ -62,6 +62,9 @@ export function renderPage() {
   .log .error { color:var(--flame); font-weight:700; }
   .log .success { color:var(--ok); }
   .log .warn { color:#b26a00; }
+  .update-box { margin-top:12px; display:flex; gap:12px; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; border:1px solid #c7d2fe; background:#eef2ff; border-radius:10px; padding:10px 12px; font-size:14px; }
+  .update-box button { border:0; border-radius:8px; background:#1e293b; color:#fff; font-weight:700; padding:8px 14px; cursor:pointer; }
   .warn-box { margin-top:12px; border-left:3px solid var(--flame); padding:10px 12px;
     background:rgba(244,99,46,.07); border-radius:0 12px 12px 0; font-size:12.5px; }
   /* Deliberately not ".mark": that class is already the 44px header tile
@@ -107,6 +110,10 @@ export function renderPage() {
     </div>
     <div class="warn-box" id="problem" hidden></div>
     <div class="findings" id="findings" hidden></div>
+    <div class="update-box" id="update-box" hidden>
+      <span>Naya version <b id="update-version"></b> available hai.</span>
+      <button type="button" id="update-btn">Update install karo</button>
+    </div>
   </div>
 
   <div class="card">
@@ -167,6 +174,8 @@ export function renderPage() {
     }
 
     if (state.version) $("version").textContent = "\u00b7 v" + state.version;
+    $("update-box").hidden = !state.updateAvailable;
+    if (state.latestVersion) $("update-version").textContent = "v" + state.latestVersion;
     $("s-queued").textContent = state.queued ?? 0;
     $("s-printed").textContent = state.printed ?? 0;
     $("s-failed").textContent = state.failed ?? 0;
@@ -201,6 +210,15 @@ export function renderPage() {
         line.message.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c])) + "</div>")
       .join("");
   }
+
+  $("update-btn").addEventListener("click", async () => {
+    $("update-btn").disabled = true;
+    $("update-btn").textContent = "Install ho raha hai...";
+    try {
+      await fetch("/api/update", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    } catch {}
+    setTimeout(() => location.reload(), 8000);
+  });
 
   async function refresh() {
     try { paint(await (await fetch("/api/state")).json()); } catch {}

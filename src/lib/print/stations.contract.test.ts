@@ -9,7 +9,7 @@ const agentStatus = readCode("src/app/api/print/agent/update-status/route.ts");
 const agentAuth = readCode("src/lib/print/agent-auth.ts");
 const api = readCode("src/app/api/ap/print-station/route.ts");
 const migration = readCode("supabase/migrations/20260901160000_partner_print_stations.sql");
-const customer = readCode("src/components/print/smart-print-flow.tsx");
+const customer = readCode("src/components/print/digi-print-flow.tsx");
 
 /* ─────────────────────────────────────────────────────────────────────────
    One shop cannot reach another

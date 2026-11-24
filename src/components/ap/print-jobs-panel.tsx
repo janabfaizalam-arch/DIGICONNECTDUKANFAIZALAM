@@ -122,11 +122,11 @@ export function PrintJobsPanel({ requireApproval }: { requireApproval: boolean }
         />
       </div>
 
-      <div className="lg-card p-4 sm:p-5">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h3 className="text-[13.5px] font-extrabold text-[var(--dc-ink)]">Print jobs</h3>
-            <p className="mt-0.5 text-[12px] font-medium text-[var(--dc-body)]">
+            <h3 className="text-[13.5px] font-semibold text-slate-900">Print jobs</h3>
+            <p className="mt-0.5 text-[12px] font-medium text-slate-500">
               {requireApproval
                 ? "Approval chalu hai — har paid job aapke OK ke baad print hoga."
                 : "Payment hote hi job seedha printer par jata hai."}{" "}
@@ -136,7 +136,7 @@ export function PrintJobsPanel({ requireApproval }: { requireApproval: boolean }
           <button
             type="button"
             onClick={() => void load()}
-            className="lg-pill flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--dc-body)]"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:text-slate-900"
             aria-label="Refresh"
           >
             <RefreshCw className="h-4 w-4" />
@@ -144,21 +144,21 @@ export function PrintJobsPanel({ requireApproval }: { requireApproval: boolean }
         </div>
 
         {waiting.length ? (
-          <p className="mt-3 rounded-xl bg-amber-50 px-3.5 py-2.5 text-[12.5px] font-extrabold text-amber-800">
+          <p className="mt-3 rounded-xl bg-amber-50 px-3.5 py-2.5 text-[12.5px] font-semibold text-amber-800">
             {waiting.length} {waiting.length === 1 ? "job" : "jobs"} aapke approval ka intezaar kar rahe hain
           </p>
         ) : null}
 
         {jobs === null ? (
-          <div className="flex h-24 items-center justify-center text-[var(--dc-body)]">
+          <div className="flex h-24 items-center justify-center text-slate-500">
             <Loader2 className="h-5 w-5 animate-spin" />
           </div>
         ) : jobs.length === 0 ? (
-          <p className="mt-4 rounded-xl border border-dashed border-[rgba(15,32,73,.15)] px-4 py-6 text-center text-[12.5px] font-semibold text-[var(--dc-body)]">
+          <p className="mt-4 rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-[12.5px] font-semibold text-slate-500">
             Abhi koi job nahi. Poster counter par lagaiye — pehla customer scan karte hi yahan dikhega.
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-[rgba(15,32,73,.08)]">
+          <ul className="mt-3 divide-y divide-slate-100">
             {jobs.map((job) => {
               const status = STATUS[job.print_status] ?? { label: job.print_status, tone: "bg-slate-100 text-slate-700" };
               const busy = (action: string) => acting === `${job.id}:${action}`;
@@ -167,16 +167,16 @@ export function PrintJobsPanel({ requireApproval }: { requireApproval: boolean }
               return (
                 <li key={job.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <p className="flex flex-wrap items-center gap-2 text-[13px] font-extrabold text-[var(--dc-ink)]">
+                    <p className="flex flex-wrap items-center gap-2 text-[13px] font-semibold text-slate-900">
                       {job.job_number}
-                      <span className={cn("rounded-full px-2 py-0.5 text-[10.5px] font-extrabold", status.tone)}>
+                      <span className={cn("rounded-full px-2 py-0.5 text-[10.5px] font-semibold", status.tone)}>
                         {status.label}
                       </span>
                       {job.pickup_pin ? (
-                        <span className="font-mono text-[11.5px] font-bold text-[var(--dc-blue-mid)]">PIN {job.pickup_pin}</span>
+                        <span className="font-mono text-[11.5px] font-bold text-slate-500">PIN {job.pickup_pin}</span>
                       ) : null}
                     </p>
-                    <p className="mt-0.5 text-[11.5px] font-medium text-[var(--dc-body)]">
+                    <p className="mt-0.5 text-[11.5px] font-medium text-slate-500">
                       {job.service_type.replace(/_/g, " ")} · {job.paper_size} {job.color_mode === "color" ? "colour" : "B/W"} ·{" "}
                       {job.copies} copy · {job.customer_mobile} · {timeAgo(job.created_at)}
                     </p>
@@ -186,7 +186,7 @@ export function PrintJobsPanel({ requireApproval }: { requireApproval: boolean }
                   </div>
 
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className="text-right text-[12px] font-bold text-[var(--dc-ink)]">
+                    <span className="text-right text-[12px] font-bold text-slate-900">
                       {money(job.price)}
                       {job.partner_earning !== null && job.partner_earning !== job.price ? (
                         <span className="block text-[10.5px] font-semibold text-emerald-700">
@@ -237,22 +237,21 @@ function Tile({
 }) {
   const body = (
     <>
-      <p className={cn("flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.08em]", accent ? "text-white/80" : "text-[var(--dc-body)]")}>
+      <p className={cn("flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em]", accent ? "text-white/80" : "text-slate-500")}>
         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
         {label}
       </p>
-      <p className={cn("mt-1.5 text-[1.35rem] font-black leading-none", accent ? "text-white" : "text-[var(--dc-ink)]")}>{value}</p>
-      {sub ? <p className={cn("mt-1 text-[11px] font-semibold", accent ? "text-white/75" : "text-[var(--dc-body)]")}>{sub}</p> : null}
+      <p className={cn("mt-1.5 text-[1.35rem] font-semibold leading-none", accent ? "text-white" : "text-slate-900")}>{value}</p>
+      {sub ? <p className={cn("mt-1 text-[11px] font-semibold", accent ? "text-white/75" : "text-slate-500")}>{sub}</p> : null}
     </>
   );
-  const className = cn("lg-card block p-4", accent && "text-white");
-  const style = accent ? { background: "var(--dc-grad-blue)" } : undefined;
+  const className = cn("block rounded-2xl border p-4", accent ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white");
   return href ? (
-    <a href={href} className={className} style={style}>
+    <a href={href} className={className}>
       {body}
     </a>
   ) : (
-    <div className={className} style={style}>
+    <div className={className}>
       {body}
     </div>
   );
@@ -278,9 +277,9 @@ function ActionButton({
       disabled={busy}
       className={cn(
         "inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[12px] font-bold transition disabled:opacity-50",
-        primary ? "text-white" : "lg-pill text-[var(--dc-ink)]",
+        primary ? "bg-slate-900 text-white hover:bg-slate-800" : "border border-slate-200 bg-white text-slate-900 hover:bg-slate-50",
       )}
-      style={primary ? { background: "var(--dc-grad-blue)" } : undefined}
+      
     >
       {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}
       {children}

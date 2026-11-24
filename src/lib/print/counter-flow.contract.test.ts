@@ -11,7 +11,7 @@ import { readCode } from "@/lib/testing/source";
   the page renders does not retire any of them, so they follow it here rather
   than being deleted with the file they were written against.
 */
-const flow = readCode("src/components/print/smart-print-flow.tsx");
+const flow = readCode("src/components/print/digi-print-flow.tsx");
 const printable = readCode("src/lib/print/printable-image.ts");
 const create = readCode("src/app/api/print/jobs/create/route.ts");
 const upload = readCode("src/app/api/print/jobs/upload/route.ts");
@@ -53,8 +53,9 @@ describe("the pay button", () => {
     // Closed counter, unreachable printer, no file, no number, and no
     // checkout script yet — each one of these has been a real incident.
     expect(flow).toContain(
-      "disabled={!enough || closed || offline || mobile.length < 10 || !payReady}",
+      "const canPay = enough && !closed && !offline && cleanMobile.length === 10 && payReady",
     );
+    expect(flow).toContain("disabled={!canPay || offline}");
   });
 
   it("loads the payment script the page depends on", () => {
@@ -184,8 +185,9 @@ describe("a photo the printer can actually read", () => {
   });
 
   it("converts before uploading, not after", () => {
-    expect(flow).toContain("sending = await toPrintableImage(original)");
-    expect(flow).toContain('form.append("file", sending)');
+    expect(flow).toContain("const sending = await toPrintableImage(original)");
+    expect(flow).toContain("await upload(sending)");
+    expect(flow).toContain('form.append("file", file)');
   });
 
   it("leaves every other format exactly as the customer chose it", () => {

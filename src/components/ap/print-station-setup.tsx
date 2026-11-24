@@ -4,6 +4,7 @@ import Image from "@/components/ui/safe-image";
 import { useEffect, useState } from "react";
 import {
   AlertTriangle,
+  ArrowUpCircle,
   Check,
   Copy,
   Download,
@@ -17,7 +18,6 @@ import {
 
 import { useToast } from "@/components/providers/toast-provider";
 import { PRINT_STATION_VERSION } from "@/lib/print/bundle-version.generated";
-import { SmartPrintSettingsCard } from "@/components/ap/smart-print-settings";
 import { PrinterPicker } from "@/components/ap/print-printer-picker";
 import { PrintJobsPanel } from "@/components/ap/print-jobs-panel";
 import { renderPrintPoster } from "@/lib/print/poster";
@@ -25,16 +25,100 @@ import type { PrintStation } from "@/lib/print/stations";
 import { cn } from "@/lib/utils";
 
 /**
- * A shop's print counter, set up by the shop.
+ * A shop's Digi Print counter, set up and run by the shop.
  *
- * The whole product in one screen: name the counter, set what you charge,
- * print the QR, and connect the computer that does the printing. A partner
- * should be able to do all of it once, on their own, without calling anybody.
- *
- * The agent key is the one thing here that cannot be shown twice — it is
- * stored hashed, so losing it means issuing a new one. The screen says so at
- * the moment it is shown rather than in a help page nobody opens.
+ * One screen, top to bottom in the order a partner needs it: is there an
+ * update, what came in today, the QR, then the switches (open, colour, A3,
+ * approval), the rates, the printer, and the connector. Neutral and quiet on
+ * purpose — the colour on this page is reserved for things that need action.
  */
+
+/* ── Small shared pieces ─────────────────────────────────────────────── */
+
+function Panel({ title, sub, children, className }: { title?: string; sub?: string; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={cn("rounded-2xl border border-slate-200 bg-white p-4 sm:p-5", className)}>
+      {title ? <h3 className="text-[14px] font-semibold text-slate-900">{title}</h3> : null}
+      {sub ? <p className="mt-0.5 text-[12.5px] text-slate-500">{sub}</p> : null}
+      {children}
+    </section>
+  );
+}
+
+function PrimaryButton({
+  children,
+  className,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      type="button"
+      {...props}
+      className={cn(
+        "inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-[13px] font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50",
+        className,
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Toggle({
+  checked,
+  onChange,
+  disabled,
+  label,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  disabled?: boolean;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "relative h-6 w-11 shrink-0 rounded-full transition disabled:opacity-50",
+        checked ? "bg-slate-900" : "bg-slate-200",
+      )}
+    >
+      <span className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all", checked ? "left-[22px]" : "left-0.5")} />
+    </button>
+  );
+}
+
+function SwitchRow({
+  title,
+  sub,
+  checked,
+  onChange,
+  disabled,
+}: {
+  title: string;
+  sub: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-3">
+      <div className="min-w-0">
+        <p className="text-[13.5px] font-medium text-slate-900">{title}</p>
+        <p className="text-[12px] text-slate-500">{sub}</p>
+      </div>
+      <Toggle checked={checked} onChange={onChange} disabled={disabled} label={title} />
+    </div>
+  );
+}
+
+/* ── The screen ──────────────────────────────────────────────────────── */
+
 export function PrintStationSetup({
   initialStation,
   siteUrl,
@@ -53,49 +137,45 @@ export function PrintStationSetup({
 
   const scanUrl = station ? `${siteUrl}/p/${station.code}` : "";
 
-  /* ── Create ─────────────────────────────────────────────────────────── */
+  const call = async (method: "POST" | "PATCH", body: Record<string, unknown>) => {
+    const response = await fetch("/api/ap/print-station", {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const json = (await response.json()) as { data?: PrintStation; agentToken?: string; error?: string };
+    if (!response.ok) throw new Error(json.error || "Save nahi hua.");
+    return json;
+  };
 
   const create = async () => {
     if (name.trim().length < 2) {
-      error("Give the counter a name customers will recognise.");
+      error("Counter ka naam likhiye jo customers pehchanein.");
       return;
     }
     setBusy(true);
     try {
-      const response = await fetch("/api/ap/print-station", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName: name }),
-      });
-      const json = (await response.json()) as { data?: PrintStation; agentToken?: string; error?: string };
-      if (!response.ok || !json.data) throw new Error(json.error || "Could not create the station.");
-
+      const json = await call("POST", { displayName: name });
+      if (!json.data) throw new Error("Counter nahi ban paya.");
       setStation(json.data);
       setFreshToken(json.agentToken ?? null);
-      success("Your print counter is ready.");
+      success("Aapka print counter taiyar hai.");
     } catch (caught) {
-      error(caught instanceof Error ? caught.message : "Could not create the station.");
+      error(caught instanceof Error ? caught.message : "Counter nahi ban paya.");
     } finally {
       setBusy(false);
     }
   };
 
-  /* ── Save ───────────────────────────────────────────────────────────── */
-
-  const save = async (patch: Record<string, unknown>) => {
+  const save = async (patch: Record<string, unknown>, message = "Save ho gaya.") => {
     setBusy(true);
     try {
-      const response = await fetch("/api/ap/print-station", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      });
-      const json = (await response.json()) as { data?: PrintStation; error?: string };
-      if (!response.ok || !json.data) throw new Error(json.error || "Could not save.");
+      const json = await call("PATCH", patch);
+      if (!json.data) throw new Error("Save nahi hua.");
       setStation(json.data);
-      success("Saved.");
+      success(message);
     } catch (caught) {
-      error(caught instanceof Error ? caught.message : "Could not save.");
+      error(caught instanceof Error ? caught.message : "Save nahi hua.");
     } finally {
       setBusy(false);
     }
@@ -104,17 +184,12 @@ export function PrintStationSetup({
   const rotate = async () => {
     setBusy(true);
     try {
-      const response = await fetch("/api/ap/print-station", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "rotate_token" }),
-      });
-      const json = (await response.json()) as { agentToken?: string; error?: string };
-      if (!response.ok || !json.agentToken) throw new Error(json.error || "Could not issue a new key.");
+      const json = await call("PATCH", { action: "rotate_token" });
+      if (!json.agentToken) throw new Error("Nayi key nahi ban payi.");
       setFreshToken(json.agentToken);
-      success("New key issued. The old one has stopped working.");
+      success("Nayi key ban gayi. Purani band ho gayi.");
     } catch (caught) {
-      error(caught instanceof Error ? caught.message : "Could not issue a new key.");
+      error(caught instanceof Error ? caught.message : "Nayi key nahi ban payi.");
     } finally {
       setBusy(false);
     }
@@ -124,47 +199,29 @@ export function PrintStationSetup({
 
   if (!station) {
     return (
-      <div className="lg-card mx-auto max-w-lg p-5 sm:p-7">
-        <span
-          className="flex h-12 w-12 items-center justify-center rounded-2xl text-white"
-          style={{ background: "var(--dc-grad-blue)" }}
-        >
-          <Printer className="h-6 w-6" aria-hidden="true" />
+      <Panel className="mx-auto max-w-lg p-6">
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-white">
+          <Printer className="h-5 w-5" aria-hidden="true" />
         </span>
-        <h2 className="mt-4 text-[1.2rem] font-extrabold text-[var(--dc-ink)] sm:text-[1.4rem]">
-          Turn your printer into a counter
-        </h2>
-        <p className="mt-2 text-[13.5px] font-medium leading-[1.6] text-[var(--dc-body)]">
-          Customers scan a QR at your shop, upload a file, pay, and your printer runs. No app for them, no
-          pen drive, and nothing of theirs left on your computer.
+        <h2 className="mt-4 text-[18px] font-semibold text-slate-900">Apna printer QR counter banaiye</h2>
+        <p className="mt-1.5 text-[13.5px] leading-relaxed text-slate-600">
+          Customer QR scan kare, file bheje, pay kare — aur aapka printer turant print kare. Har payment aapke
+          wallet me.
         </p>
-
         <label className="mt-5 block">
-          <span className="mb-1.5 block text-[12px] font-extrabold text-[var(--dc-ink)]">
-            What should customers see?
-          </span>
+          <span className="mb-1.5 block text-[12.5px] font-medium text-slate-700">Customer ko kya naam dikhe?</span>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Sharma Print Point"
-            className="lg-field h-12 w-full rounded-xl px-3.5 text-[14px] font-semibold text-[var(--dc-ink)] outline-none"
+            className="h-11 w-full rounded-xl border border-slate-200 px-3.5 text-[14px] outline-none focus:border-slate-900"
           />
-          <span className="mt-1.5 block text-[11.5px] font-medium text-[var(--dc-body)]">
-            Your shop name, shown at the top of the page they land on.
-          </span>
         </label>
-
-        <button
-          type="button"
-          onClick={create}
-          disabled={busy}
-          className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[14px] font-bold text-white transition disabled:opacity-50"
-          style={{ background: "var(--dc-grad-blue)" }}
-        >
+        <PrimaryButton onClick={create} disabled={busy} className="mt-4 h-11 w-full">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <QrCode className="h-4 w-4" />}
-          Create my print counter
-        </button>
-      </div>
+          Counter banaiye
+        </PrimaryButton>
+      </Panel>
     );
   }
 
@@ -174,39 +231,112 @@ export function PrintStationSetup({
     <div className="space-y-4">
       {freshToken ? <TokenOnce token={freshToken} onDismiss={() => setFreshToken(null)} /> : null}
 
+      <UpdateBanner station={station} busy={busy} onRequest={() => save({ action: "request_update" }, "Update bhej diya — computer agle check par install karega.")} />
+
       <PrintJobsPanel requireApproval={station.require_approval} />
 
-      <div className="grid gap-4 lg:grid-cols-[22rem_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[21rem_1fr]">
         <StationQr station={station} scanUrl={scanUrl} />
 
         <div className="min-w-0 space-y-4">
-          <OpenClosed station={station} busy={busy} onToggle={(open) => save({ acceptingOrders: open })} />
+          <Panel title="Counter settings" sub="Customer ko sirf wahi dikhega jo yahan ON hai.">
+            <div className="mt-2 divide-y divide-slate-100">
+              <SwitchRow
+                title="Counter khula hai"
+                sub={station.accepting_orders ? "Customers order kar sakte hain" : "Band — koi naya order nahi"}
+                checked={station.accepting_orders}
+                disabled={busy}
+                onChange={(next) => save({ acceptingOrders: next }, next ? "Counter khul gaya." : "Counter band.")}
+              />
+              <SwitchRow
+                title="Colour print"
+                sub="OFF karne par sirf black & white"
+                checked={station.offer_color}
+                disabled={busy}
+                onChange={(next) => save({ offerColor: next })}
+              />
+              <SwitchRow
+                title="A3 size"
+                sub="OFF karne par sirf A4"
+                checked={station.offer_a3}
+                disabled={busy}
+                onChange={(next) => save({ offerA3: next })}
+              />
+              <SwitchRow
+                title="Print se pehle main approve karunga"
+                sub="ON par har paid job aapke OK ke baad print hoga"
+                checked={station.require_approval}
+                disabled={busy}
+                onChange={(next) => save({ requireApproval: next })}
+              />
+            </div>
+          </Panel>
+
+          <Rates key={`${station.offer_a3}-${station.offer_color}`} station={station} busy={busy} onSave={(rates) => save({ rates }, "Rate save ho gaye.")} />
+
           <PrinterPicker
             station={station}
             busy={busy}
-            onSave={(printerName, colorPrinterName) => save({ printerName, colorPrinterName })}
+            onSave={(printerName, colorPrinterName) => save({ printerName, colorPrinterName }, "Printer save ho gaya.")}
           />
-          <Rates station={station} busy={busy} onSave={(rates) => save({ rates })} />
-          <Privacy station={station} busy={busy} onSave={(minutes) => save({ autoDeleteMinutes: minutes })} />
-          {/*
-            The shop's Smart Print presets.
 
-            Placed above the agent card on purpose: what the counter sells is
-            a daily decision, where the printer's key is a one-off.
-          */}
-          <SmartPrintSettingsCard
-            initialDefaults={station.smart_print_defaults}
-            initialRequireApproval={station.require_approval}
-          />
-          <AgentBox
-            station={station}
-            busy={busy}
-            onRotate={rotate}
-            siteUrl={siteUrl}
-            waitingJobs={waitingJobs}
-          />
+          <Privacy station={station} busy={busy} onSave={(minutes) => save({ autoDeleteMinutes: minutes })} />
+
+          <AgentBox station={station} busy={busy} onRotate={rotate} siteUrl={siteUrl} waitingJobs={waitingJobs} />
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Updates
+   ───────────────────────────────────────────────────────────────────────── */
+
+function isOlder(current: string | null, latest: string): boolean {
+  const parts = (value: string | null) => String(value ?? "0.0.0").split(".").map((part) => Number.parseInt(part, 10) || 0);
+  const a = parts(current);
+  const b = parts(latest);
+  for (let index = 0; index < 3; index += 1) {
+    if ((a[index] ?? 0) !== (b[index] ?? 0)) return (a[index] ?? 0) < (b[index] ?? 0);
+  }
+  return false;
+}
+
+/**
+ * "A newer connector exists" — with a button that installs it.
+ *
+ * The connector reports its version on every poll. When ours is newer the
+ * partner can install it from here: the counter PC downloads it on its next
+ * poll, writes it over itself and restarts, keeping its key and printer. The
+ * partner decides when; nothing changes on their PC until they press it.
+ */
+function UpdateBanner({ station, busy, onRequest }: { station: PrintStation; busy: boolean; onRequest: () => void }) {
+  if (!station.agent_version || !isOlder(station.agent_version, PRINT_STATION_VERSION)) return null;
+
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 gap-3">
+        <ArrowUpCircle className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600" aria-hidden="true" />
+        <div className="min-w-0">
+          <p className="text-[13.5px] font-semibold text-slate-900">Naya update available — v{PRINT_STATION_VERSION}</p>
+          <p className="text-[12.5px] text-slate-600">
+            {station.update_requested
+              ? "Install ho raha hai — computer on aur internet se juda hona chahiye. Kuch minute me ho jayega."
+              : `Aapke computer par v${station.agent_version} hai. Ek click me install — key aur printer wahi rahenge.`}
+          </p>
+        </div>
+      </div>
+      {station.update_requested ? (
+        <span className="inline-flex h-10 shrink-0 items-center gap-2 px-2 text-[13px] font-medium text-indigo-700">
+          <Loader2 className="h-4 w-4 animate-spin" /> Install ho raha hai
+        </span>
+      ) : (
+        <PrimaryButton onClick={onRequest} disabled={busy || !station.agent_connected} className="shrink-0">
+          <Download className="h-4 w-4" />
+          Update install karo
+        </PrimaryButton>
+      )}
     </div>
   );
 }
@@ -220,17 +350,16 @@ function TokenOnce({ token, onDismiss }: { token: string; onDismiss: () => void 
   const [copied, setCopied] = useState(false);
 
   return (
-    <div className="lg-card border-l-4 border-l-[var(--dc-flame)] p-4 sm:p-5">
-      <p className="flex items-center gap-2 text-[13.5px] font-extrabold text-[var(--dc-ink)]">
-        <AlertTriangle className="h-4 w-4 text-[var(--dc-flame)]" aria-hidden="true" />
-        Copy this key now — it is shown once
+    <Panel className="border-amber-200 bg-amber-50/50">
+      <p className="flex items-center gap-2 text-[13.5px] font-semibold text-slate-900">
+        <AlertTriangle className="h-4 w-4 text-amber-600" aria-hidden="true" />
+        Ye key abhi copy kar lijiye — sirf ek baar dikhegi
       </p>
-      <p className="mt-1.5 text-[12.5px] font-medium leading-snug text-[var(--dc-body)]">
-        Paste it into DigiConnect Print Station on the computer attached to your printer. We keep only a
-        scrambled copy, so if you lose it you get a new one rather than this one back.
+      <p className="mt-1 text-[12.5px] text-slate-600">
+        Download wale Print Station me key pehle se hoti hai. Ye sirf haath se lagane ke liye hai.
       </p>
       <div className="mt-3 flex items-center gap-2">
-        <code className="lg-field min-w-0 flex-1 overflow-x-auto rounded-lg px-3 py-2.5 font-mono text-[12px] font-bold text-[var(--dc-ink)]">
+        <code className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-slate-200 bg-white px-3 py-2.5 font-mono text-[12px]">
           {token}
         </code>
         <button
@@ -238,24 +367,19 @@ function TokenOnce({ token, onDismiss }: { token: string; onDismiss: () => void 
           onClick={() => {
             navigator.clipboard?.writeText(token).then(() => {
               setCopied(true);
-              success("Key copied.");
+              success("Key copy ho gayi.");
             });
           }}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white"
-          style={{ background: "var(--dc-grad-blue)" }}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white"
           aria-label="Copy key"
         >
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         </button>
       </div>
-      <button
-        type="button"
-        onClick={onDismiss}
-        className="mt-3 text-[12.5px] font-bold text-[var(--dc-body)] hover:text-[var(--dc-ink)]"
-      >
-        I have saved it — hide this
+      <button type="button" onClick={onDismiss} className="mt-3 text-[12.5px] font-medium text-slate-600 hover:text-slate-900">
+        Save kar li — chhupaiye
       </button>
-    </div>
+    </Panel>
   );
 }
 
@@ -268,12 +392,8 @@ function StationQr({ station, scanUrl }: { station: PrintStation; scanUrl: strin
 
   useEffect(() => {
     let alive = true;
-    /* Drawn in the browser from the URL — nothing to store, and it can never
-       go stale against the code it encodes. */
     import("qrcode")
-      .then((QR) =>
-        QR.toDataURL(scanUrl, { width: 640, margin: 1, color: { dark: "#001D5F", light: "#FFFFFF" } }),
-      )
+      .then((QR) => QR.toDataURL(scanUrl, { width: 640, margin: 1, color: { dark: "#0f172a", light: "#FFFFFF" } }))
       .then((url) => {
         if (alive) setDataUrl(url);
       })
@@ -286,28 +406,21 @@ function StationQr({ station, scanUrl }: { station: PrintStation; scanUrl: strin
   }, [scanUrl]);
 
   return (
-    <div className="lg-card p-4 text-center sm:p-5">
-      <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[var(--dc-flame)]">
-        Print this and tape it to your counter
-      </p>
-      <h2 className="mt-1.5 text-[1.1rem] font-extrabold text-[var(--dc-ink)]">{station.display_name}</h2>
+    <Panel className="h-fit text-center">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Counter QR</p>
+      <h2 className="mt-1 text-[16px] font-semibold text-slate-900">{station.display_name}</h2>
 
-      <div className="mx-auto mt-3 w-full max-w-[15rem] rounded-2xl bg-white p-3 shadow-[0_10px_30px_-18px_rgba(0,10,40,0.6)]">
+      <div className="mx-auto mt-3 w-full max-w-[14rem] rounded-xl border border-slate-100 bg-white p-2.5">
         {dataUrl ? (
           <Image src={dataUrl} alt={`QR code for ${station.display_name}`} width={640} height={640} className="w-full" unoptimized />
         ) : (
-          <div className="flex aspect-square items-center justify-center text-[var(--dc-body)]">
+          <div className="flex aspect-square items-center justify-center text-slate-400">
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
         )}
       </div>
 
-      <p className="mt-3 font-mono text-[1.3rem] font-extrabold tracking-[0.12em] text-[var(--dc-ink)]">
-        {station.code}
-      </p>
-      <p className="mt-0.5 text-[11.5px] font-medium text-[var(--dc-body)]">
-        Somebody without a camera can type this at {scanUrl.replace(/^https?:\/\//, "").split("/p/")[0]}/p
-      </p>
+      <p className="mt-3 font-mono text-[18px] font-semibold tracking-[0.18em] text-slate-900">{station.code}</p>
 
       <PosterButtons station={station} scanUrl={scanUrl} />
 
@@ -316,24 +429,19 @@ function StationQr({ station, scanUrl }: { station: PrintStation; scanUrl: strin
         download={`${station.code}-print-qr.png`}
         aria-disabled={!dataUrl}
         className={cn(
-          "mt-2 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl text-[12px] font-bold transition",
-          dataUrl ? "text-[var(--dc-body)] hover:text-[var(--dc-ink)]" : "pointer-events-none opacity-40",
+          "mt-2 inline-flex h-9 w-full items-center justify-center gap-1.5 text-[12px] font-medium text-slate-500 hover:text-slate-900",
+          !dataUrl && "pointer-events-none opacity-40",
         )}
       >
         <Download className="h-3.5 w-3.5" />
-        Sirf QR (bina design) download
+        Sirf QR (bina design)
       </a>
-    </div>
+    </Panel>
   );
 }
 
 /**
- * The poster that goes on the counter.
- *
- * A bare QR taped to a wall is a square nobody scans: it does not say what it
- * is for, whose it is, or that it is safe. The poster says all three in the
- * time it takes to walk past it, and prints sharp at A4 or A5 (it is drawn at
- * 300 dpi A5, so it holds up at A4 too).
+ * The counter poster: A5 at 300 dpi, sharp on A5 and fine enlarged to A4.
  */
 function PosterButtons({ station, scanUrl }: { station: PrintStation; scanUrl: string }) {
   const { error } = useToast();
@@ -344,12 +452,7 @@ function PosterButtons({ station, scanUrl }: { station: PrintStation; scanUrl: s
     if (poster) return poster;
     setMaking(true);
     try {
-      const url = await renderPrintPoster({
-        shopName: station.display_name,
-        code: station.code,
-        scanUrl,
-        rates: station.rates,
-      });
+      const url = await renderPrintPoster({ shopName: station.display_name, code: station.code, scanUrl, rates: station.rates });
       setPoster(url);
       return url;
     } catch {
@@ -381,83 +484,33 @@ function PosterButtons({ station, scanUrl }: { station: PrintStation; scanUrl: s
   };
 
   return (
-    <div className="mt-3 grid grid-cols-2 gap-2">
-      <button
-        type="button"
-        onClick={download}
-        disabled={making}
-        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl text-[13px] font-bold text-white transition disabled:opacity-60"
-        style={{ background: "var(--dc-grad-blue)" }}
-      >
+    <div className="mt-4 grid grid-cols-2 gap-2">
+      <PrimaryButton onClick={download} disabled={making}>
         {making ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-        Poster download
-      </button>
+        Poster
+      </PrimaryButton>
       <button
         type="button"
         onClick={print}
         disabled={making}
-        className="lg-pill lg-raise inline-flex h-11 items-center justify-center gap-2 rounded-xl text-[13px] font-bold text-[var(--dc-blue-mid)] transition disabled:opacity-60"
+        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 text-[13px] font-semibold text-slate-900 transition hover:bg-slate-50 disabled:opacity-50"
       >
         <Printer className="h-4 w-4" />
-        Poster print
+        Print
       </button>
     </div>
   );
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Settings
+   Rates and privacy
    ───────────────────────────────────────────────────────────────────────── */
 
-function OpenClosed({
-  station,
-  busy,
-  onToggle,
-}: {
-  station: PrintStation;
-  busy: boolean;
-  onToggle: (open: boolean) => void;
-}) {
-  return (
-    <div className="lg-card flex items-center justify-between gap-3 p-4">
-      <div className="min-w-0">
-        <p className="text-[13.5px] font-extrabold text-[var(--dc-ink)]">
-          {station.accepting_orders ? "Counter is open" : "Counter is closed"}
-        </p>
-        <p className="mt-0.5 text-[12px] font-medium leading-snug text-[var(--dc-body)]">
-          {station.accepting_orders
-            ? "Customers can scan and pay right now."
-            : "Anyone scanning is told you are closed — before they pay, not after."}
-        </p>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={station.accepting_orders}
-        disabled={busy}
-        onClick={() => onToggle(!station.accepting_orders)}
-        className={cn(
-          "relative h-8 w-14 shrink-0 rounded-full transition disabled:opacity-50",
-          station.accepting_orders ? "" : "bg-[var(--dc-ink)]/15",
-        )}
-        style={station.accepting_orders ? { background: "var(--dc-grad-blue)" } : undefined}
-      >
-        <span
-          className={cn(
-            "absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all",
-            station.accepting_orders ? "left-7" : "left-1",
-          )}
-        />
-      </button>
-    </div>
-  );
-}
-
 const RATE_FIELDS = [
-  { key: "a4_mono" as const, label: "A4 black & white" },
-  { key: "a4_color" as const, label: "A4 colour" },
-  { key: "a3_mono" as const, label: "A3 black & white" },
-  { key: "a3_color" as const, label: "A3 colour" },
+  { key: "a4_mono" as const, label: "A4 black & white", a3: false, color: false },
+  { key: "a4_color" as const, label: "A4 colour", a3: false, color: true },
+  { key: "a3_mono" as const, label: "A3 black & white", a3: true, color: false },
+  { key: "a3_color" as const, label: "A3 colour", a3: true, color: true },
 ];
 
 function Rates({
@@ -470,74 +523,45 @@ function Rates({
   onSave: (rates: Record<string, number>) => void;
 }) {
   const [draft, setDraft] = useState(station.rates);
-  const changed = RATE_FIELDS.some((field) => Number(draft[field.key]) !== Number(station.rates[field.key]));
+  // Only the rates for what this counter sells.
+  const fields = RATE_FIELDS.filter((field) => (!field.a3 || station.offer_a3) && (!field.color || station.offer_color));
+  const changed = fields.some((field) => Number(draft[field.key]) !== Number(station.rates[field.key]));
 
   return (
-    <div className="lg-card p-4 sm:p-5">
-      <h3 className="text-[13.5px] font-extrabold text-[var(--dc-ink)]">What you charge, per page</h3>
-      <p className="mt-0.5 text-[12px] font-medium text-[var(--dc-body)]">
-        Your rates, not ours. The customer sees the total before paying.
-      </p>
-
+    <Panel title="Rate (per page)" sub="Customer pay karne se pehle total dekhta hai.">
       <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
-        {RATE_FIELDS.map((field) => (
+        {fields.map((field) => (
           <label key={field.key} className="block">
-            <span className="mb-1 block text-[11.5px] font-bold text-[var(--dc-body)]">{field.label}</span>
+            <span className="mb-1 block text-[12px] text-slate-500">{field.label}</span>
             <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-bold text-[var(--dc-body)]">
-                ₹
-              </span>
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-slate-400">₹</span>
               <input
                 type="number"
                 min={1}
                 max={60}
                 step="0.5"
                 value={draft[field.key]}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, [field.key]: Number(event.target.value) }))
-                }
-                className="lg-field h-11 w-full rounded-lg pl-7 pr-3 text-[14px] font-bold text-[var(--dc-ink)] outline-none"
+                onChange={(event) => setDraft((current) => ({ ...current, [field.key]: Number(event.target.value) }))}
+                className="h-10 w-full rounded-lg border border-slate-200 pl-7 pr-3 text-[14px] font-medium outline-none focus:border-slate-900"
               />
             </div>
           </label>
         ))}
       </div>
-
       {changed ? (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => onSave(draft as unknown as Record<string, number>)}
-          className="mt-3 inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-[13px] font-bold text-white disabled:opacity-50"
-          style={{ background: "var(--dc-grad-blue)" }}
-        >
+        <PrimaryButton className="mt-3" disabled={busy} onClick={() => onSave(draft as unknown as Record<string, number>)}>
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-          Save rates
-        </button>
+          Rate save kijiye
+        </PrimaryButton>
       ) : null}
-    </div>
+    </Panel>
   );
 }
 
-function Privacy({
-  station,
-  busy,
-  onSave,
-}: {
-  station: PrintStation;
-  busy: boolean;
-  onSave: (minutes: number) => void;
-}) {
+function Privacy({ station, busy, onSave }: { station: PrintStation; busy: boolean; onSave: (minutes: number) => void }) {
   return (
-    <div className="lg-card p-4 sm:p-5">
-      <h3 className="text-[13.5px] font-extrabold text-[var(--dc-ink)]">
-        How long a customer&rsquo;s file survives
-      </h3>
-      <p className="mt-0.5 text-[12px] font-medium leading-snug text-[var(--dc-body)]">
-        This is what you sell. Nobody at your shop can open the file, and it is deleted on this timer whether
-        it printed or not. Say it out loud to customers — the shop down the road cannot.
-      </p>
-      <div className="mt-3 flex flex-wrap gap-2">
+    <Panel title="File kitni der rahe" sub="Print ke baad customer ki file is time par apne aap delete ho jati hai.">
+      <div className="mt-3 inline-flex rounded-lg bg-slate-100 p-0.5">
         {[5, 15, 30, 60].map((minutes) => (
           <button
             key={minutes}
@@ -545,18 +569,21 @@ function Privacy({
             disabled={busy}
             onClick={() => onSave(minutes)}
             className={cn(
-              "h-10 rounded-xl px-4 text-[13px] font-bold transition disabled:opacity-50",
-              station.auto_delete_minutes === minutes ? "text-white" : "lg-pill text-[var(--dc-body)]",
+              "rounded-md px-3 py-1.5 text-[13px] font-medium transition disabled:opacity-50",
+              station.auto_delete_minutes === minutes ? "bg-white text-slate-900 shadow-sm" : "text-slate-500",
             )}
-            style={station.auto_delete_minutes === minutes ? { background: "var(--dc-grad-blue)" } : undefined}
           >
             {minutes} min
           </button>
         ))}
       </div>
-    </div>
+    </Panel>
   );
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   The printer's computer
+   ───────────────────────────────────────────────────────────────────────── */
 
 function AgentBox({
   station,
@@ -572,200 +599,116 @@ function AgentBox({
   waitingJobs: number;
 }) {
   return (
-    <div className="lg-card p-4 sm:p-5">
+    <Panel>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-[13.5px] font-extrabold text-[var(--dc-ink)]">Your printer&rsquo;s computer</h3>
+          <h3 className="text-[14px] font-semibold text-slate-900">Printer wala computer</h3>
           <p
             className={cn(
-              "mt-1 inline-flex items-center gap-1.5 text-[12.5px] font-bold",
-              station.agent_connected ? "text-[#0f9d58]" : "text-[var(--dc-flame)]",
+              "mt-1 inline-flex items-center gap-1.5 text-[12.5px] font-medium",
+              station.agent_connected ? "text-emerald-700" : "text-amber-700",
             )}
           >
             {station.agent_connected ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
-            {station.agent_connected ? "Connected" : "Not connected"}
+            {station.agent_connected ? "Connected" : "Connected nahi"}
+            {station.agent_version ? <span className="text-slate-400">· v{station.agent_version}</span> : null}
           </p>
-          <p className="mt-1.5 text-[12px] font-medium leading-snug text-[var(--dc-body)]">
+          <p className="mt-1 text-[12.5px] text-slate-500">
             {station.agent_connected
-              ? "Print Station is running and jobs will go straight to your printer."
-              : "Printer wale computer par Print Station download karke ek baar chalaiye. Tab tak customer ko payment se pehle hi bata diya jata hai ki counter band hai."}
+              ? "Print Station chal raha hai — jobs seedha printer par jayenge."
+              : "Printer wale computer par Print Station download karke ek baar chalaiye. Tab tak customer ko payment se pehle hi bata diya jata hai."}
           </p>
         </div>
       </div>
 
       {/*
-        Money taken, paper not out.
-
-        A customer paid at this counter while the computer was not running
-        the Print Station. The job queued, nothing printed, and the shop
-        found out when the customer came back. The number is here so they
-        find out first — and it stays visible while jobs are stuck, whatever
+        Money taken, paper not out: shown while paid jobs are stuck, whatever
         the connection light says, because a station that is connected and
         failing every job looks identical from the outside.
       */}
       {waitingJobs > 0 ? (
-        <div className="mt-3 rounded-xl border-l-4 border-l-[var(--dc-flame)] bg-[var(--dc-flame)]/8 px-3.5 py-3">
-          <p className="flex items-center gap-2 text-[13px] font-extrabold text-[var(--dc-flame)]">
+        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3">
+          <p className="flex items-center gap-2 text-[13px] font-semibold text-amber-900">
             <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
             {waitingJobs} paid {waitingJobs === 1 ? "job" : "jobs"} waiting to print
           </p>
-          <p className="mt-1 text-[12px] font-semibold leading-snug text-[var(--dc-body)]">
-            Customers ne paise de diye hain aur kagaz nahi nikla. Printer wale computer par Print Station
-            chalu kar dijiye — chalu hote hi ye khud print ho jayenge.
+          <p className="mt-1 text-[12px] text-amber-900/80">
+            Customer ne pay kar diya hai. Printer wale computer par Print Station chalu kijiye — chalu hote hi ye
+            khud print ho jayenge.
           </p>
         </div>
       ) : null}
 
-      {/*
-        The download is never hidden.
-
-        It used to disappear the moment the station connected, on the theory
-        that a connected shop had nothing left to install. Then a fix shipped,
-        the partner was told to fetch the new build, and there was no button
-        on the screen to fetch it with — they were running a fortnight-old
-        copy with no way out of it. A connected shop needs this more than a
-        new one does, not less. Connecting only collapses the first-time
-        steps; it never takes the file away.
-      */}
+      {/* The download is never hidden: it is also how a shop gets a fix by hand. */}
       <InstallSteps siteUrl={siteUrl} connected={station.agent_connected} />
 
       <button
         type="button"
         onClick={onRotate}
         disabled={busy}
-        className="mt-3 inline-flex h-10 items-center gap-2 rounded-xl px-4 text-[12.5px] font-bold text-[var(--dc-body)] transition hover:text-[var(--dc-ink)] disabled:opacity-50 lg-pill"
+        className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 transition hover:text-slate-900 disabled:opacity-50"
       >
-        <KeyRound className="h-4 w-4" />
-        {station.has_agent_token ? "Lost the key? Issue a new one" : "Issue a key"}
+        <KeyRound className="h-3.5 w-3.5" />
+        {station.has_agent_token ? "Key kho gayi? Nayi banaiye" : "Key banaiye"}
       </button>
-    </div>
+    </Panel>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
-   Getting the printer's computer connected
-   ───────────────────────────────────────────────────────────────────────── */
-
 /**
- * Getting the printer's computer connected — and keeping it current.
+ * Getting the printer's computer connected.
  *
- * The first version of this asked a shop owner to open PowerShell, paste a
- * command, then copy a key across from another card on this same screen.
- * Three chances to mistype something before anything printed, and the key is
- * shown once. So the download comes first and carries the key inside it; the
- * command stays underneath for a partner who prefers it or whose browser
- * blocked the file.
- *
- * Once the computer is connected the same download becomes the update button,
- * because there is no auto-updater: a fix only reaches a shop when somebody
- * fetches the file again. The first-time steps fold away, the file does not.
+ * The download carries the key, so the only step is "extract and double-click
+ * once". The PowerShell line stays underneath for a browser that blocks the
+ * file.
  */
 function InstallSteps({ siteUrl, connected }: { siteUrl: string; connected: boolean }) {
   const { success } = useToast();
-  const [showSteps, setShowSteps] = useState(!connected);
   const [showCommand, setShowCommand] = useState(false);
   const command = `irm ${siteUrl}/print-station/install.ps1 | iex`;
 
-  const steps = [
-    {
-      title: "Ye file download kijiye",
-      body: "Aapki key iske andar pehle se hai — kuch paste nahi karna.",
-    },
-    {
-      title: "Extract kijiye, phir Start Print Station par EK BAAR double-click",
-      body: "Printer wale computer par. Wo khud install hota hai, startup me judta hai, aur band ho jaye to khud dobara chalu hota hai. Admin password nahi chahiye.",
-    },
-    {
-      title: "Bas. Printer yahin panel se chuniye",
-      body: "Computer ka default printer khud chun liya jata hai. Badalna ho to upar Printer card me chuniye.",
-    },
-  ];
-
   return (
-    <div className="mt-4 min-w-0 rounded-2xl border border-[rgba(15,32,73,.1)] bg-[rgba(255,255,255,.6)] p-4">
+    <div className="mt-4 rounded-xl bg-slate-50 p-3.5">
       <a
         href="/api/ap/print-station/download"
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[14px] font-bold text-white transition hover:opacity-95"
-        style={{ background: "var(--dc-grad-blue)" }}
+        className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 text-[13.5px] font-semibold text-white transition hover:bg-slate-800"
       >
-        <Download className="h-4.5 w-4.5" />
-        {connected
-          ? `Print Station update kijiye \u2014 v${PRINT_STATION_VERSION}`
-          : "Print Station download kijiye"}
+        <Download className="h-4 w-4" />
+        Print Station download — v{PRINT_STATION_VERSION}
       </a>
-      <p className="mt-2 text-[11.5px] font-medium leading-snug text-[var(--dc-body)]">
-        {connected ? (
-          <>
-            Zip ke naam me <b>v{PRINT_STATION_VERSION}</b> likha hoga. Extract karke Start Print Station
-            chalaiye &mdash; purane install ke upar hi update ho jayega. Har download par nayi key banti hai
-            aur purani band ho jati hai.
-          </>
-        ) : (
-          "Har download par nayi key banti hai aur purani band ho jati hai. Ek computer, ek folder."
-        )}
+      <ol className="mt-3 space-y-1 text-[12.5px] text-slate-600">
+        <li>1. Zip ko Extract kijiye.</li>
+        <li>2. &ldquo;Start Print Station&rdquo; par ek baar double-click. Bas — hamesha ke liye install.</li>
+        <li>3. Aage ke updates yahin panel se ek click me.</li>
+      </ol>
+      <p className="mt-2 text-[11.5px] text-slate-500">
+        Har download par nayi key banti hai aur purani band ho jati hai.{" "}
+        {connected ? "Already chal raha hai to update ke liye upar wala button use kijiye." : null}
       </p>
-
-      {connected ? (
-        <button
-          type="button"
-          onClick={() => setShowSteps((open) => !open)}
-          className="mt-3 text-[11.5px] font-bold text-[var(--dc-blue-deep)] underline"
-        >
-          {showSteps ? "Steps chhupaiye" : "Naye computer par laga rahe hain? Steps dekhiye"}
-        </button>
-      ) : null}
-
-      {showSteps ? (
-        <ol className="mt-4 space-y-3">
-          {steps.map((step, index) => (
-            <li key={step.title} className="flex min-w-0 gap-3">
-              <span
-                className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11.5px] font-extrabold text-white"
-                style={{ background: "var(--dc-grad-blue)" }}
-              >
-                {index + 1}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[12.5px] font-bold text-[var(--dc-ink)]">{step.title}</p>
-                <p className="mt-0.5 text-[12px] font-medium leading-snug text-[var(--dc-body)]">
-                  {step.body}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      ) : null}
 
       <button
         type="button"
         onClick={() => setShowCommand((open) => !open)}
-        className="mt-3 block text-[11.5px] font-bold text-[var(--dc-blue-deep)] underline"
+        className="mt-2 block text-[11.5px] font-medium text-slate-500 underline hover:text-slate-900"
       >
         {showCommand ? "Chhupaiye" : "Download nahi ho raha? Command se install kijiye"}
       </button>
 
       {showCommand ? (
-        <div className="mt-2">
-          <p className="text-[11.5px] font-medium leading-snug text-[var(--dc-body)]">
-            PowerShell kholiye (Windows key &rarr; PowerShell &rarr; Enter) aur ye paste kijiye. Iske baad
-            key khud paste karni padegi.
-          </p>
-          <div className="mt-2 flex min-w-0 items-center gap-2">
-            <code className="lg-field min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-lg px-3 py-2 font-mono text-[11.5px] font-bold text-[var(--dc-ink)]">
-              {command}
-            </code>
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard?.writeText(command).then(() => success("Command copied."));
-              }}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white"
-              style={{ background: "var(--dc-grad-blue)" }}
-              aria-label="Copy the install command"
-            >
-              <Copy className="h-4 w-4" />
-            </button>
-          </div>
+        <div className="mt-2 flex min-w-0 items-center gap-2">
+          <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 py-2 font-mono text-[11.5px]">
+            {command}
+          </code>
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard?.writeText(command).then(() => success("Command copy ho gaya."));
+            }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white"
+            aria-label="Copy the install command"
+          >
+            <Copy className="h-4 w-4" />
+          </button>
         </div>
       ) : null}
     </div>

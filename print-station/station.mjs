@@ -3,11 +3,13 @@ import { createServer } from "node:http";
 import { execFile } from "node:child_process";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { adoptedBundledKey, configPath, configProblems, isReady, loadConfig, redactConfig, saveConfig } from "./lib/config.mjs";
 import { isAllowedHost, isAllowedWrite, tokenFromForm } from "./lib/local-guard.mjs";
 import { secureBundledKey } from "./lib/secure-key.mjs";
+import { applyUpdate, RESTART_CODE } from "./lib/self-update.mjs";
 import { createApi } from "./lib/api.mjs";
 import { createLog } from "./lib/log.mjs";
 import { choosePrinter, createWorker, diagnose } from "./lib/worker.mjs";
@@ -51,6 +53,35 @@ let printers = [];
 let worker = null;
 
 /* ─────────────────────────────────────────────────────────────────────────
+   Updating itself
+   ───────────────────────────────────────────────────────────────────────── */
+
+const PROGRAM_FOLDER = dirname(fileURLToPath(import.meta.url));
+let updating = false;
+
+/**
+ * Download the current program and restart into it. The key and settings
+ * live in the user profile, not in this folder, so nothing is lost.
+ */
+async function installUpdate(latest) {
+  if (updating) return;
+  updating = true;
+  try {
+    log.push("info", `Naya version v${latest} install ho raha hai...`);
+    const api = createApi({ serverUrl: config.serverUrl, agentToken: config.agentToken });
+    const { files, version } = await api.fetchUpdate();
+    const written = applyUpdate({ files, folder: PROGRAM_FOLDER });
+    log.push("success", `v${version} install ho gaya (${written} files). Restart ho raha hai...`);
+    stopWorker();
+    // The keepalive (or the launcher's loop) starts the new version.
+    setTimeout(() => process.exit(RESTART_CODE), 500);
+  } catch (error) {
+    updating = false;
+    log.push("error", `Update nahi ho paya: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    The loop
    ───────────────────────────────────────────────────────────────────────── */
 
@@ -77,6 +108,8 @@ function startWorker() {
     api,
     config,
     getPrinters: () => printers,
+    currentVersion: PRINT_STATION_VERSION,
+    onUpdateRequested: (latest) => installUpdate(latest),
     state,
     log: log.push,
     print: ({ filePath, job }) => {
@@ -231,6 +264,16 @@ const server = createServer(async (request, response) => {
     log.push("info", "Settings saved.");
     startWorker();
     json(response, 200, { ok: isReady(config), problems: configProblems(config) });
+    return;
+  }
+
+  if (url.pathname === "/api/update" && request.method === "POST") {
+    if (!state.updateAvailable || !state.latestVersion) {
+      json(response, 200, { ok: false, error: "Aap pehle se latest version par hain." });
+      return;
+    }
+    void installUpdate(state.latestVersion);
+    json(response, 200, { ok: true });
     return;
   }
 

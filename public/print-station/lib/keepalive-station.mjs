@@ -44,6 +44,13 @@ function start() {
     child = null;
     if (stopping || code === 0) process.exit(0);
 
+    // 75: the program updated itself and wants to be started again, now.
+    if (code === 75) {
+      failures = 0;
+      setTimeout(start, 1000);
+      return;
+    }
+
     // A run that lasted a minute was a crash, not a broken install: start
     // over from the shortest wait.
     failures = Date.now() - startedAt > 60_000 ? 1 : failures + 1;

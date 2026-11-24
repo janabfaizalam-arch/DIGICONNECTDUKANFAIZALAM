@@ -177,6 +177,18 @@ export const SMART_PRINT_SERVICES: SmartPrintService[] = [
   },
 ];
 
+/**
+ * The services customers can order today.
+ *
+ * Passport photos are built (see the preset above) but switched off until
+ * they are re-launched; the definition stays so nothing has to be rebuilt.
+ */
+export const LIVE_SERVICE_IDS: SmartPrintServiceId[] = ["document", "id_copy"];
+
+export function isServiceLive(id: string): boolean {
+  return (LIVE_SERVICE_IDS as string[]).includes(id);
+}
+
 export function smartPrintService(id: string): SmartPrintService | null {
   return SMART_PRINT_SERVICES.find((service) => service.id === id) ?? null;
 }
