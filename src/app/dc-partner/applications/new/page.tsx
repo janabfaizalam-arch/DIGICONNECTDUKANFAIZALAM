@@ -34,7 +34,10 @@ export default async function NewAPApplicationPage({
         // Only the wizard's own action bar sits at the bottom here (the partner
         // dock is hidden on this route), and its height already includes the
         // safe area. Anything more was the empty band under the last card.
-        paddingBottom: "calc(var(--sticky-action-bar-height, 72px) + 12px)"
+        // The bar's measured height, but never less than the bar really is
+        // (~66px plus the safe area): a 0 reading left the last field (Note)
+        // hidden under the bar.
+        paddingBottom: "calc(max(var(--sticky-action-bar-height, 0px), 76px + env(safe-area-inset-bottom)) + 16px)"
       }}
     >
       <div className="mx-auto w-full max-w-4xl">
