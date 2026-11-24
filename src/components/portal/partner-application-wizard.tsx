@@ -487,30 +487,40 @@ export function PartnerApplicationWizard({
     setCustomer(p => ({ ...p, pincode, village: "", state: "", district: "" }));
     setPincodeOffices([]);
     setPincodeError(null);
+    // A new pincode starts clean: an old "wait for details" error must not linger.
+    setValidationErrors(e => {
+      if (!e.pincode && !e.village) return e;
+      const next = { ...e };
+      delete next.pincode;
+      delete next.village;
+      return next;
+    });
     if (!/^\d{6}$/.test(pincode)) return;
     setPincodeLoading(true);
     try {
-      const r = await fetch(`/api/pincode?pincode=${pincode}`);
+      const r = await fetch(`/api/pincode?pincode=${pincode}`, { signal: AbortSignal.timeout(25000) });
       const d = await r.json();
       if (!r.ok || !d?.ok || !(d.state && (d.district || d.city))) {
         setPincodeError("Pincode not found. Please check the number.");
         return;
       }
       const offices: string[] = Array.isArray(d.postOffices)
-        ? Array.from(new Set((d.postOffices as { name?: string }[]).map(o => String(o?.name ?? "").trim()).filter(Boolean)))
+        ? (d.postOffices as { name?: string }[]).map(o => String(o?.name ?? "").trim()).filter(Boolean)
         : [];
-      // No post-office list: the city itself is the only choice.
-      if (offices.length === 0) offices.push(String(d.city || d.district));
-      setPincodeOffices(offices);
+      // The village is chosen for the partner: the pincode's main post office,
+      // else its first one, else the city. No list to pick from.
+      const village = String(d.defaultOffice || offices[0] || d.city || d.district)
+        .replace(/\s+(H\.O|S\.O|B\.O|Head Office|Sub Office|Branch Office)$/i, "")
+        .trim();
+      setPincodeOffices([village]);
       setCustomer(p => p.pincode !== pincode ? p : ({
         ...p,
         state:    String(d.state),
         district: String(d.district || d.city),
-        // One office: nothing to choose. Several: the partner picks the village.
-        village:  offices.length === 1 ? offices[0] : "",
+        village,
       }));
     } catch {
-      setPincodeError("Could not fetch pincode details. Check the connection and try again.");
+      setPincodeError("Could not fetch pincode details. Re-enter the pincode to try again.");
     } finally { setPincodeLoading(false); }
   }, []);
 
@@ -531,7 +541,7 @@ export function PartnerApplicationWizard({
     if (!/^\d{6}$/.test(customer.pincode))            e.pincode  = "Enter valid 6-digit pincode.";
     else if (!customer.state.trim() || !customer.district.trim())
                                                       e.pincode  = pincodeError ?? "Wait for the pincode details to load.";
-    else if (!customer.village.trim())                e.village  = "Select the village / post office.";
+    else if (!customer.village.trim())                e.village  = "Village not found for this pincode.";
     // Address is optional.
     setValidationErrors(e);
     return Object.keys(e).length === 0;
@@ -1387,21 +1397,20 @@ export function PartnerApplicationWizard({
                     )}
                   </div>
 
-                  {/* Village / post office — from the pincode, required */}
+                  {/* Village / post office — from the pincode, read-only, required */}
                   <div className="sm:col-span-2">
                     <label className="text-[10px] font-black text-[var(--dcp-ink-3)] uppercase tracking-wide block mb-1">Village / Post Office *</label>
-                    <select
+                    <input
+                      type="text"
+                      readOnly
+                      tabIndex={-1}
+                      placeholder={pincodeLoading ? "Loading…" : "From pincode"}
                       value={customer.village}
-                      disabled={pincodeOffices.length === 0}
-                      onChange={e => setCustomer(p => ({ ...p, village: e.target.value }))}
                       className={cn(
-                        "w-full px-3 py-2.5 bg-[var(--dcp-surface-2)] border rounded-xl text-sm font-medium focus:outline-none focus:border-[var(--dcp-brand)] focus:bg-white transition-all disabled:opacity-60",
-                        validationErrors.village ? "border-red-400 bg-red-50/30" : "border-[var(--dcp-line)]"
+                        "w-full px-3 py-2.5 bg-[var(--dcp-surface-3)] border rounded-xl text-sm font-semibold text-[var(--dcp-ink-2)] focus:outline-none",
+                        validationErrors.village ? "border-red-400" : "border-[var(--dcp-line)]"
                       )}
-                    >
-                      <option value="">{pincodeOffices.length ? "Select village / post office" : "Enter pincode first"}</option>
-                      {pincodeOffices.map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
+                    />
                     {validationErrors.village && <p className="text-[10px] text-red-500 mt-1 font-semibold">{validationErrors.village}</p>}
                   </div>
 
@@ -1725,9 +1734,13 @@ export function PartnerApplicationWizard({
       </div>
 
       {/* ── STICKY BOTTOM ACTION BAR (hidden while the keyboard is up) ─────── */}
-      {currentStep < 6 && !keyboardOpen && (
+      {currentStep < 6 && (
         <div 
-          className="wizard-sticky-actions fixed inset-x-0 bottom-0 z-[70] flex items-center gap-2.5 border-t border-[var(--dcp-line)] bg-[var(--dcp-surface)] px-3 py-2.5 sm:px-4"
+          aria-hidden={keyboardOpen || undefined}
+          className={cn(
+            "wizard-sticky-actions fixed inset-x-0 bottom-0 z-[70] flex items-center gap-2.5 border-t border-[var(--dcp-line)] bg-[var(--dcp-surface)] px-3 py-2.5 sm:px-4",
+            keyboardOpen && "invisible pointer-events-none",
+          )}
           style={{
             boxShadow: "0 -10px 34px -12px rgba(10, 24, 52, 0.22)",
             paddingBottom: "calc(10px + env(safe-area-inset-bottom))",
