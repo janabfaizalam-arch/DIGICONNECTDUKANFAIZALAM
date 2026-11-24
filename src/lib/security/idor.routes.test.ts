@@ -276,4 +276,33 @@ describe("partner customer lookup", () => {
     const res = await GET(req("/api/customer/lookup?mobile=9876543210"));
     expect(res.status).toBe(403);
   });
+
+  it("finds only the partner's own customers, never another partner's", async () => {
+    const { GET } = await import("@/app/api/customer/lookup/route");
+    db.tables.agency_partners = [
+      { id: "ap-a", user_id: A },
+      { id: "ap-b", user_id: B },
+    ];
+    db.tables.applications.push(
+      {
+        id: "pa-1", agency_partner_id: "ap-a", customer_mobile: "9876543210", service_name: "PAN Card New",
+        status: "submitted", amount: 120, created_at: "2026-11-01T10:00:00Z",
+        customer_details: { name: "Ravi", address: "Main Road" }, form_data: { pincode: "226001", state: "UP" },
+      },
+      {
+        id: "pb-1", agency_partner_id: "ap-b", customer_mobile: "9123456780", service_name: "Voter Card",
+        status: "submitted", amount: 20, created_at: "2026-11-02T10:00:00Z",
+        customer_details: { name: "Sita" }, form_data: {},
+      },
+    );
+
+    as(A);
+    const own = await (await GET(req("/api/customer/lookup?mobile=9876543210"))).json();
+    expect(own.found).toBe(true);
+    expect(own.profile).toMatchObject({ name: "Ravi", address: "Main Road", pincode: "226001", state: "UP" });
+    expect(own.stats.totalApplications).toBe(1);
+
+    const other = await (await GET(req("/api/customer/lookup?mobile=9123456780"))).json();
+    expect(other.found).toBe(false);
+  });
 });

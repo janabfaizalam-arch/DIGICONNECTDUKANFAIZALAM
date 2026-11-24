@@ -6,15 +6,8 @@ import React, {
 } from "react";
 import { useSearchParams } from "next/navigation";
 import Script from "next/script";
-import Image from "@/components/ui/safe-image";
 import {
-  type LucideIcon,
-  Search, Check, Shield, CreditCard, AlertTriangle,
-  ArrowLeft, ArrowRight, Camera, Upload, Trash2, RefreshCw, X,
-  FileText, UserCheck, Building, Briefcase, Car, FileCheck,
-  HeartHandshake, Star, ShoppingCart, Plus, Minus, RotateCcw,
-  SwitchCamera, Zap, ZapOff, Clock, CheckCircle2, History,
-  MapPin, User, TrendingUp, Award, Copy,
+  type LucideIcon, Search, Check, Shield, CreditCard, AlertTriangle, ArrowLeft, ArrowRight, Trash2, RefreshCw, X, Building, Briefcase, Car, FileCheck, HeartHandshake, Star, ShoppingCart, Plus, Minus, Clock, CheckCircle2, History, MapPin, User, TrendingUp, Award, Copy,
 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { createClient } from "@/lib/supabase/browser";
@@ -38,20 +31,10 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
 const STEPS = [
   { id: 1, label: "Services" },
   { id: 2, label: "Customer" },
-  { id: 3, label: "Documents" },
   { id: 4, label: "Review" },
   { id: 5, label: "Payment" },
   { id: 6, label: "Done" },
 ];
-
-// ─── 3 fixed document slots — all optional ────────────────────────────────────
-const DOC_SLOTS = [
-  { id: "aadhaar", label: "Aadhaar Card",    hint: "Front + back of Aadhaar. JPG / PDF.", icon: UserCheck },
-  { id: "pan",     label: "PAN Card",         hint: "Clear photo of PAN card.",             icon: CreditCard },
-  { id: "other",   label: "Other Document",   hint: "Any additional supporting document.",  icon: FileText },
-] as const;
-
-type DocSlotId = "aadhaar" | "pan" | "other";
 
 const CATEGORIES = [
   { id: "all",       name: "All" },
@@ -94,7 +77,7 @@ interface Customer360 {
   };
   stats: {
     totalApplications: number; completedApplications: number; pendingApplications: number;
-    recentServices: string[]; walletBalance: number; customerSince: string; lastVisit: string;
+    recentServices: string[]; customerSince: string; lastVisit: string;
     recentApplications: { id: string; serviceName: string; status: string; amount: number; createdAt: string; }[];
   };
 }
@@ -110,156 +93,6 @@ export interface PartnerApplicationWizardProps {
   initialProfileFields?: { mobile?: string; pincode?: string; city?: string; state?: string; };
 }
 
-interface UploadSlotProps {
-  slot: { id: DocSlotId; label: string; hint: string; icon: LucideIcon };
-  file: File | null;
-  progress: number;
-  error?: string | null;
-  onFileSelect: (file: File) => void;
-  onRemove: () => void;
-  onCameraClick: () => void;
-}
-
-function DocumentUploadSlot({
-  slot,
-  file,
-  progress,
-  error,
-  onFileSelect,
-  onRemove,
-  onCameraClick,
-}: UploadSlotProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (file && file.type.startsWith("image/")) {
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-      return () => URL.revokeObjectURL(url);
-    } else {
-      setPreviewUrl(null);
-    }
-  }, [file]);
-
-  const handleCardClick = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest("button")) return;
-    if (!file && !progress) {
-      fileInputRef.current?.click();
-    }
-  };
-
-  const isUploading = progress > 0 && progress < 100;
-
-  return (
-    <div
-      onClick={handleCardClick}
-      className={cn(
-        "relative border rounded-2xl p-4 flex flex-col justify-between min-h-[180px] transition-all duration-300 group cursor-pointer",
-        file 
-          ? "bg-emerald-50/20 border-emerald-300 shadow-sm" 
-          : error 
-          ? "bg-red-50/20 border-red-300 shadow-xs"
-          : isUploading
-          ? "bg-blue-50/10 border-blue-300"
-          : "bg-white border-dashed border-[var(--dcp-line)] hover:border-slate-400 hover:bg-[var(--dcp-surface-2)]/30"
-      )}
-    >
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*,application/pdf"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) onFileSelect(f);
-        }}
-      />
-
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <div className={cn(
-            "inline-flex p-2 rounded-xl mb-1.5 transition-colors",
-            file ? "bg-emerald-100 text-emerald-600" : "bg-[var(--dcp-surface-3)] text-[var(--dcp-ink-4)]"
-          )}>
-            <slot.icon className="h-4 w-4" />
-          </div>
-          <h3 className="text-xs font-extrabold text-[var(--dcp-ink)] flex items-center gap-1.5">
-            {slot.label}
-          </h3>
-          <p className="text-[10px] text-[var(--dcp-ink-4)] mt-0.5 leading-snug">{slot.hint}</p>
-        </div>
-
-        {file && (
-          <button
-            onClick={onRemove}
-            className="text-[var(--dcp-ink-4)] hover:text-red-500 p-1.5 rounded-lg hover:bg-[var(--dcp-surface-3)]/80 transition-colors shrink-0"
-            title="Remove File"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-
-      <div className="my-3 flex-1 flex flex-col justify-center text-left">
-        {file ? (
-          <div className="flex items-center gap-2 bg-white/80 border border-[var(--dcp-line)] rounded-xl p-2 backdrop-blur-xs">
-            {previewUrl ? (
-              <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-[var(--dcp-line)]">
-                <Image src={previewUrl} alt="Preview" className="w-full h-full object-cover" width={40} height={40} unoptimized />
-              </div>
-            ) : (
-              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 border border-[var(--dcp-line)]">
-                <FileText className="h-5 w-5 text-[var(--dcp-ink-4)]" />
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-bold text-[var(--dcp-ink-2)] truncate leading-snug">{file.name}</p>
-              <p className="text-[9px] text-[var(--dcp-ink-4)] mt-0.5">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-            </div>
-          </div>
-        ) : isUploading ? (
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-[9px] font-bold text-[var(--dcp-brand)]">
-              <span>Uploading...</span><span>{progress}%</span>
-            </div>
-            <div className="w-full bg-[var(--dcp-surface-3)] h-1.5 rounded-full overflow-hidden">
-              <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${progress}%` }} />
-            </div>
-          </div>
-        ) : error ? (
-          <p className="text-[10px] font-semibold text-red-500 bg-red-50/50 p-2 rounded-lg border border-red-100">{error}</p>
-        ) : null}
-      </div>
-
-      <div className="mt-1">
-        {file ? (
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full bg-white hover:bg-[var(--dcp-surface-2)] text-slate-800 text-[10px] font-bold py-2 border border-[var(--dcp-line)] rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-xs"
-          >
-            <RefreshCw className="h-3 w-3" /> Replace File
-          </button>
-        ) : !isUploading ? (
-          <div className="flex gap-2">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex-1 [background-image:var(--dcp-g-navy)] hover:brightness-[1.08] text-white text-[10px] font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95"
-            >
-              <Upload className="h-3.5 w-3.5" /> Upload File
-            </button>
-            <button
-              onClick={onCameraClick}
-              className="flex-1 [background-image:var(--dcp-g-brand)] hover:brightness-[1.06] text-white text-[10px] font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-md shadow-blue-500/10"
-            >
-              <Camera className="h-3.5 w-3.5" /> Use Camera
-            </button>
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
@@ -302,78 +135,27 @@ export function PartnerApplicationWizard({
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [pincodeLoading,   setPincodeLoading]   = useState(false);
 
-  // Documents — 3 fixed optional slots
-  const [docFiles, setDocFiles] = useState<Record<DocSlotId, File | null>>({
-    aadhaar: null, pan: null, other: null,
-  });
-  const [uploadProgress, setUploadProgress] = useState<Record<DocSlotId, number>>({
-    aadhaar: 0, pan: 0, other: 0,
-  });
-  const [uploadErrors, setUploadErrors] = useState<Record<DocSlotId, string | null>>({
-    aadhaar: null, pan: null, other: null,
-  });
-
   // Dynamic layout heights measurement using ResizeObserver
   useWizardLayoutMetrics([currentStep]);
 
   /*
-    Keep the action bar on the visual viewport's bottom edge while the soft
-    keyboard is open.
+    While the soft keyboard is open the Back / Continue bar is hidden.
 
-    The previous version offset it by `window.innerHeight - vv.height`, which
-    is wrong on iOS twice over: innerHeight does not shrink when the keyboard
-    appears, and the visual viewport also scrolls, so the number was arbitrary
-    and the bar ended up floating in the middle of the form. The gap between
-    the layout viewport's bottom and the visual viewport's bottom is
-    `innerHeight - (vv.height + vv.offsetTop)` — that is the keyboard, and
-    nothing else.
-
-    It moves by transform rather than `bottom` so the browser composites it
-    instead of reflowing the page on every keystroke.
+    It used to be lifted above the keyboard with a transform computed from the
+    visual viewport, which iOS reports inconsistently while the page scrolls or
+    rubber-bands: the bar ended up floating in the middle of the form, covering
+    the field being typed into. The partner closes the keyboard (Done) and the
+    bar is back at the bottom where it belongs.
   */
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   useEffect(() => {
-    if (!window.visualViewport) return;
-
-    const handleVisualViewportResize = () => {
-      const vv = window.visualViewport;
-      if (!vv) return;
-      const stickyActions = document.querySelector(".wizard-sticky-actions") as HTMLElement;
-      if (stickyActions) {
-        const offset = Math.max(0, Math.round(window.innerHeight - (vv.height + vv.offsetTop)));
-        stickyActions.style.transform = offset > 0 ? `translate3d(0, -${offset}px, 0)` : "";
-      }
-    };
-
-    window.visualViewport.addEventListener("resize", handleVisualViewportResize);
-    window.visualViewport.addEventListener("scroll", handleVisualViewportResize);
-
-    return () => {
-      window.visualViewport?.removeEventListener("resize", handleVisualViewportResize);
-      window.visualViewport?.removeEventListener("scroll", handleVisualViewportResize);
-    };
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setKeyboardOpen(window.innerHeight - vv.height > 150);
+    update();
+    vv.addEventListener("resize", update);
+    return () => vv.removeEventListener("resize", update);
   }, []);
-
-  // Keyboard scroll assistance: auto-scroll inputs into center of view upon focus
-  useEffect(() => {
-    const handleFocus = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT")) {
-        setTimeout(() => {
-          target.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, 250);
-      }
-    };
-
-    document.addEventListener("focusin", handleFocus);
-    return () => document.removeEventListener("focusin", handleFocus);
-  }, []);
-
-  // Inline camera
-  const videoRef    = useRef<HTMLVideoElement>(null);
-  const canvasRef   = useRef<HTMLCanvasElement>(null);
-  const [cameraSlot,    setCameraSlot]    = useState<DocSlotId | null>(null);
-  const [cameraStream,  setCameraStream]  = useState<MediaStream | null>(null);
-  const [capturedFrame, setCapturedFrame] = useState<string | null>(null);
 
   // Customer 360
   const [customer360,      setCustomer360]      = useState<Customer360 | null>(null);
@@ -436,10 +218,6 @@ export function PartnerApplicationWizard({
   const preparedSignatureRef = useRef<string | null>(null);
   const [paymentLinkMessage, setPaymentLinkMessage] = useState<string | null>(null);
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
-
-  // Camera extras
-  const [cameraFacing, setCameraFacing] = useState<"environment" | "user">("environment");
-  const [flashOn,      setFlashOn]      = useState(false);
 
   // Auto-save toast
   const [autoSaved, setAutoSaved] = useState(false);
@@ -541,7 +319,8 @@ export function PartnerApplicationWizard({
         if (d?.cart?.length) {
           setCart(d.cart);
           if (d.customer)    setCustomer(d.customer);
-          if (d.currentStep) setCurrentStep(d.currentStep);
+          // A draft saved on the old Documents step (3) resumes on Review.
+          if (d.currentStep) setCurrentStep(d.currentStep === 3 ? 4 : d.currentStep);
         }
       } catch { /* ignore */ }
     } else {
@@ -596,14 +375,6 @@ export function PartnerApplicationWizard({
     return () => clearTimeout(timer);
   }, [customer.mobile]);
 
-  // ── Assign stream to video element ────────────────────────────────────────
-  useEffect(() => {
-    if (cameraStream && videoRef.current) {
-      videoRef.current.srcObject = cameraStream;
-      videoRef.current.play().catch(() => {});
-    }
-  }, [cameraStream]);
-
   // ── Derived: cartItems ────────────────────────────────────────────────────
   const cartItems = useMemo<CartItem[]>(() =>
     cart.flatMap(e => {
@@ -614,15 +385,6 @@ export function PartnerApplicationWizard({
 
   const cartTotal = useMemo(() =>
     cartItems.reduce((s, i) => s + i.service.customer_fee * i.quantity, 0),
-  [cartItems]);
-
-  const cartEarnings = useMemo(() =>
-    cartItems.reduce((s, i) => {
-      const p = i.service.payout_type === "percentage"
-        ? Math.round((i.service.customer_fee * i.service.payout_percentage) / 100)
-        : i.service.agent_payout;
-      return s + p * i.quantity;
-    }, 0),
   [cartItems]);
 
   const totalItemCount = useMemo(() =>
@@ -737,92 +499,6 @@ export function PartnerApplicationWizard({
     return Object.keys(e).length === 0;
   }, [customer]);
 
-  // ── File handler ──────────────────────────────────────────────────────────
-  const handleFileChange = useCallback((slotId: DocSlotId, file: File) => {
-    // Check if file is too large (> 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadErrors(p => ({ ...p, [slotId]: "File size exceeds 5MB limit. Please upload a smaller file." }));
-      setUploadProgress(p => ({ ...p, [slotId]: 0 }));
-      setDocFiles(p => ({ ...p, [slotId]: null }));
-      return;
-    }
-
-    setUploadErrors(p => ({ ...p, [slotId]: null }));
-    setUploadProgress(p => ({ ...p, [slotId]: 0 }));
-    let pct = 0;
-    const iv = setInterval(() => {
-      pct = Math.min(pct + 25, 100);
-      setUploadProgress(p => ({ ...p, [slotId]: pct }));
-      if (pct >= 100) {
-        clearInterval(iv);
-        setDocFiles(p => ({ ...p, [slotId]: file }));
-      }
-    }, 80);
-  }, []);
-
-  // ── Inline camera ─────────────────────────────────────────────────────────
-  const openCamera = useCallback(async (slotId: DocSlotId, facing: "environment" | "user" = "environment") => {
-    // Stop any existing stream first
-    cameraStream?.getTracks().forEach(t => t.stop());
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
-      });
-      setCameraSlot(slotId);
-      setCameraStream(stream);
-      setCameraFacing(facing);
-      setCapturedFrame(null);
-    } catch {
-      // Fallback to input[capture] on devices without getUserMedia
-      const input = document.createElement("input");
-      input.type = "file";
-      input.accept = "image/*";
-      input.setAttribute("capture", facing === "user" ? "user" : "environment");
-      input.onchange = (ev) => {
-        const f = (ev.target as HTMLInputElement).files?.[0];
-        if (f) handleFileChange(slotId, f);
-      };
-      input.click();
-    }
-  }, [handleFileChange, cameraStream]);
-
-  const switchCamera = useCallback(() => {
-    if (!cameraSlot) return;
-    const newFacing = cameraFacing === "environment" ? "user" : "environment";
-    openCamera(cameraSlot, newFacing);
-  }, [cameraSlot, cameraFacing, openCamera]);
-
-  const captureFrame = useCallback(() => {
-    const v = videoRef.current;
-    const c = canvasRef.current;
-    if (!v || !c) return;
-    c.width  = v.videoWidth;
-    c.height = v.videoHeight;
-    c.getContext("2d")?.drawImage(v, 0, 0);
-    setCapturedFrame(c.toDataURL("image/jpeg", 0.9));
-  }, []);
-
-  const retakeFrame = useCallback(() => setCapturedFrame(null), []);
-
-  const saveFrame = useCallback(() => {
-    const c = canvasRef.current;
-    if (!capturedFrame || !cameraSlot || !c) return;
-    c.toBlob((blob) => {
-      if (!blob) return;
-      const file = new File([blob], `cam-${cameraSlot}-${Date.now()}.jpg`, { type: "image/jpeg" });
-      handleFileChange(cameraSlot, file);
-      closeCamera();
-    }, "image/jpeg", 0.9);
-  }, [capturedFrame, cameraSlot, handleFileChange]); // eslint-disable-line
-
-  const closeCamera = useCallback(() => {
-    cameraStream?.getTracks().forEach(t => t.stop());
-    setCameraStream(null);
-    setCameraSlot(null);
-    setCapturedFrame(null);
-    setFlashOn(false);
-  }, [cameraStream]);
-
   // Auto-fill from Customer 360
   const applyCustomer360Autofill = useCallback(() => {
     if (!customer360) return;
@@ -873,17 +549,6 @@ export function PartnerApplicationWizard({
 
       const fd = new FormData();
       fd.append("payload", JSON.stringify(payload));
-
-      const docLabels: string[] = [];
-      for (const slot of DOC_SLOTS) {
-        const file = docFiles[slot.id];
-        if (file) {
-          docLabels.push(slot.label);
-          fd.append(slot.id, file, file.name);
-        }
-      }
-      fd.append("documentTypes", JSON.stringify(docLabels));
-
       const res  = await fetch("/api/applications", { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.message ?? data.error ?? "Submission failed.");
@@ -903,7 +568,7 @@ export function PartnerApplicationWizard({
     } finally {
       setIsSubmitting(false);
     }
-  }, [cartItems, cartTotal, customer, docFiles, toastSuccess, toastError]);
+  }, [cartItems, cartTotal, customer, toastSuccess, toastError]);
 
   /**
    * Create the applications, the Razorpay order and the payment link, in that
@@ -1266,9 +931,7 @@ export function PartnerApplicationWizard({
       setCurrentStep(2);
     } else if (currentStep === 2) {
       if (!validateCustomer()) { toastError("Please fix the form errors."); return; }
-      setCurrentStep(3);
-    } else if (currentStep === 3) {
-      setCurrentStep(4);            // all docs are optional
+      setCurrentStep(4);            // there is no documents step any more
     } else if (currentStep === 4) {
       setCurrentStep(5);
     } else if (currentStep === 5) {
@@ -1278,7 +941,7 @@ export function PartnerApplicationWizard({
   }, [currentStep, cart, validateCustomer, triggerRazorpayCheckout, toastError, isSubmitting]);
 
   const handlePrev = useCallback(() => {
-    if (currentStep > 1 && currentStep < 6) setCurrentStep(p => p - 1);
+    if (currentStep > 1 && currentStep < 6) setCurrentStep(p => (p === 4 ? 2 : p - 1));
   }, [currentStep]);
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1291,135 +954,6 @@ export function PartnerApplicationWizard({
         strategy="afterInteractive"
         onLoad={() => setIsScriptReady(true)}
       />
-      {/* Hidden canvas for camera capture */}
-      <canvas ref={canvasRef} className="hidden" />
-
-      {/* ══ PREMIUM CAMERA MODAL ════════════════════════════════════════════ */}
-      {cameraSlot && (
-        <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-md flex flex-col" style={{ touchAction: "none" }}>
-
-          {/* Top bar */}
-          <div className="relative flex items-center justify-between px-5 pt-10 pb-4 bg-gradient-to-b from-black/80 to-transparent shrink-0">
-            <button
-              onClick={closeCamera}
-              className="w-10 h-10 rounded-full bg-white/15 backdrop-blur flex items-center justify-center active:bg-white/30 transition"
-            >
-              <X className="h-5 w-5 text-white" />
-            </button>
-            <span className="text-white text-sm font-bold tracking-wide">
-              {DOC_SLOTS.find(d => d.id === cameraSlot)?.label}
-            </span>
-            <div className="flex gap-2">
-              {/* Flash toggle */}
-              <button
-                onClick={() => setFlashOn(f => !f)}
-                className="w-10 h-10 rounded-full bg-white/15 backdrop-blur flex items-center justify-center active:bg-white/30 transition"
-              >
-                {flashOn
-                  ? <Zap    className="h-5 w-5 text-yellow-300 fill-yellow-300" />
-                  : <ZapOff className="h-5 w-5 text-white/70" />}
-              </button>
-              {/* Flip camera */}
-              <button
-                onClick={switchCamera}
-                className="w-10 h-10 rounded-full bg-white/15 backdrop-blur flex items-center justify-center active:bg-white/30 transition"
-              >
-                <SwitchCamera className="h-5 w-5 text-white" />
-              </button>
-            </div>
-          </div>
-
-          {capturedFrame ? (
-            /* ── Preview screen ──────────────────────────────────────────── */
-            <div className="flex-1 flex flex-col items-center justify-between pb-10 px-6 gap-6">
-              <p className="text-white/60 text-xs font-semibold tracking-wider uppercase">Preview</p>
-              <div className="flex-1 flex items-center justify-center w-full">
-                <Image
-                  src={capturedFrame}
-                  alt="Preview"
-                  className="max-h-[62vh] max-w-full rounded-2xl object-contain ring-2 ring-white/10 shadow-2xl"
-                  width={600}
-                  height={600}
-                  unoptimized
-                />
-              </div>
-              <div className="flex gap-4 w-full max-w-xs">
-                <button
-                  onClick={retakeFrame}
-                  className="flex-1 flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 active:bg-white/30 text-white px-5 py-4 rounded-2xl font-bold text-sm transition"
-                >
-                  <RotateCcw className="h-4 w-4" /> Retake
-                </button>
-                <button
-                  onClick={saveFrame}
-                  className="flex-1 flex items-center justify-center gap-2 [background-image:var(--dcp-g-brand)] hover:brightness-[1.06] active:bg-blue-800 text-white px-5 py-4 rounded-2xl font-bold text-sm transition shadow-lg shadow-blue-900/40"
-                >
-                  <Check className="h-4 w-4" /> Use Photo
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* ── Live viewfinder ─────────────────────────────────────────── */
-            <div className="flex-1 flex flex-col items-center justify-end bg-black pb-10">
-              {/* Video fills remaining height */}
-              <div className="absolute inset-0 top-20 bottom-32 flex items-center justify-center overflow-hidden">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                />
-                {/* Viewfinder corner guides */}
-                <div className="absolute inset-[14%] pointer-events-none">
-                  {["top-0 left-0", "top-0 right-0", "bottom-0 left-0", "bottom-0 right-0"].map((pos, i) => (
-                    <div
-                      key={i}
-                      className={`absolute w-7 h-7 ${pos} border-white/70`}
-                      style={{
-                        borderTopWidth:    i < 2 ? 3 : 0,
-                        borderBottomWidth: i >= 2 ? 3 : 0,
-                        borderLeftWidth:   i % 2 === 0 ? 3 : 0,
-                        borderRightWidth:  i % 2 === 1 ? 3 : 0,
-                        borderRadius: i === 0 ? "6px 0 0 0" : i === 1 ? "0 6px 0 0" : i === 2 ? "0 0 0 6px" : "0 0 6px 0",
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Shutter row */}
-              <div className="relative z-10 flex items-center justify-center gap-10 mb-2">
-                {/* Thumbnail of existing file */}
-                <div className="w-12 h-12 rounded-xl bg-white/10 border border-white/20 overflow-hidden flex items-center justify-center">
-                  {docFiles[cameraSlot!] ? (
-                    <Image
-                      src={URL.createObjectURL(docFiles[cameraSlot!]!)}
-                      alt=""
-                      className="w-full h-full object-cover"
-                      width={48}
-                      height={48}
-                      unoptimized
-                    />
-                  ) : <Camera className="h-5 w-5 text-white/40" />}
-                </div>
-
-                {/* Shutter */}
-                <button
-                  onClick={captureFrame}
-                  className="relative w-20 h-20 rounded-full border-4 border-white flex items-center justify-center shadow-2xl active:scale-90 transition-transform"
-                >
-                  <div className="w-14 h-14 rounded-full bg-white" />
-                </button>
-
-                {/* Spacer */}
-                <div className="w-12" />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Auto-save indicator */}
       {autoSaved && (
         <div className="fixed top-4 right-4 z-50 bg-slate-900/95 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg pointer-events-none">
@@ -1444,7 +978,7 @@ export function PartnerApplicationWizard({
           {/* Step progress bar */}
           {currentStep < 6 && (
             <div className="wizard-stepper dcp-card flex w-full items-center justify-between gap-1 px-3 py-2 sm:gap-2">
-              {STEPS.filter(s => s.id < 6).map((step, i) => (
+              {STEPS.filter(s => s.id < 6).map((step, i, visible) => (
                 <React.Fragment key={step.id}>
                   <div className={cn(
                     "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all shrink-0",
@@ -1456,7 +990,7 @@ export function PartnerApplicationWizard({
                   )}>
                     {currentStep > step.id
                       ? <Check className="h-3.5 w-3.5 stroke-[2.5]" />
-                      : <span className="text-[9px] font-black opacity-70">{step.id}</span>
+                      : <span className="text-[9px] font-black opacity-70">{i + 1}</span>
                     }
                     <span className={cn(
                       "text-[10px] font-bold md:inline-block",
@@ -1465,7 +999,7 @@ export function PartnerApplicationWizard({
                       {step.label}
                     </span>
                   </div>
-                  {i < 4 && (
+                  {i < visible.length - 1 && (
                     <div className={cn(
                       "flex-1 h-0.5 min-w-[6px] rounded-full transition-all duration-300",
                       currentStep > step.id ? "bg-emerald-300" : "bg-slate-200"
@@ -1583,9 +1117,6 @@ export function PartnerApplicationWizard({
                         const entry  = cart.find(e => e.slug === srv.slug);
                         const qty    = entry?.quantity ?? 0;
                         const isFav  = favouriteServices.includes(srv.slug);
-                        const payout = srv.payout_type === "percentage"
-                          ? Math.round((srv.customer_fee * srv.payout_percentage) / 100)
-                          : srv.agent_payout;
 
                         return (
                           <div
@@ -1616,7 +1147,6 @@ export function PartnerApplicationWizard({
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="text-xs font-bold text-[var(--dcp-ink)]">₹{srv.customer_fee}</span>
-                                <span className="text-[10px] text-emerald-600 font-bold">+₹{payout} earn</span>
                                 {srv.processing_time && (
                                   <span className="text-[10px] text-[var(--dcp-ink-4)]">{srv.processing_time}</span>
                                 )}
@@ -1713,7 +1243,7 @@ export function PartnerApplicationWizard({
                   {lookupStatus === "not_found" && (
                     <div className="sm:col-span-2 flex items-center gap-2 px-3 py-2.5 bg-[var(--dcp-surface-2)] border border-dashed border-[var(--dcp-line-2)] rounded-xl">
                       <User className="h-3.5 w-3.5 text-[var(--dcp-ink-4)] shrink-0" />
-                      <span className="text-xs font-medium text-[var(--dcp-ink-3)]">New customer — no existing profile found.</span>
+                      <span className="text-xs font-medium text-[var(--dcp-ink-3)]">New customer — not in your records yet.</span>
                     </div>
                   )}
 
@@ -1729,13 +1259,9 @@ export function PartnerApplicationWizard({
                             <p className="text-sm font-black text-[var(--dcp-ink)] leading-tight">{customer360.profile.name}</p>
                             <div className="flex items-center gap-1 mt-0.5">
                               <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                              <span className="text-[10px] font-bold text-emerald-600">Existing Customer Found</span>
+                              <span className="text-[10px] font-bold text-emerald-600">Your existing customer</span>
                             </div>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[10px] font-bold text-[var(--dcp-ink-3)] uppercase tracking-wide">Wallet</p>
-                          <p className="text-base font-black text-emerald-700">₹{customer360.stats.walletBalance.toLocaleString("en-IN")}</p>
                         </div>
                       </div>
 
@@ -1770,7 +1296,7 @@ export function PartnerApplicationWizard({
                       <div className="flex items-center justify-between px-4 py-2.5 border-b border-emerald-100 text-[10px]">
                         <div className="flex items-center gap-1 text-[var(--dcp-ink-3)]">
                           <Clock className="h-3 w-3" />
-                          <span>Member since {customer360.stats.customerSince}</span>
+                          <span>First visit {customer360.stats.customerSince}</span>
                         </div>
                         <div className="flex items-center gap-1 text-[var(--dcp-ink-3)]">
                           <MapPin className="h-3 w-3" />
@@ -1883,40 +1409,6 @@ export function PartnerApplicationWizard({
               </div>
             )}
 
-             {/* ══ STEP 3: DOCUMENTS ════════════════════════════════════════ */}
-            {currentStep === 3 && (
-              <div className="p-4 sm:p-5 space-y-4">
-                <div>
-                  <h2 className="text-lg font-black text-[var(--dcp-ink)]">Upload Documents</h2>
-                  <p className="text-xs text-[var(--dcp-ink-3)] mt-0.5">All slots are optional. Upload whatever is available.</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {DOC_SLOTS.map(slot => (
-                    <DocumentUploadSlot
-                      key={slot.id}
-                      slot={slot}
-                      file={docFiles[slot.id]}
-                      progress={uploadProgress[slot.id]}
-                      error={uploadErrors[slot.id]}
-                      onFileSelect={(f) => handleFileChange(slot.id, f)}
-                      onRemove={() => {
-                        setDocFiles(p => ({ ...p, [slot.id]: null }));
-                        setUploadProgress(p => ({ ...p, [slot.id]: 0 }));
-                        setUploadErrors(p => ({ ...p, [slot.id]: null }));
-                      }}
-                      onCameraClick={() => openCamera(slot.id)}
-                    />
-                  ))}
-                </div>
-
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-800 font-semibold flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-blue-500" />
-                  Documents are optional for initial submission.
-                </div>
-              </div>
-            )}
-
             {/* ══ STEP 4: REVIEW ═══════════════════════════════════════════ */}
             {currentStep === 4 && (
               <div className="p-4 sm:p-5 space-y-4">
@@ -1960,31 +1452,9 @@ export function PartnerApplicationWizard({
                         <span>Total</span>
                         <span className="text-[var(--dcp-brand-deep)]">₹{cartTotal}</span>
                       </div>
-                      <div className="flex justify-between text-xs text-emerald-600 font-bold">
-                        <span>Your earnings</span><span>+₹{cartEarnings}</span>
-                      </div>
                     </div>
                   </div>
 
-                  {/* Documents */}
-                  <div className="bg-[var(--dcp-surface-2)] border border-[var(--dcp-line)] rounded-xl p-3.5">
-                    <p className="text-[10px] font-black uppercase text-[var(--dcp-ink-4)] tracking-wider mb-2">Documents</p>
-                    <div className="space-y-1">
-                      {DOC_SLOTS.map(slot => {
-                        const file = docFiles[slot.id];
-                        return (
-                          <div key={slot.id} className="flex items-center gap-2 text-xs">
-                            {file
-                              ? <Check className="h-3.5 w-3.5 text-emerald-500" />
-                              : <X     className="h-3.5 w-3.5 text-[var(--dcp-line-2)]" />}
-                            <span className={file ? "font-semibold text-[var(--dcp-ink-2)]" : "text-[var(--dcp-ink-4)]"}>
-                              {slot.label}{file && ` — ${file.name}`}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
                 </div>
               </div>
             )}
@@ -2197,16 +1667,13 @@ export function PartnerApplicationWizard({
                   </div>
                 ))}
               </div>
-              <div className="text-xs text-emerald-600 font-bold text-right">
-                Your earnings: +₹{cartEarnings}
-              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── STICKY BOTTOM ACTION BAR ────────────────────────────────────────── */}
-      {currentStep < 6 && (
+      {/* ── STICKY BOTTOM ACTION BAR (hidden while the keyboard is up) ─────── */}
+      {currentStep < 6 && !keyboardOpen && (
         <div 
           className="wizard-sticky-actions fixed inset-x-0 bottom-0 z-[70] flex items-center gap-2.5 border-t border-[var(--dcp-line)] bg-[var(--dcp-surface)] px-3 py-2.5 sm:px-4"
           style={{

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { LayoutGrid, X } from "lucide-react";
 
-import { apDockItems, apNavGroups, isApNavItemActive } from "@/lib/ap/nav";
+import { apDockItems, apNavGroups, isApFullScreenFlow, isApNavItemActive } from "@/lib/ap/nav";
 import { cn } from "@/lib/utils";
 
 /**
@@ -120,6 +120,9 @@ export function ApMobileBottomNav({ canManageTeam = false }: { canManageTeam?: b
       vv.removeEventListener("scroll", handleResize);
     };
   }, []);
+
+  // The wizard carries its own Back / Continue bar; the dock would sit on top of it.
+  if (isApFullScreenFlow(pathname)) return null;
 
   return (
     <>
