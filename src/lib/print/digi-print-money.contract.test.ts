@@ -119,3 +119,35 @@ describe("the customer cannot set their own price", () => {
     expect(readCode("src/app/api/print/jobs/status/route.ts")).not.toContain('eq("job_number"');
   });
 });
+
+describe("the shop's switches are enforced on the server", () => {
+  const create = readCode("src/app/api/print/jobs/create/route.ts");
+
+  it("refuses A3 and colour when the shop turned them off", () => {
+    expect(create).toContain('paper_size === "A3" && !station.offer_a3');
+    expect(create).toContain('color_mode === "color" && !station.offer_color');
+  });
+
+  it("refuses services that are not live (passport photos, for now)", () => {
+    expect(create).toContain("!isServiceLive(requestedService)");
+    expect(readCode("src/lib/print/smart-print.ts")).toContain('LIVE_SERVICE_IDS: SmartPrintServiceId[] = ["document", "id_copy"]');
+  });
+
+  it("never prices on a setting the customer was not shown", () => {
+    expect(create).toContain('finish: "normal"');
+    expect(create).toContain('quality: "standard"');
+  });
+});
+
+describe("one-click connector updates", () => {
+  it("serves the program to a station's own connector only, never the key", () => {
+    const route = readCode("src/app/api/print/agent/update/route.ts");
+    expect(route).toContain("if (!caller.station)");
+    expect(route).toContain("files: PRINT_STATION_FILES");
+    expect(route).not.toContain("agentToken");
+  });
+
+  it("tells the connector about an update the partner requested", () => {
+    expect(readCode("src/app/api/print/agent/jobs/route.ts")).toContain("requested: station.update_requested");
+  });
+});

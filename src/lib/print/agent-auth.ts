@@ -89,7 +89,8 @@ export async function authenticateAgent(request: Request): Promise<AgentAuthResu
     } catch {
       printers = null;
     }
-    await touchAgent(station.id, printers);
+    const version = String(request.headers.get("x-agent-version") ?? "").trim();
+    await touchAgent(station.id, printers, /^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(version) ? version : null);
     // A station's own code is a far more useful thing to find in a job log
     // than "default-agent", and unlike a header the caller cannot choose it.
     return { ok: true, station, agentId: `station:${station.code}` };

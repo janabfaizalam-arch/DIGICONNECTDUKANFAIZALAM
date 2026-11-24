@@ -33,7 +33,8 @@ $Files   = @(
   "lib/run-hidden.ps1",
   "lib/keepalive-station.mjs",
   "lib/local-guard.mjs",
-  "lib/secure-key.mjs"
+  "lib/secure-key.mjs",
+  "lib/self-update.mjs"
 )
 
 Write-Host ""

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { SmartPrintFlow } from "@/components/print/smart-print-flow";
+import { DigiPrintFlow } from "@/components/print/digi-print-flow";
 import { getStationByCode } from "@/lib/print/stations";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +40,7 @@ export default async function StationPrintPage({ params }: PageProps) {
   if (!station || !station.is_active) notFound();
 
   return (
-    <SmartPrintFlow
+    <DigiPrintFlow
       station={{
         code: station.code,
         displayName: station.display_name,
@@ -49,13 +49,8 @@ export default async function StationPrintPage({ params }: PageProps) {
         acceptingOrders: station.accepting_orders,
         autoDeleteMinutes: station.auto_delete_minutes,
         agentConnected: station.agent_connected,
-        /*
-          The shop's own presets.
-
-          Sent whole rather than merged here, so the flow can show a partner's
-          twelve-photo default the moment the service is chosen and still let
-          the customer change it.
-        */
+        offerA3: station.offer_a3,
+        offerColor: station.offer_color,
         defaults: station.smart_print_defaults,
       }}
     />

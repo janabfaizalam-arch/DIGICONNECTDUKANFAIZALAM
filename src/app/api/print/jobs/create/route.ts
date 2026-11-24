@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { DEFAULT_RATES, getStationByCode, type PrintStation } from "@/lib/print/stations";
-import { settingsFor, smartPrintService, type SmartPrintSettings } from "@/lib/print/smart-print";
+import { isServiceLive, settingsFor, smartPrintService, type SmartPrintSettings } from "@/lib/print/smart-print";
 import { quote } from "@/lib/print/smart-pricing";
 import { readUploadReceipt } from "@/lib/print/upload-receipt";
 
@@ -196,9 +196,40 @@ export async function POST(request: Request) {
       the same function on the same numbers, but a price a browser sends is a
       number a browser can edit.
     */
-    const service = smartPrintService(String(body.service_type ?? ""));
+    /*
+      What this counter actually sells right now.
+
+      The shop switches A3 and colour on or off, and the customer page hides
+      what is off — but a page can be stale or edited, so the server says no
+      as well. Services outside the live list (passport photos, for now) are
+      refused the same way.
+    */
+    if (station && paper_size === "A3" && !station.offer_a3) {
+      return NextResponse.json({ error: "Ye counter abhi A3 print nahi karta." }, { status: 409 });
+    }
+    if (station && color_mode === "color" && !station.offer_color) {
+      return NextResponse.json({ error: "Ye counter abhi sirf black & white print karta hai." }, { status: 409 });
+    }
+
+    const requestedService = String(body.service_type ?? "");
+    if (requestedService && !isServiceLive(requestedService)) {
+      return NextResponse.json({ error: "Ye service abhi available nahi hai." }, { status: 409 });
+    }
+    const service = smartPrintService(requestedService);
+    /*
+      Basic mode: the customer chooses paper, colour and copies, nothing else.
+      Paper finish and quality multipliers are fixed at normal/standard so a
+      price can never depend on a setting the customer was not shown.
+    */
     const smartSettings = service
-      ? ({ ...settingsFor(service, station?.smart_print_defaults ?? null), ...(body.settings ?? {}) } as SmartPrintSettings)
+      ? ({
+          ...settingsFor(service, station?.smart_print_defaults ?? null),
+          ...(body.settings ?? {}),
+          paper: paper_size,
+          color: color_mode,
+          finish: "normal",
+          quality: "standard",
+        } as SmartPrintSettings)
       : null;
 
     /*

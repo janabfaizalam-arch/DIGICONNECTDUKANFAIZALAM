@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { authFailureResponse, authenticateAgent, stationScope } from "@/lib/print/agent-auth";
+import { PRINT_STATION_VERSION } from "@/lib/print/bundle-version.generated";
 import { purgeExpiredStationFiles } from "@/lib/print/partner-jobs";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getClientIp } from "@/lib/rate-limit";
@@ -255,6 +256,14 @@ export async function GET(request: Request) {
             printer_name: station.printer_name,
             color_printer_name: station.color_printer_name,
           }
+        : null,
+      /*
+        The newest connector, and whether the partner asked for it. The
+        connector installs it by itself only when asked — a shop decides when
+        its counter PC changes, not us.
+      */
+      update: station
+        ? { latest: PRINT_STATION_VERSION, requested: station.update_requested }
         : null,
       serverLogs,
     });

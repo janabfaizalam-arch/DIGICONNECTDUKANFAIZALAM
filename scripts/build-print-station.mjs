@@ -52,6 +52,7 @@ export const SHIPPED_FILES = [
   "lib/keepalive-station.mjs",
   "lib/local-guard.mjs",
   "lib/secure-key.mjs",
+  "lib/self-update.mjs",
 ];
 
 /**

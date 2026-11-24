@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { isNewer } from "./self-update.mjs";
 import { backoffSeconds, isRetryable } from "./api.mjs";
 
 /**
@@ -171,7 +172,18 @@ export function choosePrinter({ job, serverPrinter, serverColorPrinter, printers
  * the loop is doing — connected or not, what it last printed, what went
  * wrong — without the two sharing anything more than an object.
  */
-export function createWorker({ api, config, print, log, state, sleep = defaultSleep, printers = [], getPrinters }) {
+export function createWorker({
+  api,
+  config,
+  print,
+  log,
+  state,
+  sleep = defaultSleep,
+  printers = [],
+  getPrinters,
+  onUpdateRequested,
+  currentVersion,
+}) {
   let running = false;
   let stopped = false;
 
@@ -179,7 +191,7 @@ export function createWorker({ api, config, print, log, state, sleep = defaultSl
     // A getter, so a printer plugged in after start-up is reported without a
     // restart; the plain array stays for callers (and tests) that pass one.
     const current = typeof getPrinters === "function" ? getPrinters() : printers;
-    const { jobs, station } = await api.listJobs(current);
+    const { jobs, station, update } = await api.listJobs(current);
     state.connected = true;
     // Shown on the shop's own screen so a partner can see the key landed on
     // their counter rather than somebody else's.
@@ -190,6 +202,20 @@ export function createWorker({ api, config, print, log, state, sleep = defaultSl
       state.serverColorPrinter = station.color_printer_name || null;
     }
     state.lastPollAt = new Date().toISOString();
+
+    /*
+      A newer connector exists. Shown on the local page either way; installed
+      only when the partner asked for it from their panel. Checked between
+      jobs, never during one, so an update cannot cut a print in half.
+    */
+    if (update?.latest && currentVersion) {
+      state.latestVersion = update.latest;
+      state.updateAvailable = isNewer(update.latest, currentVersion);
+      if (state.updateAvailable && update.requested && typeof onUpdateRequested === "function") {
+        await onUpdateRequested(update.latest);
+        return false;
+      }
+    }
     state.queued = Array.isArray(jobs) ? jobs.length : 0;
 
     const job = nextJob(jobs);

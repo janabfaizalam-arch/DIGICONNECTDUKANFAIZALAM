@@ -1,3 +1,5 @@
+import { PRINT_STATION_VERSION } from "./version.mjs";
+
 /**
  * Everything this program says to the server.
  *
@@ -80,6 +82,8 @@ export function createApi({ serverUrl, agentToken, fetchImpl = fetch, timeoutMs 
           method,
           headers: {
             Authorization: `Bearer ${agentToken}`,
+            // So the partner panel can say which version this PC runs.
+            "X-Agent-Version": PRINT_STATION_VERSION,
             ...(body ? { "Content-Type": "application/json" } : {}),
           },
           body: body ? JSON.stringify(body) : undefined,
@@ -136,6 +140,9 @@ export function createApi({ serverUrl, agentToken, fetchImpl = fetch, timeoutMs 
 
     /** "Is this key any good, and whose counter is it?" */
     whoami: () => call("/api/print/agent/whoami"),
+
+    /** The current program files, for updating in place (see self-update.mjs). */
+    fetchUpdate: () => call("/api/print/agent/update"),
 
     /** Swap the zip's key for one only this computer knows (see secure-key.mjs). */
     rotateKey: (newKeyHash) =>

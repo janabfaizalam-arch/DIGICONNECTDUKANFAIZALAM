@@ -26,6 +26,7 @@ describe("Digi Print migrations can be run again safely", () => {
     "supabase/migrations/20260901160000_partner_print_stations.sql",
     "supabase/migrations/20260903160000_smart_print.sql",
     "supabase/migrations/20261124090000_digi_print_wallet_approval_printers.sql",
+    "supabase/migrations/20261124140000_digi_print_options_and_updates.sql",
   ];
 
   it.each(files)("%s only creates and alters idempotently", (file) => {
