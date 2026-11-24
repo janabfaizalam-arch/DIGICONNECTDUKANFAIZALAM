@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, randomBytes, randomInt } from "crypto";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { isMissingColumnError } from "@/lib/supabase/schema-drift";
 import type { PartnerDefaults } from "@/lib/print/smart-print";
 
 /**
@@ -161,8 +162,16 @@ function toStation(row: StationRow): PrintStation {
   };
 }
 
-const COLUMNS =
-  "id, partner_id, code, display_name, address, rate_a4_mono, rate_a4_color, rate_a3_mono, rate_a3_color, accepting_orders, is_active, auto_delete_minutes, printer_name, color_printer_name, available_printers, platform_fee_percent, agent_last_seen_at, agent_token_hash, smart_print_defaults, require_approval";
+/*
+  Every column, whatever exists.
+
+  An explicit column list fails the whole query when one column is missing —
+  a deploy that landed before its migration took every counter offline,
+  because the station could not be read at all. toStation reads each field
+  defensively, so "*" keeps a counter printing on an older schema and simply
+  shows the newer settings as their defaults.
+*/
+const COLUMNS = "*";
 
 /** The station behind a QR code. Case-insensitive: a code may be typed by hand. */
 export async function getStationByCode(code: string): Promise<PrintStation | null> {
@@ -374,12 +383,26 @@ export async function updateStation(
   }
 
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("print_stations")
       .update(update)
       .eq("partner_id", partnerId)
       .select(COLUMNS)
       .single();
+
+    // Save what can be saved: drop the newer optional fields and try again.
+    if (error && isMissingColumnError(error)) {
+      const core = { ...update };
+      delete core.color_printer_name;
+      delete core.smart_print_defaults;
+      delete core.require_approval;
+      ({ data, error } = await supabase
+        .from("print_stations")
+        .update(core)
+        .eq("partner_id", partnerId)
+        .select(COLUMNS)
+        .single());
+    }
 
     if (error || !data) return null;
     return toStation(data as StationRow);
@@ -444,13 +467,16 @@ export function cleanPrinterList(raw: string | null | undefined): string[] | nul
 export async function touchAgent(stationId: string, printers?: string[] | null): Promise<void> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return;
-  const update: Record<string, unknown> = { agent_last_seen_at: new Date().toISOString() };
+  const seenAt = new Date().toISOString();
+  const update: Record<string, unknown> = { agent_last_seen_at: seenAt };
   if (printers && printers.length) update.available_printers = printers;
   try {
-    await supabase
-      .from("print_stations")
-      .update(update)
-      .eq("id", stationId);
+    const { error } = await supabase.from("print_stations").update(update).eq("id", stationId);
+    // The heartbeat is what lets customers pay at this counter. It must not
+    // be lost because the optional printer list has nowhere to go.
+    if (error && update.available_printers && isMissingColumnError(error)) {
+      await supabase.from("print_stations").update({ agent_last_seen_at: seenAt }).eq("id", stationId);
+    }
   } catch {
     /* A missed heartbeat must never fail the request that carried it. */
   }

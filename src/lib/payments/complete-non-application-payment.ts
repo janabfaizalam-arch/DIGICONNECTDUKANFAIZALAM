@@ -13,6 +13,7 @@ import { creditPrintEarning } from "@/lib/ap-wallet";
 import { processCreditScoreCheck } from "@/lib/credit/client";
 import { effectiveFeePercent, splitPrintEarning } from "@/lib/print/earnings";
 import { getStationById } from "@/lib/print/stations";
+import { isMissingColumnError } from "@/lib/supabase/schema-drift";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type Outcome = { handled: boolean; reason?: string };
@@ -122,7 +123,8 @@ export async function completePrintPayment(input: {
 
   const { data: job } = await supabase
     .from("print_jobs")
-    .select("id, job_number, price, payment_status, print_status, station_id, wallet_entry_id")
+    // "*": a missing optional column must never make a paid job unfindable.
+    .select("*")
     .eq("razorpay_order_id", input.orderId)
     .maybeSingle();
 
@@ -148,19 +150,37 @@ export async function completePrintPayment(input: {
     */
     const nextStatus = station?.require_approval ? "awaiting_approval" : "queued";
 
-    const { data: won, error } = await supabase
-      .from("print_jobs")
-      .update({
+    const markPaid = (fields: Record<string, unknown>) =>
+      supabase
+        .from("print_jobs")
+        .update(fields)
+        .eq("id", job.id)
+        .eq("payment_status", job.payment_status)
+        .select("id")
+        .maybeSingle();
+
+    let { data: won, error } = await markPaid({
+      payment_status: "verified",
+      print_status: nextStatus,
+      razorpay_payment_id: input.paymentId,
+      paid_at: input.paidAt,
+      updated_at: new Date().toISOString(),
+    });
+
+    /*
+      A database a migration behind (no paid_at column, or no
+      awaiting_approval status yet) must still print a paid job. Retry with
+      the fields and status the print system has always had.
+    */
+    if (error && (isMissingColumnError(error) || error.code === "23514")) {
+      console.warn(`[payments/print:${input.source}] schema_fallback`, { jobId: job.id, code: error.code });
+      ({ data: won, error } = await markPaid({
         payment_status: "verified",
-        print_status: nextStatus,
+        print_status: "queued",
         razorpay_payment_id: input.paymentId,
-        paid_at: input.paidAt,
         updated_at: new Date().toISOString(),
-      })
-      .eq("id", job.id)
-      .eq("payment_status", job.payment_status)
-      .select("id")
-      .maybeSingle();
+      }));
+    }
 
     if (error) {
       console.error(`[payments/print:${input.source}] job_update_failed`, { jobId: job.id, error });

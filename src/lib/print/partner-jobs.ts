@@ -63,9 +63,9 @@ export async function listStationJobs(station: PrintStation, limit = 40): Promis
 
   const { data, error } = await supabase
     .from("print_jobs")
-    .select(
-      "id, job_number, service_type, paper_size, color_mode, copies, pages, sheet_count, price, partner_earning, payment_status, print_status, pickup_pin, customer_mobile, error_message, created_at, paid_at",
-    )
+    // "*" so a column a migration has not added yet shows as empty, not as
+    // an empty job list.
+    .select("*")
     .eq("station_id", station.id)
     // Unpaid carts are noise to a shop; only money that moved is shown.
     .in("payment_status", ["verified", "refunded"])
@@ -87,7 +87,8 @@ export async function listStationJobs(station: PrintStation, limit = 40): Promis
     pages: Number(row.pages ?? 1),
     sheet_count: Number(row.sheet_count ?? 1),
     price: Number(row.price ?? 0),
-    partner_earning: row.partner_earning === null ? null : Number(row.partner_earning),
+    partner_earning:
+      row.partner_earning === null || row.partner_earning === undefined ? null : Number(row.partner_earning),
     payment_status: String(row.payment_status),
     print_status: String(row.print_status),
     pickup_pin: (row.pickup_pin as string | null) ?? null,
@@ -235,7 +236,7 @@ export async function rejectAndRefund(
 
   const { data: job } = await supabase
     .from("print_jobs")
-    .select("id, job_number, price, print_status, payment_status, razorpay_payment_id, partner_earning, claimed_by_agent")
+    .select("*")
     .eq("id", jobId)
     .eq("station_id", station.id)
     .maybeSingle();
@@ -293,7 +294,7 @@ export async function rejectAndRefund(
     .update({ payment_status: "refunded", razorpay_refund_id: refundId, updated_at: new Date().toISOString() })
     .eq("id", jobId);
 
-  if (job.partner_earning !== null && Number(job.partner_earning) > 0) {
+  if (job.partner_earning !== null && job.partner_earning !== undefined && Number(job.partner_earning) > 0) {
     const reversal = await reversePrintEarning({
       agencyPartnerId: station.partner_id,
       printJobId: String(job.id),
