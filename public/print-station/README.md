@@ -16,11 +16,24 @@ is left on the computer afterwards.
 **Print Station download kijiye**. You get a zip with your key already inside —
 nothing to paste.
 
-1. Unzip the folder somewhere you will find it again. Do not run it from
-   inside the zip.
-2. Double-click **Start Print Station**.
-3. The first run takes a minute: if this computer has no Node.js, the program
-   fetches one for itself. Nothing to install, no administrator password.
+1. Extract the zip. Do not run it from inside the zip.
+2. Double-click **Start Print Station** — once. That is the whole install.
+
+That one double-click:
+
+- fetches Node.js if the computer has none (no installer, no admin password),
+- copies the program to `%LOCALAPPDATA%\DigiConnectPrintStation\app`, so the
+  Downloads folder can be deleted afterwards,
+- adds it to Windows startup and starts it with no window,
+- runs it under a keepalive that restarts it if it ever crashes,
+- picks the computer's default printer (skipping "Print to PDF"-style ones).
+
+The printer — and an optional separate printer for colour jobs — is then
+chosen from the partner panel (**Print counter → Printer**). The program
+reports its printers to the website, so nothing has to be done on the PC.
+
+To update, download again and run **Start Print Station** from the new
+folder: it installs over the old copy.
 
 Every download issues a new key and retires the old one, so keep one folder on
 one computer.
@@ -101,7 +114,9 @@ The console window is not the program's home, only its front door. Nobody at a
 counter should have to guard it, and one accidental X at closing time means the
 next customer pays for pages that never come out.
 
-Double-click **Background me chalaiye** once. From then on:
+**Start Print Station** does this by itself now. **Background me chalaiye**
+does the same thing on its own, for a copy that was set up before v2.0.
+From then on:
 
 - The program runs with no window at all.
 - It starts by itself every time the computer is switched on.
@@ -115,10 +130,11 @@ folder (`shell:startup`), which is why it works on a shop machine whose owner
 is not an admin. The hidden start uses `wscript`; on a Windows with VBScript
 removed it falls back to PowerShell.
 
-One thing it does not do: restart itself if the program crashes. It comes back
-on the next reboot. If you see printing stop with the computer still on, open
-http://localhost:7171 — if that page does not load, run **Background me
-chalaiye** again.
+The hidden copy runs under `lib/keepalive-station.mjs`, which starts the
+program again if it ever crashes (2s, then backing off to a minute between
+attempts). If printing still stops with the computer on, open
+http://localhost:7171 — if that page does not load, run **Start Print
+Station** again.
 
 ---
 

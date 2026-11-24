@@ -149,22 +149,46 @@ export async function runJob({ api, job, print, log, download = downloadToTemp }
 }
 
 /**
+ * Which printer a job goes to.
+ *
+ * The partner picks printers in the website panel — one for everything, and
+ * optionally a separate one for colour. A choice is used only when this
+ * computer actually has a printer by that name: a panel choice made for a PC
+ * that has since been replaced must not send jobs into a queue that does not
+ * exist. Otherwise the printer chosen on this computer's own setup page.
+ */
+export function choosePrinter({ job, serverPrinter, serverColorPrinter, printers = [], fallback }) {
+  const has = (name) => Boolean(name) && (printers.length === 0 || printers.includes(name));
+  if (job?.color_mode === "color" && has(serverColorPrinter)) return serverColorPrinter;
+  if (has(serverPrinter)) return serverPrinter;
+  return fallback;
+}
+
+/**
  * The polling loop.
  *
  * `state` is passed in rather than held here so the setup page can read what
  * the loop is doing — connected or not, what it last printed, what went
  * wrong — without the two sharing anything more than an object.
  */
-export function createWorker({ api, config, print, log, state, sleep = defaultSleep, printers = [] }) {
+export function createWorker({ api, config, print, log, state, sleep = defaultSleep, printers = [], getPrinters }) {
   let running = false;
   let stopped = false;
 
   async function tick() {
-    const { jobs, station } = await api.listJobs(printers);
+    // A getter, so a printer plugged in after start-up is reported without a
+    // restart; the plain array stays for callers (and tests) that pass one.
+    const current = typeof getPrinters === "function" ? getPrinters() : printers;
+    const { jobs, station } = await api.listJobs(current);
     state.connected = true;
     // Shown on the shop's own screen so a partner can see the key landed on
     // their counter rather than somebody else's.
     if (station?.display_name) state.stationName = station.display_name;
+    // The partner's choice from the website panel; see choosePrinter.
+    if (station) {
+      state.serverPrinter = station.printer_name || null;
+      state.serverColorPrinter = station.color_printer_name || null;
+    }
     state.lastPollAt = new Date().toISOString();
     state.queued = Array.isArray(jobs) ? jobs.length : 0;
 

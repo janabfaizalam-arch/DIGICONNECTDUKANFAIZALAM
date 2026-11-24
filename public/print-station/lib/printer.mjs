@@ -356,6 +356,53 @@ export async function listPrinters() {
 }
 
 /**
+ * The computer's own default printer, or null.
+ *
+ * Used once, at start-up, when no printer has been chosen yet: the program
+ * starts printing to what the shop already prints to, so a fresh install
+ * needs no setup page at all.
+ */
+export async function defaultPrinter() {
+  try {
+    if (IS_WINDOWS) {
+      const stdout = await run(
+        "powershell.exe",
+        [
+          "-NoProfile",
+          "-NonInteractive",
+          "-Command",
+          "Get-CimInstance Win32_Printer -Filter 'Default=True' | Select-Object -ExpandProperty Name",
+        ],
+        20_000,
+      );
+      return parseWindowsPrinters(stdout)[0] ?? null;
+    }
+    return parseCupsDefault(await run("lpstat", ["-d"], 20_000));
+  } catch {
+    return null;
+  }
+}
+
+/** `lpstat -d` → "system default destination: Name". */
+export function parseCupsDefault(stdout) {
+  const match = /destination:\s*(\S+)/i.exec(String(stdout));
+  return match ? match[1] : null;
+}
+
+/**
+ * The printer to start with when none is configured.
+ *
+ * The OS default when it is a real printer; otherwise the first physical one,
+ * skipping the virtual "printers" every Windows has, which would swallow a
+ * paying customer's job into a PDF file or OneNote.
+ */
+export function pickStartupPrinter(printers, systemDefault) {
+  const virtual = /(pdf|xps|onenote|fax|send to|microsoft print)/i;
+  if (systemDefault && printers.includes(systemDefault) && !virtual.test(systemDefault)) return systemDefault;
+  return printers.find((name) => !virtual.test(name)) ?? null;
+}
+
+/**
  * Print one job's file.
  *
  * Resolves when the print command returns, which is when the file has been

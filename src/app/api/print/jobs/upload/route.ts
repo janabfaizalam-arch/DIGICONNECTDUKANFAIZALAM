@@ -4,6 +4,11 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { validateFileSignature } from "@/lib/file-validation";
+import { countPdfPages, PdfPagesError } from "@/lib/print/pdf-pages";
+import { issueUploadReceipt, safeFileName } from "@/lib/print/upload-receipt";
+
+// pdf-parse runs in Node, not on the edge.
+export const runtime = "nodejs";
 
 /*
   What a phone actually hands over.
@@ -68,10 +73,40 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Supabase service role configuration is missing" }, { status: 500 });
     }
 
-    const fileId = crypto.randomUUID();
-    const storagePath = `uploads/${fileId}/${file.name}`;
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+
+    /*
+      Pages, counted here and nowhere else.
+
+      What the customer is charged for is what the printer will print, so the
+      count is taken from the file by a real PDF parser before anything is
+      stored. A PDF we cannot open would not print either, so it is refused
+      now with a reason, not after the customer has paid.
+    */
+    let detectedPages = 1;
+    if (file.type === "application/pdf") {
+      try {
+        detectedPages = await countPdfPages(buffer);
+      } catch (caught) {
+        const reason = caught instanceof PdfPagesError ? caught.reason : "unreadable";
+        return NextResponse.json(
+          {
+            error:
+              reason === "password"
+                ? "Is PDF par password laga hai. Password hata kar dobara bhejiye."
+                : "Ye PDF khul nahi rahi. Dusri file bhejiye.",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
+    const fileId = crypto.randomUUID();
+    const fileName = safeFileName(file.name);
+    // The name in the path is only for a human reading the bucket; the random
+    // id is what makes it unique and unguessable.
+    const storagePath = `uploads/${fileId}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("print-jobs")
@@ -85,23 +120,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to upload file to storage" }, { status: 500 });
     }
 
-    // Auto-detect PDF page count
-    let detectedPages = 1;
-    if (file.type === "application/pdf") {
-      try {
-        const pdfText = buffer.toString("binary");
-        const pageMatches = pdfText.match(/\/Type\s*\/Page\b/g);
-        if (pageMatches && pageMatches.length > 0) {
-          detectedPages = pageMatches.length;
-        }
-      } catch (pdfError) {
-        console.warn("[print/upload] PDF page count extraction failed:", pdfError);
-      }
+    const receipt = issueUploadReceipt({
+      path: storagePath,
+      pages: detectedPages,
+      size: file.size,
+      mime: file.type,
+      name: fileName,
+    });
+    if (!receipt) {
+      console.error("[print/upload] No signing secret configured");
+      return NextResponse.json({ error: "Upload is not configured on the server" }, { status: 500 });
     }
 
     return NextResponse.json({
       storage_path: storagePath,
-      file_name: file.name,
+      upload_receipt: receipt,
+      file_name: fileName,
       file_size: file.size,
       mime_type: file.type,
       pages: detectedPages,

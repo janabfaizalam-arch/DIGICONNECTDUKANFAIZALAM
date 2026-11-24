@@ -113,7 +113,7 @@ export function renderPage() {
     <h2>Settings</h2>
     <form id="form">
       <label>Your key
-        <input name="agentToken" id="agentToken" placeholder="dcp_…" autocomplete="off" spellcheck="false" />
+        <input name="agentToken" id="agentToken" placeholder="dcp_… (khali chhodiye to purani key hi rahegi)" autocomplete="off" spellcheck="false" />
       </label>
       <p class="muted">Copy it from your partner dashboard &rarr; Print counter. It is shown only once.</p>
 
@@ -232,7 +232,7 @@ export function renderPage() {
     $("check").disabled = true;
     $("check").textContent = "Check kar rahe hain…";
     try {
-      const json = await (await fetch("/api/check", { method: "POST" })).json();
+      const json = await (await fetch("/api/check", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })).json();
       const box = $("findings");
       box.hidden = false;
       const label = { ok: "Theek", error: "Gadbad", warn: "Dhyan", fix: "Ye kariye", info: "" };
@@ -253,7 +253,7 @@ export function renderPage() {
   $("test").addEventListener("click", async () => {
     $("test").disabled = true;
     try {
-      const json = await (await fetch("/api/test-print", { method: "POST" })).json();
+      const json = await (await fetch("/api/test-print", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })).json();
       alert(json.ok ? "Sent to " + json.printer + ". Check the tray." : (json.error || "Could not print."));
     } finally {
       $("test").disabled = false;

@@ -14,7 +14,7 @@ Set shell = CreateObject("WScript.Shell")
 
 folder = fso.GetParentFolderName(fso.GetParentFolderName(WScript.ScriptFullName))
 
-If Not fso.FileExists(folder & "\station.mjs") Then
+If Not fso.FileExists(folder & "\lib\keepalive-station.mjs") Then
   WScript.Quit 1
 End If
 
@@ -29,5 +29,7 @@ If fso.FileExists(pathFile) Then
 End If
 
 shell.CurrentDirectory = folder
+' Started through the keepalive, which restarts station.mjs if it ever
+' crashes -- otherwise a crash at noon meant no printing until next boot.
 ' 0 = no window, False = do not wait for it to finish.
-shell.Run """" & node & """ """ & folder & "\station.mjs""", 0, False
+shell.Run """" & node & """ """ & folder & "\lib\keepalive-station.mjs""", 0, False

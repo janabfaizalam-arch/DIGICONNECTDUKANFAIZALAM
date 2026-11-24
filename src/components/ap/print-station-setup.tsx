@@ -18,6 +18,9 @@ import {
 import { useToast } from "@/components/providers/toast-provider";
 import { PRINT_STATION_VERSION } from "@/lib/print/bundle-version.generated";
 import { SmartPrintSettingsCard } from "@/components/ap/smart-print-settings";
+import { PrinterPicker } from "@/components/ap/print-printer-picker";
+import { PrintJobsPanel } from "@/components/ap/print-jobs-panel";
+import { renderPrintPoster } from "@/lib/print/poster";
 import type { PrintStation } from "@/lib/print/stations";
 import { cn } from "@/lib/utils";
 
@@ -171,11 +174,18 @@ export function PrintStationSetup({
     <div className="space-y-4">
       {freshToken ? <TokenOnce token={freshToken} onDismiss={() => setFreshToken(null)} /> : null}
 
+      <PrintJobsPanel requireApproval={station.require_approval} />
+
       <div className="grid gap-4 lg:grid-cols-[22rem_1fr]">
         <StationQr station={station} scanUrl={scanUrl} />
 
         <div className="min-w-0 space-y-4">
           <OpenClosed station={station} busy={busy} onToggle={(open) => save({ acceptingOrders: open })} />
+          <PrinterPicker
+            station={station}
+            busy={busy}
+            onSave={(printerName, colorPrinterName) => save({ printerName, colorPrinterName })}
+          />
           <Rates station={station} busy={busy} onSave={(rates) => save({ rates })} />
           <Privacy station={station} busy={busy} onSave={(minutes) => save({ autoDeleteMinutes: minutes })} />
           {/*
@@ -299,18 +309,98 @@ function StationQr({ station, scanUrl }: { station: PrintStation; scanUrl: strin
         Somebody without a camera can type this at {scanUrl.replace(/^https?:\/\//, "").split("/p/")[0]}/p
       </p>
 
+      <PosterButtons station={station} scanUrl={scanUrl} />
+
       <a
         href={dataUrl ?? "#"}
         download={`${station.code}-print-qr.png`}
         aria-disabled={!dataUrl}
         className={cn(
-          "mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl text-[13px] font-bold transition",
-          dataUrl ? "lg-pill lg-raise text-[var(--dc-blue-mid)]" : "pointer-events-none opacity-40",
+          "mt-2 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl text-[12px] font-bold transition",
+          dataUrl ? "text-[var(--dc-body)] hover:text-[var(--dc-ink)]" : "pointer-events-none opacity-40",
         )}
       >
-        <Download className="h-4 w-4" />
-        Download the QR
+        <Download className="h-3.5 w-3.5" />
+        Sirf QR (bina design) download
       </a>
+    </div>
+  );
+}
+
+/**
+ * The poster that goes on the counter.
+ *
+ * A bare QR taped to a wall is a square nobody scans: it does not say what it
+ * is for, whose it is, or that it is safe. The poster says all three in the
+ * time it takes to walk past it, and prints sharp at A4 or A5 (it is drawn at
+ * 300 dpi A5, so it holds up at A4 too).
+ */
+function PosterButtons({ station, scanUrl }: { station: PrintStation; scanUrl: string }) {
+  const { error } = useToast();
+  const [poster, setPoster] = useState<string | null>(null);
+  const [making, setMaking] = useState(false);
+
+  const make = async (): Promise<string | null> => {
+    if (poster) return poster;
+    setMaking(true);
+    try {
+      const url = await renderPrintPoster({
+        shopName: station.display_name,
+        code: station.code,
+        scanUrl,
+        rates: station.rates,
+      });
+      setPoster(url);
+      return url;
+    } catch {
+      error("Poster nahi ban paya. Sirf QR download kar lijiye.");
+      return null;
+    } finally {
+      setMaking(false);
+    }
+  };
+
+  const download = async () => {
+    const url = await make();
+    if (!url) return;
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${station.code}-digi-print-poster.png`;
+    link.click();
+  };
+
+  const print = async () => {
+    const url = await make();
+    if (!url) return;
+    const win = window.open("", "_blank");
+    if (!win) return download();
+    win.document.write(
+      `<!doctype html><title>${station.code} poster</title><style>@page{size:A4;margin:8mm}html,body{margin:0}img{width:100%;height:auto;display:block}</style><img src="${url}" onload="setTimeout(function(){window.print()},150)">`,
+    );
+    win.document.close();
+  };
+
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-2">
+      <button
+        type="button"
+        onClick={download}
+        disabled={making}
+        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl text-[13px] font-bold text-white transition disabled:opacity-60"
+        style={{ background: "var(--dc-grad-blue)" }}
+      >
+        {making ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+        Poster download
+      </button>
+      <button
+        type="button"
+        onClick={print}
+        disabled={making}
+        className="lg-pill lg-raise inline-flex h-11 items-center justify-center gap-2 rounded-xl text-[13px] font-bold text-[var(--dc-blue-mid)] transition disabled:opacity-60"
+      >
+        <Printer className="h-4 w-4" />
+        Poster print
+      </button>
     </div>
   );
 }
@@ -498,7 +588,7 @@ function AgentBox({
           <p className="mt-1.5 text-[12px] font-medium leading-snug text-[var(--dc-body)]">
             {station.agent_connected
               ? "Print Station is running and jobs will go straight to your printer."
-              : "Install DigiConnect Print Station on the computer attached to your printer and paste your key into it. Until then, orders will queue but nothing will print."}
+              : "Printer wale computer par Print Station download karke ek baar chalaiye. Tab tak customer ko payment se pehle hi bata diya jata hai ki counter band hai."}
           </p>
         </div>
       </div>
@@ -582,16 +672,12 @@ function InstallSteps({ siteUrl, connected }: { siteUrl: string; connected: bool
       body: "Aapki key iske andar pehle se hai — kuch paste nahi karna.",
     },
     {
-      title: "Unzip kijiye, phir Start Print Station par double-click",
-      body: "Printer wale computer par. Pehli baar thoda ruk jaiye - baaki wo khud kar lega.",
+      title: "Extract kijiye, phir Start Print Station par EK BAAR double-click",
+      body: "Printer wale computer par. Wo khud install hota hai, startup me judta hai, aur band ho jaye to khud dobara chalu hota hai. Admin password nahi chahiye.",
     },
     {
-      title: "Printer chuniye aur test page nikaliye",
-      body: "Kagaz nikla to yahi screen Connected dikhane lagegi.",
-    },
-    {
-      title: '"Background me chalaiye" par ek baar double-click',
-      body: "Phir kaali window ki zaroorat nahi - computer on hote hi print chalu.",
+      title: "Bas. Printer yahin panel se chuniye",
+      body: "Computer ka default printer khud chun liya jata hai. Badalna ho to upar Printer card me chuniye.",
     },
   ];
 
@@ -610,9 +696,9 @@ function InstallSteps({ siteUrl, connected }: { siteUrl: string; connected: bool
       <p className="mt-2 text-[11.5px] font-medium leading-snug text-[var(--dc-body)]">
         {connected ? (
           <>
-            Zip ke naam me <b>v{PRINT_STATION_VERSION}</b> likha hoga. Purana folder band kijiye, naya
-            unzip karke usi se chalaiye &mdash; har download par nayi key banti hai aur purani band ho jati
-            hai.
+            Zip ke naam me <b>v{PRINT_STATION_VERSION}</b> likha hoga. Extract karke Start Print Station
+            chalaiye &mdash; purane install ke upar hi update ho jayega. Har download par nayi key banti hai
+            aur purani band ho jati hai.
           </>
         ) : (
           "Har download par nayi key banti hai aur purani band ho jati hai. Ek computer, ek folder."

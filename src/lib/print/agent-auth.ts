@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getStationByAgentToken, touchAgent, type PrintStation } from "@/lib/print/stations";
+import { cleanPrinterList, getStationByAgentToken, touchAgent, type PrintStation } from "@/lib/print/stations";
 
 /**
  * Who is asking on behalf of a printer.
@@ -82,7 +82,14 @@ export async function authenticateAgent(request: Request): Promise<AgentAuthResu
   const station = presented ? await getStationByAgentToken(presented) : null;
 
   if (station) {
-    await touchAgent(station.id);
+    // The jobs poll carries the PC's printer list; every other call does not.
+    let printers: string[] | null = null;
+    try {
+      printers = cleanPrinterList(new URL(request.url).searchParams.get("printers"));
+    } catch {
+      printers = null;
+    }
+    await touchAgent(station.id, printers);
     // A station's own code is a far more useful thing to find in a job log
     // than "default-agent", and unlike a header the caller cannot choose it.
     return { ok: true, station, agentId: `station:${station.code}` };

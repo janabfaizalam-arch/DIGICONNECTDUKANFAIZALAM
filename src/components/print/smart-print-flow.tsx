@@ -86,7 +86,15 @@ export type SmartStationView = {
 
 type Step = "service" | "build" | "done";
 
-type Uploaded = { file_name: string; file_size: number; mime_type: string; storage_path: string; pages?: number };
+type Uploaded = {
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  storage_path: string;
+  pages?: number;
+  /** Signed by the server; the order is built from this, not from the fields above. */
+  upload_receipt?: string;
+};
 
 /**
  * One uploaded picture and everything we have made of it.
@@ -529,6 +537,7 @@ export function SmartPrintFlow({ station }: { station: SmartStationView }) {
           file_size: uploaded.file_size,
           mime_type: uploaded.mime_type,
           storage_path: uploaded.storage_path,
+          upload_receipt: uploaded.upload_receipt,
           station_code: station.code,
           service_type: service.id,
           settings,
@@ -1731,7 +1740,9 @@ function OrderDone({
     It asks the server every three seconds, and after seventy-five it stops
     pretending.
   */
-  const [outcome, setOutcome] = useState<"waiting" | "printed" | "failed" | "slow">("waiting");
+  const [outcome, setOutcome] = useState<"waiting" | "approval" | "printed" | "failed" | "slow" | "refunded">(
+    "waiting",
+  );
 
   useEffect(() => {
     if (!done.jobId) return;
@@ -1745,10 +1756,24 @@ function OrderDone({
         const response = await fetch(`/api/print/jobs/status?job_id=${encodeURIComponent(done.jobId)}`, {
           cache: "no-store",
         });
-        const json = (await response.json()) as { print_status?: string };
+        const json = (await response.json()) as { print_status?: string; payment_status?: string };
         if (cancelled) return;
         if (json.print_status === "printed") return setOutcome("printed");
+        if (json.payment_status === "refunded" || json.print_status === "cancelled") return setOutcome("refunded");
         if (json.print_status === "failed") return setOutcome("failed");
+        /*
+          The shop looks at every job before it prints. That is a wait for a
+          person, not a stuck printer, so it is said as such and the "slow"
+          warning is held back until the shop has had its say.
+        */
+        if (json.print_status === "awaiting_approval") {
+          setOutcome("approval");
+          if (!cancelled) timer = setTimeout(() => void check(), 4000);
+          return;
+        }
+        if (json.print_status === "queued" || json.print_status === "printing") {
+          setOutcome((current) => (current === "approval" ? "waiting" : current));
+        }
       } catch {
         // A dropped request says nothing about the printer. Ask again.
       }
@@ -1766,7 +1791,7 @@ function OrderDone({
     };
   }, [done.jobId]);
 
-  const trouble = outcome === "failed" || outcome === "slow";
+  const trouble = outcome === "failed" || outcome === "slow" || outcome === "refunded";
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#eef2f9] px-4 py-10">
@@ -1796,7 +1821,11 @@ function OrderDone({
               ? "The print did not go through."
               : outcome === "slow"
                 ? "Not printed yet."
-                : "Payment successful"}
+                : outcome === "refunded"
+                  ? "Paise wapas bhej diye"
+                  : outcome === "approval"
+                    ? "Shop confirm kar rahi hai"
+                    : "Payment successful"}
         </h1>
         <p className="mt-1.5 text-[13px] font-semibold leading-relaxed text-slate-500">
           {outcome === "printed" ? (
@@ -1806,6 +1835,13 @@ function OrderDone({
               Ye screen counter par dikhaiye. Paise diye hain aur kagaz nahi mila, to unse print karwaiye
               ya paise wapas lijiye.
             </>
+          ) : outcome === "refunded" ? (
+            <>
+              {station.displayName} ne ye order cancel kiya. Poore paise aapke account me 5-7 din me wapas aa
+              jayenge.
+            </>
+          ) : outcome === "approval" ? (
+            <>{station.displayName} aapka order dekh kar print chalu karegi. Ye screen khuli rakhiye.</>
           ) : outcome === "slow" ? (
             <>
               {station.displayName} ke printer ne ise abhi tak nahi liya. Jane se pehle ye screen counter

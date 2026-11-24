@@ -37,6 +37,7 @@ export default function PrintPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<{
     storage_path: string;
+    upload_receipt?: string;
     file_name: string;
     file_size: number;
     mime_type: string;
@@ -186,6 +187,7 @@ export default function PrintPage() {
           file_size: uploadedFile.file_size,
           mime_type: uploadedFile.mime_type,
           storage_path: uploadedFile.storage_path,
+          upload_receipt: uploadedFile.upload_receipt,
           amount: totalPrice,
         }),
       });

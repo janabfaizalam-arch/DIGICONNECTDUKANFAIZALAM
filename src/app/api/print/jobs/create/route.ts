@@ -1,3 +1,4 @@
+import { randomInt } from "crypto";
 import { NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -5,6 +6,7 @@ import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit
 import { DEFAULT_RATES, getStationByCode, type PrintStation } from "@/lib/print/stations";
 import { settingsFor, smartPrintService, type SmartPrintSettings } from "@/lib/print/smart-print";
 import { quote } from "@/lib/print/smart-pricing";
+import { readUploadReceipt } from "@/lib/print/upload-receipt";
 
 /*
   The platform's own counter's rates.
@@ -36,7 +38,7 @@ function pageRateFor(
  * each other at a busy counter do not walk off with each other's documents.
  */
 function pickupPin(): string {
-  return String(Math.floor(1000 + Math.random() * 9000));
+  return String(randomInt(1000, 10000));
 }
 
 type PrintJobCreateBody = {
@@ -45,10 +47,12 @@ type PrintJobCreateBody = {
   pages: number;
   paper_size: "A4" | "A3";
   color_mode: "mono" | "color";
-  file_name: string;
-  file_size: number;
-  mime_type: string;
-  storage_path: string;
+  /* The four file fields below are accepted for older clients and ignored:
+     the signed upload_receipt is the only source for them. */
+  file_name?: string;
+  file_size?: number;
+  mime_type?: string;
+  storage_path?: string;
   /*
     What the browser thinks the price is.
 
@@ -66,6 +70,8 @@ type PrintJobCreateBody = {
   settings?: Record<string, unknown>;
   /** Sheets of paper this job puts through the printer. */
   sheet_count?: number;
+  /** Signed by the upload route: the file's real path, pages, size and type. */
+  upload_receipt?: string;
 };
 
 export async function POST(request: Request) {
@@ -88,10 +94,6 @@ export async function POST(request: Request) {
       pages,
       paper_size,
       color_mode,
-      file_name,
-      file_size,
-      mime_type,
-      storage_path,
       amount,
       station_code,
     } = body;
@@ -103,8 +105,8 @@ export async function POST(request: Request) {
     }
 
     const parsedCopies = Math.round(Number(copies || 1));
-    const parsedPages = Math.round(Number(pages || 1));
-    if (parsedCopies <= 0 || parsedPages <= 0) {
+    const claimedPages = Math.round(Number(pages || 1));
+    if (parsedCopies <= 0 || claimedPages <= 0 || parsedCopies > 500) {
       return NextResponse.json({ error: "Copies and pages must be greater than zero" }, { status: 400 });
     }
 
@@ -116,9 +118,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid color mode. Supported: mono, color" }, { status: 400 });
     }
 
-    if (!file_name || !storage_path || !file_size || !mime_type) {
-      return NextResponse.json({ error: "Uploaded file information is incomplete" }, { status: 400 });
+    /*
+      The file, as our upload route measured it — never as the browser
+      describes it.
+
+      The path used to be taken from the request, so an order could point at
+      any object in the bucket (somebody else's document), and the page count
+      too, so a long PDF could be declared as one page. Both now come only
+      from the signed receipt the upload route issued.
+    */
+    const upload = readUploadReceipt(body.upload_receipt);
+    if (!upload) {
+      return NextResponse.json(
+        { error: "File ki pehchan pakki nahi ho payi. Page refresh karke file dobara lagaiye." },
+        { status: 400 },
+      );
     }
+
+    // Never fewer pages than the file really has.
+    const parsedPages = Math.max(claimedPages, upload.pages);
 
     /*
       Which counter, and therefore whose prices.
@@ -183,7 +201,11 @@ export async function POST(request: Request) {
       ? ({ ...settingsFor(service, station?.smart_print_defaults ?? null), ...(body.settings ?? {}) } as SmartPrintSettings)
       : null;
 
-    const sheetCount = Math.max(1, Math.floor(Number(body.sheet_count ?? parsedPages) || 1));
+    /*
+      Sheets billed: what the customer's composition says, but never fewer
+      than the pages of the file that will actually be printed.
+    */
+    const sheetCount = Math.max(1, Math.floor(Number(body.sheet_count ?? parsedPages) || 1), upload.pages);
 
     const expectedAmount = smartSettings
       ? quote(station?.rates ?? DEFAULT_RATES, { ...smartSettings, copies: parsedCopies }, sheetCount).total
@@ -210,6 +232,17 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdmin();
     if (!supabase) {
       return NextResponse.json({ error: "Supabase service role configuration is missing" }, { status: 500 });
+    }
+
+    // One file, one order: a receipt cannot be spent on two jobs.
+    const { data: alreadyUsed } = await supabase
+      .from("print_job_files")
+      .select("id")
+      .eq("storage_path", upload.path)
+      .limit(1)
+      .maybeSingle();
+    if (alreadyUsed) {
+      return NextResponse.json({ error: "Ye file pehle hi ek order me lag chuki hai. Dobara upload kijiye." }, { status: 409 });
     }
 
     // Start a transaction-like insertion
@@ -254,10 +287,10 @@ export async function POST(request: Request) {
       .from("print_job_files")
       .insert({
         job_id: job.id,
-        file_name,
-        file_size,
-        mime_type,
-        storage_path,
+        file_name: upload.name || "file",
+        file_size: upload.size,
+        mime_type: upload.mime,
+        storage_path: upload.path,
       });
 
     if (fileError) {

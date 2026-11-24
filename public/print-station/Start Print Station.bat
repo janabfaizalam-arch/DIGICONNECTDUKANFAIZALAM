@@ -28,9 +28,34 @@ set /p NODE=<"%DCPS_NODE_FILE%"
 if not defined NODE goto :nonode
 if not exist "%NODE%" goto :nonode
 
+REM  One double-click, installed for good.
+REM
+REM  Shops ran this, saw it print, and never found the second file that
+REM  makes it survive a reboot -- so the next morning nothing printed. Now
+REM  this file does both: it installs the program into the user's own
+REM  AppData, adds it to Windows startup, and starts it hidden with a
+REM  keepalive that restarts it if it ever crashes. No admin rights.
+REM  If that fails for any reason, it falls back to running right here.
+
+if /i "%DCPS_FOREGROUND%"=="1" goto :foreground
+
+echo.
+echo   DigiConnect Print Station install ho raha hai (sirf ek baar)...
+echo.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0lib\background.ps1"
+if errorlevel 1 goto :foreground
+
+start "" "http://localhost:7171"
+echo.
+echo   Ho gaya. Ye window band kar sakte hain - printing chalti rahegi.
+echo.
+pause
+exit /b 0
+
+:foreground
 echo.
 echo   Starting DigiConnect Print Station...
-echo   Leave this window open, or use "Background me chalaiye" once.
+echo   Leave this window open.
 echo.
 
 "%NODE%" "%~dp0station.mjs"

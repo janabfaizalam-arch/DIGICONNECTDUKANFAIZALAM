@@ -19,7 +19,7 @@ function safeNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
-const CREDIT_TYPES = ["commission_credit", "manual_credit", "bonus"];
+const CREDIT_TYPES = ["commission_credit", "manual_credit", "bonus", "print_earning"];
 /*
   `application_spend` is a debit. It has to be in this list or the balance
   ignores it, and a partner whose wallet is never reduced can pay for every
@@ -512,3 +512,88 @@ export async function debitPayout(params: {
   };
 }
 
+
+/**
+ * Pay a partner for a print job taken at their Digi Print counter.
+ *
+ * The customer pays into the platform's Razorpay account; this is the line in
+ * the partner's own ledger that says the money is theirs. Idempotent per job,
+ * twice over: the lookup short-circuits a retry, and the unique index on
+ * (reference_type, reference_id) refuses a second row even when the browser's
+ * verify call and the webhook race each other to this function.
+ */
+export async function creditPrintEarning(params: {
+  agencyPartnerId: string;
+  printJobId: string;
+  amount: number;
+  jobNumber?: string | null;
+}): Promise<WalletResult & { deduped?: boolean }> {
+  const existing = await findLedgerEntryByReference(
+    params.agencyPartnerId,
+    "print_job",
+    params.printJobId,
+    "print_earning",
+  );
+  if (existing) return { ok: true, entryId: existing.id, deduped: true };
+
+  const amount = Math.round(safeNumber(params.amount) * 100) / 100;
+  if (amount <= 0) return { ok: false, error: "Nothing to credit." };
+
+  const result = await appendLedgerEntry({
+    agencyPartnerId: params.agencyPartnerId,
+    entryType: "print_earning",
+    amount,
+    referenceType: "print_job",
+    referenceId: params.printJobId,
+    description: `Digi Print${params.jobNumber ? ` — ${params.jobNumber}` : ""}`,
+  });
+
+  // Lost the race to the other caller: the row exists, which is the outcome
+  // both wanted.
+  if (!result.ok && /duplicate key|unique/i.test(result.error ?? "")) {
+    const winner = await findLedgerEntryByReference(
+      params.agencyPartnerId,
+      "print_job",
+      params.printJobId,
+      "print_earning",
+    );
+    if (winner) return { ok: true, entryId: winner.id, deduped: true };
+  }
+  return result;
+}
+
+/**
+ * Take a print job's earning back out, because the customer was refunded.
+ * Idempotent per job; does nothing if the job was never credited.
+ */
+export async function reversePrintEarning(params: {
+  agencyPartnerId: string;
+  printJobId: string;
+  amount: number;
+  reason?: string | null;
+}): Promise<WalletResult & { deduped?: boolean }> {
+  const credited = await findLedgerEntryByReference(
+    params.agencyPartnerId,
+    "print_job",
+    params.printJobId,
+    "print_earning",
+  );
+  if (!credited) return { ok: true, deduped: true };
+
+  const already = await findLedgerEntryByReference(
+    params.agencyPartnerId,
+    "print_job_refund",
+    params.printJobId,
+    "reversal",
+  );
+  if (already) return { ok: true, entryId: already.id, deduped: true };
+
+  return appendLedgerEntry({
+    agencyPartnerId: params.agencyPartnerId,
+    entryType: "reversal",
+    amount: params.amount,
+    referenceType: "print_job_refund",
+    referenceId: params.printJobId,
+    description: params.reason?.trim() || "Digi Print refund",
+  });
+}

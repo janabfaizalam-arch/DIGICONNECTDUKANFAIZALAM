@@ -8,7 +8,8 @@
 $ErrorActionPreference = "Stop"
 
 $folder = Split-Path -Parent $PSScriptRoot
-$station = Join-Path $folder "station.mjs"
+# The keepalive restarts station.mjs if it ever crashes.
+$station = Join-Path $folder "lib\keepalive-station.mjs"
 if (-not (Test-Path $station)) { exit 1 }
 
 # Whatever ensure-node.ps1 settled on -- often a node.exe this program
