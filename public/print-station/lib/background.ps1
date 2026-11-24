@@ -19,7 +19,12 @@ param([switch]$Remove)
 
 $ErrorActionPreference = "Stop"
 
-$folder  = Split-Path -Parent $PSScriptRoot
+$source  = Split-Path -Parent $PSScriptRoot
+# Where the program lives for good. A shop runs this from Downloads, and
+# Downloads gets cleaned: a startup shortcut pointing there stopped printing
+# the day somebody tidied up. So the program is copied here once, and the
+# shortcut points here. Every later download is copied over the same place.
+$folder  = Join-Path $env:LOCALAPPDATA "DigiConnectPrintStation\app"
 $startup = [Environment]::GetFolderPath("Startup")
 $link    = Join-Path $startup "DigiConnect Print Station.lnk"
 $vbs     = Join-Path $folder "lib\run-hidden.vbs"
@@ -35,8 +40,10 @@ $port    = if ($env:DCPS_PORT) { $env:DCPS_PORT } else { "7171" }
   would be a worse bug than the one being fixed here.
 #>
 function Stop-Station {
+  # The keepalive first: stopped after its child, it would start a new one.
   Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction SilentlyContinue |
     Where-Object { $_.CommandLine -and $_.CommandLine -like "*station.mjs*" } |
+    Sort-Object { if ($_.CommandLine -like "*keepalive*") { 0 } else { 1 } } |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 }
 
@@ -52,7 +59,7 @@ function Test-Station {
   return $null
 }
 
-if (-not (Test-Path (Join-Path $folder "station.mjs"))) {
+if (-not (Test-Path (Join-Path $source "station.mjs"))) {
   Write-Host ""
   Write-Host "  station.mjs nahi mili. Poori zip Extract kijiye aur folder ke" -ForegroundColor Yellow
   Write-Host "  ANDAR se ye file chalaiye." -ForegroundColor Yellow
@@ -73,6 +80,15 @@ if ($Remove) {
 # Fetches Node if this computer does not have it, and records which node.exe
 # the hidden runners should use. Nothing for the shop to install by hand.
 & (Join-Path $PSScriptRoot "ensure-node.ps1")
+
+# Install (or update) the permanent copy. Skipped when this already is it.
+Stop-Station
+if ((Resolve-Path $source).Path.TrimEnd('\') -ne $folder.TrimEnd('\')) {
+  New-Item -ItemType Directory -Force -Path $folder | Out-Null
+  Copy-Item -Path (Join-Path $source "*") -Destination $folder -Recurse -Force
+  Write-Host "  Program yahan install ho gaya: $folder"
+  Write-Host "  (Downloads wala folder ab delete bhi kar sakte hain.)"
+}
 $nodePathFile = Join-Path $env:LOCALAPPDATA "DigiConnectPrintStation\node-path.txt"
 if (-not (Test-Path $nodePathFile)) {
   Write-Host ""
@@ -125,8 +141,8 @@ if ($state) {
   # The startup shortcut points at this folder. A newer download lands in a
   # new folder with a new key, and the old hidden copy would keep starting
   # with the retired one -- silently, now that there is no window to see it.
-  Write-Host "  Jab bhi naya version download karen, us naye folder se ye file"
-  Write-Host "  dobara chalaiye - warna purana folder hi chalta rahega."
+  Write-Host "  * Program band ho jaye to khud dobara chalu ho jata hai."
+  Write-Host "  * Printer badalna ho to partner panel se badaliye."
 } else {
   Write-Host "  Startup me daal diya, lekin chalu hua ya nahi ye pakka nahi." -ForegroundColor Yellow
   Write-Host ""

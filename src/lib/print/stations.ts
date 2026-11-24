@@ -32,6 +32,12 @@ export type PrintStation = {
   is_active: boolean;
   auto_delete_minutes: number;
   printer_name: string | null;
+  /** Colour jobs go here when set; otherwise to printer_name. */
+  color_printer_name: string | null;
+  /** What the counter PC reported it can print to, on its last poll. */
+  available_printers: string[];
+  /** Platform's cut per job, percent. Null = platform default. */
+  platform_fee_percent: number | null;
   agent_connected: boolean;
   agent_last_seen_at: string | null;
   has_agent_token: boolean;
@@ -126,6 +132,14 @@ function toStation(row: StationRow): PrintStation {
     is_active: row.is_active !== false,
     auto_delete_minutes: Number(row.auto_delete_minutes ?? 15),
     printer_name: (row.printer_name as string | null) ?? null,
+    color_printer_name: (row.color_printer_name as string | null) ?? null,
+    available_printers: Array.isArray(row.available_printers)
+      ? (row.available_printers as unknown[]).map(String).filter(Boolean)
+      : [],
+    platform_fee_percent:
+      row.platform_fee_percent === null || row.platform_fee_percent === undefined
+        ? null
+        : Number(row.platform_fee_percent),
     agent_last_seen_at: lastSeen,
     // A shop's counter is "connected" if its agent spoke to us recently. Two
     // minutes: the agent polls far more often than that, so a longer window
@@ -148,7 +162,7 @@ function toStation(row: StationRow): PrintStation {
 }
 
 const COLUMNS =
-  "id, partner_id, code, display_name, address, rate_a4_mono, rate_a4_color, rate_a3_mono, rate_a3_color, accepting_orders, is_active, auto_delete_minutes, printer_name, agent_last_seen_at, agent_token_hash, smart_print_defaults, require_approval";
+  "id, partner_id, code, display_name, address, rate_a4_mono, rate_a4_color, rate_a3_mono, rate_a3_color, accepting_orders, is_active, auto_delete_minutes, printer_name, color_printer_name, available_printers, platform_fee_percent, agent_last_seen_at, agent_token_hash, smart_print_defaults, require_approval";
 
 /** The station behind a QR code. Case-insensitive: a code may be typed by hand. */
 export async function getStationByCode(code: string): Promise<PrintStation | null> {
@@ -161,6 +175,25 @@ export async function getStationByCode(code: string): Promise<PrintStation | nul
       .from("print_stations")
       .select(COLUMNS)
       .ilike("code", clean)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return toStation(data as StationRow);
+  } catch {
+    return null;
+  }
+}
+
+/** A station by its id — for server code that already holds a job's station_id. */
+export async function getStationById(stationId: string): Promise<PrintStation | null> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase || !stationId) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from("print_stations")
+      .select(COLUMNS)
+      .eq("id", stationId)
       .maybeSingle();
 
     if (error || !data) return null;
@@ -290,6 +323,7 @@ export async function updateStation(
     accepting_orders?: boolean;
     auto_delete_minutes?: number;
     printer_name?: string | null;
+    color_printer_name?: string | null;
     /** Per-service Smart Print defaults, merged over what the shop already had. */
     smart_print_defaults?: PartnerDefaults;
     require_approval?: boolean;
@@ -309,6 +343,9 @@ export async function updateStation(
   if (patch.address !== undefined) update.address = patch.address?.trim().slice(0, 200) || null;
   if (patch.accepting_orders !== undefined) update.accepting_orders = Boolean(patch.accepting_orders);
   if (patch.printer_name !== undefined) update.printer_name = patch.printer_name?.trim().slice(0, 120) || null;
+  if (patch.color_printer_name !== undefined) {
+    update.color_printer_name = patch.color_printer_name?.trim().slice(0, 120) || null;
+  }
 
   if (patch.auto_delete_minutes !== undefined) {
     // The schema's check would reject an out-of-range value with a database
@@ -384,14 +421,35 @@ export async function rotateAgentToken(partnerId: string): Promise<string | null
   }
 }
 
-/** Note that a station's agent is alive, so the partner can see it is. */
-export async function touchAgent(stationId: string): Promise<void> {
+/**
+ * Clean a printer list reported by a counter PC.
+ *
+ * It arrives in a query string the PC controls, so it is bounded before it is
+ * stored: at most 20 names of at most 120 characters, no blanks, no repeats.
+ */
+export function cleanPrinterList(raw: string | null | undefined): string[] | null {
+  if (raw === null || raw === undefined) return null;
+  const names = String(raw)
+    .split(",")
+    .map((name) => name.trim().slice(0, 120))
+    .filter(Boolean);
+  return Array.from(new Set(names)).slice(0, 20);
+}
+
+/**
+ * Note that a station's agent is alive, so the partner can see it is — and,
+ * when the agent sent one, what printers its computer has, so the partner can
+ * pick one from the panel instead of at the counter PC.
+ */
+export async function touchAgent(stationId: string, printers?: string[] | null): Promise<void> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return;
+  const update: Record<string, unknown> = { agent_last_seen_at: new Date().toISOString() };
+  if (printers && printers.length) update.available_printers = printers;
   try {
     await supabase
       .from("print_stations")
-      .update({ agent_last_seen_at: new Date().toISOString() })
+      .update(update)
       .eq("id", stationId);
   } catch {
     /* A missed heartbeat must never fail the request that carried it. */

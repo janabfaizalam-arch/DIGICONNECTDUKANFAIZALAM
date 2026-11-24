@@ -9,7 +9,10 @@
  * them as well.
  */
 
+import { creditPrintEarning } from "@/lib/ap-wallet";
 import { processCreditScoreCheck } from "@/lib/credit/client";
+import { effectiveFeePercent, splitPrintEarning } from "@/lib/print/earnings";
+import { getStationById } from "@/lib/print/stations";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type Outcome = { handled: boolean; reason?: string };
@@ -98,6 +101,16 @@ export async function completeCreditPayment(input: {
   return { handled: true };
 }
 
+/**
+ * Finish a paid print job: mark it paid, send it to the printer (or to the
+ * shop's approval queue), and pay the shop.
+ *
+ * Reached from both the browser's verify call and the Razorpay webhook, and
+ * safe for both to reach at once: the status change is a conditional update
+ * only one caller wins, and the wallet credit is idempotent per job (see
+ * creditPrintEarning). A job already marked paid whose wallet credit failed
+ * earlier is credited on the next call, so a webhook retry repairs it.
+ */
 export async function completePrintPayment(input: {
   orderId: string;
   paymentId: string;
@@ -109,7 +122,7 @@ export async function completePrintPayment(input: {
 
   const { data: job } = await supabase
     .from("print_jobs")
-    .select("id, job_number, payment_status")
+    .select("id, job_number, price, payment_status, print_status, station_id, wallet_entry_id")
     .eq("razorpay_order_id", input.orderId)
     .maybeSingle();
 
@@ -117,37 +130,96 @@ export async function completePrintPayment(input: {
     return { handled: false, reason: "no_print_job" };
   }
 
-  if (job.payment_status === "verified") {
-    return { handled: true, reason: "already_verified" };
+  // A refunded job stays refunded, whatever a late event says.
+  if (job.payment_status === "refunded") {
+    return { handled: true, reason: "refunded" };
   }
 
-  const { error } = await supabase
-    .from("print_jobs")
-    .update({
-      payment_status: "verified",
-      print_status: "queued",
-      razorpay_payment_id: input.paymentId,
-      updated_at: input.paidAt,
-    })
-    .eq("id", job.id)
-    .neq("payment_status", "verified");
+  const station = job.station_id ? await getStationById(String(job.station_id)) : null;
 
-  if (error) {
-    console.error(`[payments/print:${input.source}] job_update_failed`, { jobId: job.id, error });
-    return { handled: false, reason: "update_failed" };
+  if (job.payment_status !== "verified") {
+    /*
+      Where the paid job goes next.
+
+      A shop that asked to see every job first gets it in its panel, waiting;
+      every other shop's printer gets it straight away. This flag was saved by
+      the panel and read by nothing, so "approval" was a switch that did not
+      switch anything.
+    */
+    const nextStatus = station?.require_approval ? "awaiting_approval" : "queued";
+
+    const { data: won, error } = await supabase
+      .from("print_jobs")
+      .update({
+        payment_status: "verified",
+        print_status: nextStatus,
+        razorpay_payment_id: input.paymentId,
+        paid_at: input.paidAt,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", job.id)
+      .eq("payment_status", job.payment_status)
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      console.error(`[payments/print:${input.source}] job_update_failed`, { jobId: job.id, error });
+      return { handled: false, reason: "update_failed" };
+    }
+
+    if (won) {
+      await supabase.from("print_job_logs").insert({
+        job_id: job.id,
+        action: "payment_verified",
+        actor: "system",
+        details: {
+          source: input.source,
+          payment_id: input.paymentId,
+          order_id: input.orderId,
+          paid_at: input.paidAt,
+          next_status: nextStatus,
+        },
+      });
+    }
   }
 
-  await supabase.from("print_job_logs").insert({
-    job_id: job.id,
-    action: "payment_verified",
-    actor: "system",
-    details: {
-      source: input.source,
-      payment_id: input.paymentId,
-      order_id: input.orderId,
-      paid_at: input.paidAt,
-    },
-  });
+  /*
+    Pay the shop.
+
+    Only for a station job (the platform's own counter has no partner), and
+    only once — skipped when the job already names its ledger row.
+  */
+  if (station && !job.wallet_entry_id) {
+    const split = splitPrintEarning(Number(job.price ?? 0), effectiveFeePercent(station.platform_fee_percent));
+
+    if (split.partner > 0) {
+      const credit = await creditPrintEarning({
+        agencyPartnerId: station.partner_id,
+        printJobId: String(job.id),
+        amount: split.partner,
+        jobNumber: job.job_number ? String(job.job_number) : null,
+      });
+
+      if (credit.ok && credit.entryId) {
+        await supabase
+          .from("print_jobs")
+          .update({
+            partner_earning: split.partner,
+            platform_fee: split.platform,
+            wallet_entry_id: credit.entryId,
+          })
+          .eq("id", job.id);
+      } else {
+        // The job is paid and will print; the credit is retried by the next
+        // webhook delivery or verify call, and is findable by this log line.
+        console.error(`[payments/print:${input.source}] wallet_credit_failed`, {
+          jobId: job.id,
+          partnerId: station.partner_id,
+          error: credit.error,
+        });
+      }
+    }
+  }
 
   return { handled: true };
 }

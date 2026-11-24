@@ -51,10 +51,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Razorpay is not configured on the server" }, { status: 500 });
     }
 
+    if (job.payment_status === "refunded" || job.print_status === "cancelled") {
+      return NextResponse.json({ error: "This print job was cancelled." }, { status: 409 });
+    }
+
     const orderAmountPaise = Math.round(Number(job.price) * 100);
 
     if (orderAmountPaise < 100) {
       return NextResponse.json({ error: "Amount must be at least ₹1.00" }, { status: 400 });
+    }
+
+    /*
+      One order per job.
+
+      A customer who closed the checkout and pressed Pay again used to get a
+      fresh order that overwrote the first one's id. A UPI payment against
+      the first order that cleared a minute later then matched no job at all:
+      the money was taken and nothing printed. Reusing the order keeps every
+      payment attempt pointing at this job.
+    */
+    if (job.razorpay_order_id) {
+      return NextResponse.json({
+        order_id: job.razorpay_order_id,
+        amount: orderAmountPaise,
+        currency: "INR",
+        job_id: job.id,
+        job_number: job.job_number,
+        key_id: getRazorpayKeyId(),
+      });
     }
 
     // Create Razorpay Order
@@ -62,24 +86,47 @@ export async function POST(request: Request) {
       amount: orderAmountPaise,
       currency: "INR",
       receipt: `print-${job.job_number}-${Date.now().toString().slice(-4)}`,
+      notes: { kind: "digi_print", print_job_id: String(job.id) },
     });
 
     if (!order || !order.id) {
       return NextResponse.json({ error: "Failed to create order with Razorpay" }, { status: 500 });
     }
 
-    // Update job with order_id
-    const { error: updateError } = await supabase
+    // Link the order to the job — only if no other tap linked one first.
+    const { data: linked, error: updateError } = await supabase
       .from("print_jobs")
       .update({
         razorpay_order_id: order.id,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", jobId);
+      .eq("id", jobId)
+      .is("razorpay_order_id", null)
+      .select("id");
 
     if (updateError) {
       console.error("[print/create-order] Error updating print job with Razorpay Order ID:", updateError);
       return NextResponse.json({ error: "Failed to link payment order to print job" }, { status: 500 });
+    }
+
+    if (!linked || linked.length === 0) {
+      // Lost the race: hand back the order that is actually linked.
+      const { data: current } = await supabase
+        .from("print_jobs")
+        .select("razorpay_order_id")
+        .eq("id", jobId)
+        .maybeSingle();
+      if (!current?.razorpay_order_id) {
+        return NextResponse.json({ error: "Failed to link payment order to print job" }, { status: 500 });
+      }
+      return NextResponse.json({
+        order_id: current.razorpay_order_id,
+        amount: orderAmountPaise,
+        currency: "INR",
+        job_id: job.id,
+        job_number: job.job_number,
+        key_id: getRazorpayKeyId(),
+      });
     }
 
     return NextResponse.json({

@@ -8,8 +8,8 @@ import { join } from "node:path";
 import { adoptedBundledKey, configPath, configProblems, isReady, loadConfig, saveConfig } from "./lib/config.mjs";
 import { createApi } from "./lib/api.mjs";
 import { createLog } from "./lib/log.mjs";
-import { createWorker, diagnose } from "./lib/worker.mjs";
-import { ensurePrintHelper, listPrinters, printFile } from "./lib/printer.mjs";
+import { choosePrinter, createWorker, diagnose } from "./lib/worker.mjs";
+import { defaultPrinter, ensurePrintHelper, listPrinters, pickStartupPrinter, printFile } from "./lib/printer.mjs";
 import { renderPage } from "./lib/page.mjs";
 import { PRINT_STATION_VERSION } from "./lib/version.mjs";
 
@@ -39,6 +39,9 @@ const state = {
   lastPollAt: null,
   stoppedReason: null,
   stationName: null,
+  // Printers the partner chose in the website panel, read on every poll.
+  serverPrinter: null,
+  serverColorPrinter: null,
 };
 
 let config = loadConfig();
@@ -71,11 +74,19 @@ function startWorker() {
   worker = createWorker({
     api,
     config,
-    printers,
+    getPrinters: () => printers,
     state,
     log: log.push,
-    print: ({ filePath, job }) =>
-      printFile({ filePath, printerName: config.printerName, job, config }),
+    print: ({ filePath, job }) => {
+      const printerName = choosePrinter({
+        job,
+        serverPrinter: state.serverPrinter,
+        serverColorPrinter: state.serverColorPrinter,
+        printers,
+        fallback: config.printerName,
+      });
+      return printFile({ filePath, printerName, job, config });
+    },
   });
 
   worker.start();
@@ -272,6 +283,28 @@ server.listen(PORT, "127.0.0.1", async () => {
 
   printers = await listPrinters();
   if (!printers.length) log.push("warn", "No printer found on this computer yet.");
+
+  /*
+    No printer chosen yet: start with the one this computer already prints
+    to. A shop that installed and walked away is printing, not stuck on a
+    setup page — and the partner can change it from the website panel.
+  */
+  if (!config.printerName && printers.length) {
+    const chosen = pickStartupPrinter(printers, await defaultPrinter());
+    if (chosen) {
+      config = saveConfig({ ...config, printerName: chosen });
+      log.push("info", `Printer chosen automatically: "${chosen}". Change it any time from your partner panel.`);
+    }
+  }
+
+  // A printer plugged in later shows up in the panel without a restart.
+  setInterval(() => {
+    listPrinters()
+      .then((found) => {
+        if (found.length) printers = found;
+      })
+      .catch(() => {});
+  }, 5 * 60_000).unref();
 
   // Best effort, and never blocking: photos print without it either way.
   await ensurePrintHelper({ serverUrl: config.serverUrl, config, log: log.push });

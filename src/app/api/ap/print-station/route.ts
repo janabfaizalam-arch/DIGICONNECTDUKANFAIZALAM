@@ -96,6 +96,8 @@ export async function PATCH(request: Request) {
     display_name: body.displayName === undefined ? undefined : String(body.displayName),
     address: body.address === undefined ? undefined : String(body.address ?? ""),
     printer_name: body.printerName === undefined ? undefined : String(body.printerName ?? ""),
+    color_printer_name:
+      body.colorPrinterName === undefined ? undefined : String(body.colorPrinterName ?? ""),
     accepting_orders: body.acceptingOrders === undefined ? undefined : Boolean(body.acceptingOrders),
     auto_delete_minutes:
       body.autoDeleteMinutes === undefined ? undefined : Number(body.autoDeleteMinutes),

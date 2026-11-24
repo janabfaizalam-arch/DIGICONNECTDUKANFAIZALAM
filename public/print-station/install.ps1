@@ -30,7 +30,8 @@ $Files   = @(
   "lib/ensure-node.ps1",
   "lib/background.ps1",
   "lib/run-hidden.vbs",
-  "lib/run-hidden.ps1"
+  "lib/run-hidden.ps1",
+  "lib/keepalive-station.mjs"
 )
 
 Write-Host ""

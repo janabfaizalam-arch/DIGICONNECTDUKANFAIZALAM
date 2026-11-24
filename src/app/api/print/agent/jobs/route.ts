@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { authFailureResponse, authenticateAgent, stationScope } from "@/lib/print/agent-auth";
+import { purgeExpiredStationFiles } from "@/lib/print/partner-jobs";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getClientIp } from "@/lib/rate-limit";
 
@@ -121,7 +122,15 @@ export async function GET(request: Request) {
     }
 
     // 5. Register/Update printers sent by the agent
-    const printersParam = searchParams.get("printers"); // Comma-separated printer names
+    /*
+      The platform's own printer table is for the platform's own counter.
+
+      A partner's PC reports its printers too, and they used to land here —
+      every shop's printers mixed into one global list, by name. A station's
+      list is stored on its own row instead (see touchAgent), where the
+      partner panel reads it to offer a printer dropdown.
+    */
+    const printersParam = station ? null : searchParams.get("printers"); // Comma-separated printer names
     if (printersParam) {
       try {
         const printerNames = printersParam.split(",").map((p) => p.trim()).filter(Boolean);
@@ -193,7 +202,15 @@ export async function GET(request: Request) {
           mime_type
         )
       `)
-      .eq("print_status", "queued")
+      /*
+        Queued jobs, and jobs a printer claimed and then went silent on.
+
+        A claim moves the job to "printing". If the PC was switched off or
+        the program crashed between claiming and reporting, the job used to
+        sit at "printing" forever — paid for, never printed, invisible to
+        every later poll. Once its claim expires it is offered again.
+      */
+      .or(`print_status.eq.queued,and(print_status.eq.printing,claim_expires_at.lt.${now})`)
       .eq("payment_status", "verified")
       .or(`claimed_by_agent.is.null,claim_expires_at.lt.${now}`)
       /*
@@ -225,6 +242,12 @@ export async function GET(request: Request) {
       );
     }
 
+    // Keep the customer's promise: finished jobs lose their file once the
+    // station's auto-delete window passes. Never allowed to fail the poll.
+    if (station) {
+      await purgeExpiredStationFiles(station.id).catch(() => 0);
+    }
+
     const jobCount = jobs ? jobs.length : 0;
     addLog(`Successfully retrieved ${jobCount} jobs.`);
 
@@ -238,7 +261,16 @@ export async function GET(request: Request) {
         on somebody else's. Only the name and code — never the rates, the
         takings, or the token.
       */
-      station: station ? { code: station.code, display_name: station.display_name } : null,
+      station: station
+        ? {
+            code: station.code,
+            display_name: station.display_name,
+            // Chosen by the partner in the panel. The PC uses them when it
+            // has a printer by that name, and its own choice otherwise.
+            printer_name: station.printer_name,
+            color_printer_name: station.color_printer_name,
+          }
+        : null,
       serverLogs,
     });
   } catch (error) {

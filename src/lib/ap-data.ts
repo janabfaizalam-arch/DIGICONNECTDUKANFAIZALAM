@@ -4,6 +4,7 @@
 // ============================================================================
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { applyLedgerEntry } from "@/lib/ap-wallet";
 import { hydrateApplications } from "@/lib/crm";
 import type { Application } from "@/lib/portal-types";
 import type {
@@ -303,12 +304,10 @@ export async function getAPDashboardStats(apId: string): Promise<
   const payouts = (payoutsResult.data ?? []) as { amount: number; status: string }[];
   const customerMobiles = (customersResult.data ?? []) as { customer_mobile_normalized: string }[];
 
-  const walletBalance = walletEntries.reduce((total, e) => {
-    const amt = safeNumber(e.amount);
-    if (["commission_credit", "manual_credit", "bonus", "adjustment"].includes(e.entry_type)) return total + amt;
-    if (["manual_debit", "payout_deduction", "penalty", "reversal"].includes(e.entry_type)) return total - Math.abs(amt);
-    return total;
-  }, 0);
+  // One rule for every balance on every screen: the ledger's own. A local
+  // copy of the credit/debit lists here had drifted — it ignored
+  // application_spend, so the dashboard showed money already spent.
+  const walletBalance = walletEntries.reduce((total, e) => applyLedgerEntry(total, e), 0);
 
   const sumCommissionInRange = (from: string, to?: string) =>
     commissions

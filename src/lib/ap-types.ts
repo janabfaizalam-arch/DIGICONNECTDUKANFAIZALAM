@@ -269,7 +269,10 @@ export type APWalletEntryType =
   | "penalty"
   /* The partner spending their wallet on a new application. Added with
      20261113090000, which widened the database's own check constraint. */
-  | "application_spend";
+  | "application_spend"
+  /* A customer paid for a print at this partner's Digi Print counter.
+     Added with 20261124090000. */
+  | "print_earning";
 
 export type APWalletEntry = {
   id: string;
@@ -515,6 +518,7 @@ export const AP_WALLET_ENTRY_TYPE_LABELS: Record<APWalletEntryType, string> = {
   bonus: "Bonus",
   penalty: "Penalty",
   application_spend: "Service Liya",
+  print_earning: "Digi Print Kamai",
 };
 
 export const AP_PAYOUT_STATUS_LABELS: Record<APPayoutStatus, string> = {

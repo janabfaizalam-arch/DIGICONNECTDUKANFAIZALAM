@@ -48,7 +48,10 @@ export async function POST(request: Request) {
     // Perform atomic lock by updating status only if it is currently 'queued' and payment is 'verified'
     // AND (claimed_by_agent is null OR claim_expires_at < now)
     const nowStr = new Date().toISOString();
-    const claimExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    // Ten minutes: long enough for a big job on a slow printer to be spooled
+    // and reported, short enough that a PC that died mid-job hands it back
+    // before the customer gives up waiting.
+    const claimExpiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
     console.log(`[print/agent/claim] Agent ${agentId} attempting to claim/reclaim Job ID: ${jobId}`);
 
@@ -63,7 +66,8 @@ export async function POST(request: Request) {
         updated_at: nowStr,
       })
       .eq("id", jobId)
-      .eq("print_status", "queued")
+      // Queued, or claimed by a printer that went silent (see the jobs list).
+      .or(`print_status.eq.queued,and(print_status.eq.printing,claim_expires_at.lt.${nowStr})`)
       .eq("payment_status", "verified")
       .or(`claimed_by_agent.is.null,claim_expires_at.lt.${nowStr}`)
       /*

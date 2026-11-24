@@ -1,7 +1,19 @@
 import type { APCommission, APCommissionStatus, APPayout, APWalletEntry, APWalletEntryType } from "@/lib/ap-types";
 
-const CREDIT_TYPES: APWalletEntryType[] = ["commission_credit", "manual_credit", "bonus", "adjustment"];
-const DEBIT_TYPES: APWalletEntryType[] = ["manual_debit", "payout_deduction", "penalty", "reversal"];
+const CREDIT_TYPES: APWalletEntryType[] = [
+  "commission_credit",
+  "manual_credit",
+  "bonus",
+  "adjustment",
+  "print_earning",
+];
+const DEBIT_TYPES: APWalletEntryType[] = [
+  "manual_debit",
+  "payout_deduction",
+  "penalty",
+  "reversal",
+  "application_spend",
+];
 
 export function isWalletCredit(entryType: APWalletEntryType | string): boolean {
   return CREDIT_TYPES.includes(entryType as APWalletEntryType);

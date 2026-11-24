@@ -57,6 +57,16 @@ export async function POST(request: Request) {
       .from("print_jobs")
       .update(updatePayload)
       .eq("id", jobId)
+      /*
+        Only a job this agent is actually printing.
+
+        Without these two conditions any station could mark any of its own
+        jobs "printed" in any state — including one still awaiting payment or
+        the shop's approval — and the customer's screen would announce pages
+        that never came out.
+      */
+      .eq("print_status", "printing")
+      .eq("claimed_by_agent", agentId)
       // Scoped for the same reason the claim is: a shop reports on its own
       // jobs only. Marking a neighbour's job "printed" would hand a paying
       // customer an empty tray and no way to see it had gone wrong.
@@ -70,7 +80,10 @@ export async function POST(request: Request) {
     }
 
     if (!job) {
-      return NextResponse.json({ error: "Print job not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Print job not found, or it is not being printed by this computer." },
+        { status: 404 },
+      );
     }
 
     // Log the print status update
