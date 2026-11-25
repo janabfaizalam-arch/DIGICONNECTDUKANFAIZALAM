@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 
+import { isApFullScreenFlow } from "@/lib/ap/nav";
 import { isAuthRoutePath } from "@/lib/auth/auth-routes";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +11,7 @@ import { cn } from "@/lib/utils";
  */
 export function ApContentShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAuth = isAuthRoutePath(pathname);
+  const reservesDockSpace = !isAuthRoutePath(pathname) && !isApFullScreenFlow(pathname);
 
   return (
     <div
@@ -18,7 +19,7 @@ export function ApContentShell({ children }: { children: React.ReactNode }) {
         // min-w-0 matters: without it a wide table inside pushes the whole
         // flex row out and takes the sidebar off screen with it.
         "min-w-0 flex-1",
-        !isAuth && "pb-[calc(96px+env(safe-area-inset-bottom))] lg:pb-0",
+        reservesDockSpace && "pb-[calc(96px+env(safe-area-inset-bottom))] lg:pb-0",
       )}
     >
       {children}

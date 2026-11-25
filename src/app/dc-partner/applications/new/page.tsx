@@ -28,10 +28,16 @@ export default async function NewAPApplicationPage({
   return (
     <main
       data-dcp-page
-      className="min-h-screen px-3 transition-all duration-300 md:px-5 xl:px-6"
+      className="px-3 transition-all duration-300 md:px-5 xl:px-6"
       style={{
         paddingTop: "calc(var(--site-header-height, 0px) + env(safe-area-inset-top) + 10px)",
-        paddingBottom: "calc(var(--wizard-bottom-nav-height, 0px) + var(--sticky-action-bar-height, 0px) + env(safe-area-inset-bottom) + 24px)"
+        // Only the wizard's own action bar sits at the bottom here (the partner
+        // dock is hidden on this route), and its height already includes the
+        // safe area. Anything more was the empty band under the last card.
+        // The bar's measured height, but never less than the bar really is
+        // (~66px plus the safe area): a 0 reading left the last field (Note)
+        // hidden under the bar.
+        paddingBottom: "calc(max(var(--sticky-action-bar-height, 0px), 76px + env(safe-area-inset-bottom)) + 16px)"
       }}
     >
       <div className="mx-auto w-full max-w-4xl">

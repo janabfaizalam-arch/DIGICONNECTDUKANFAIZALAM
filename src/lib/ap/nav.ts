@@ -320,3 +320,13 @@ export function isApNavItemActive(pathname: string, item: ApNavItem): boolean {
   const active = apActiveItem(pathname);
   return active?.href === item.href;
 }
+
+/**
+ * Screens that bring their own bottom action bar (the new-application wizard).
+ * The dock is hidden on them and the shell reserves no space for it: two bars
+ * stacked at the bottom of a phone covered the form and left an empty band
+ * under the last card.
+ */
+export function isApFullScreenFlow(pathname: string | null | undefined): boolean {
+  return pathname === "/dc-partner/applications/new";
+}
