@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { PARTNER_PASSWORD_MIN_LENGTH } from "@/lib/admin/partner-password-reset";
+
 export default function ApChangePasswordPage() {
   const router = useRouter();
   const [newPassword, setNewPassword] = useState("");
@@ -38,7 +40,7 @@ export default function ApChangePasswordPage() {
           <input
             type="password"
             required
-            minLength={8}
+            minLength={PARTNER_PASSWORD_MIN_LENGTH}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
@@ -49,7 +51,7 @@ export default function ApChangePasswordPage() {
           <input
             type="password"
             required
-            minLength={8}
+            minLength={PARTNER_PASSWORD_MIN_LENGTH}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"

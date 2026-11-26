@@ -1,15 +1,25 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import {
+  PARTNER_PASSWORD_MAX_LENGTH,
+  PARTNER_PASSWORD_MIN_LENGTH,
+} from "@/lib/admin/partner-password-reset";
 import { getCurrentUser, getCurrentUserRole, isAgencyPartnerRole } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
+/*
+  The floor comes from PARTNER_PASSWORD_MIN_LENGTH rather than a literal, so
+  this route and the admin reset form cannot drift apart. The password every
+  partner is handed is `Dc@123`; a floor above its length would make the panel
+  refuse a password the system itself issues.
+*/
 const schema = z.object({
   currentPassword: z.string().min(6).optional(),
-  newPassword: z.string().min(8).max(128),
-  confirmPassword: z.string().min(8).max(128),
+  newPassword: z.string().min(PARTNER_PASSWORD_MIN_LENGTH).max(PARTNER_PASSWORD_MAX_LENGTH),
+  confirmPassword: z.string().min(PARTNER_PASSWORD_MIN_LENGTH).max(PARTNER_PASSWORD_MAX_LENGTH),
 });
 
 export async function POST(request: Request) {

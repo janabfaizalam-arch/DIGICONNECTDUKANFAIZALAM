@@ -4,6 +4,7 @@ import { type FormEvent, useState, useTransition } from "react";
 import Link from "next/link";
 import { CheckCircle2, UserPlus } from "lucide-react";
 
+import { PARTNER_PASSWORD_MIN_LENGTH } from "@/lib/admin/partner-password-reset";
 import { defaultPartnerPassword } from "@/lib/ap/default-credentials";
 import { useToast } from "@/components/providers/toast-provider";
 import { Card } from "@/components/ui/card";
@@ -81,8 +82,8 @@ export function CreateAPForm({ defaultPartnerCode }: { defaultPartnerCode: strin
       return;
     }
 
-    if (password && password.length < 8) {
-      const msg = "Starting password must be at least 8 characters, or leave it blank.";
+    if (password && password.length < PARTNER_PASSWORD_MIN_LENGTH) {
+      const msg = `Starting password must be at least ${PARTNER_PASSWORD_MIN_LENGTH} characters, or leave it blank.`;
       setFormError(msg);
       toastError(msg);
       return;
