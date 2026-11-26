@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound, Eye, EyeOff, ShieldCheck } from "lucide-react";
 
+import { PARTNER_PASSWORD_MIN_LENGTH } from "@/lib/admin/partner-password-reset";
 import { createClient } from "@/lib/supabase/browser";
 import { useToast } from "@/components/providers/toast-provider";
 import { Card } from "@/components/ui/card";
@@ -49,8 +50,8 @@ export default function APResetPasswordPage() {
       return;
     }
 
-    if (password.length < 8) {
-      toastError("Use at least 8 characters.");
+    if (password.length < PARTNER_PASSWORD_MIN_LENGTH) {
+      toastError(`Use at least ${PARTNER_PASSWORD_MIN_LENGTH} characters.`);
       return;
     }
 
@@ -135,7 +136,7 @@ export default function APResetPasswordPage() {
                 <KeyRound className="pointer-events-none absolute left-4.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="At least 8 characters"
+                  placeholder={`At least ${PARTNER_PASSWORD_MIN_LENGTH} characters`}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required

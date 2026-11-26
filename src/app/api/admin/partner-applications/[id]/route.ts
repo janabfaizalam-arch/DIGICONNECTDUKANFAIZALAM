@@ -83,14 +83,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   if (nextStatus === "approved") {
     /*
-      The partner's own number, not a random string.
+      One short fixed string, not a random one.
 
       A twelve-character password read down a phone line gets misheard and the
-      partner rings back; their mobile number does not. `Dc@` in front supplies
-      the upper, lower and symbol classes Supabase demands, which a bare number
-      has none of. It is a starting password, not a secret -- the account is
-      flagged `must_change_password` below and the panel asks for a real one on
-      every sign-in until they set it.
+      partner rings back. The shared default survives the call, and it carries
+      the upper, lower, digit and symbol classes Supabase demands, which a bare
+      number has none of. It is a starting password, not a secret -- the
+      account is flagged `must_change_password` below and the panel asks for a
+      real one on every sign-in until they set it.
+
+      It still returns null for an unusable number: the username IS the mobile
+      number, so an account without one cannot be signed in to at all, and the
+      refusal below is what stops us creating it.
     */
     temporaryPassword = defaultPartnerPassword(application.mobile);
     if (!temporaryPassword) {

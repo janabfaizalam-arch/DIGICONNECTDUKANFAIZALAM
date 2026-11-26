@@ -8,6 +8,7 @@ import { APOtpLogin } from "@/components/auth/ap-otp-login";
 import { AuthButton, AuthHeading, GlassCard, SegmentedControl, TextField } from "@/components/auth/ui";
 import { postJson } from "@/components/auth/ui/request";
 import { useToast } from "@/components/providers/toast-provider";
+import { PARTNER_PASSWORD_MIN_LENGTH } from "@/lib/admin/partner-password-reset";
 
 /**
  * DC Partner forgot password.
@@ -54,7 +55,8 @@ export function ApForgotPassword() {
 
   async function save() {
     if (savingRef.current) return;
-    if (password.length < 8) return setError("Use at least 8 characters.");
+    if (password.length < PARTNER_PASSWORD_MIN_LENGTH)
+      return setError(`Use at least ${PARTNER_PASSWORD_MIN_LENGTH} characters.`);
     if (password !== confirm) return setError("Passwords do not match.");
     savingRef.current = true;
     setBusy(true);
@@ -154,7 +156,7 @@ export function ApForgotPassword() {
             icon={<Lock className="h-4 w-4" />}
             value={password}
             disabled={busy}
-            hint="At least 8 characters"
+            hint={`At least ${PARTNER_PASSWORD_MIN_LENGTH} characters`}
             onChange={(e) => {
               setPassword(e.target.value);
               if (error) setError(null);

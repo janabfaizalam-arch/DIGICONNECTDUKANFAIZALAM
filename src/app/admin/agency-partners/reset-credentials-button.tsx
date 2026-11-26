@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { KeyRound, LoaderCircle } from "lucide-react";
 
 import { useToast } from "@/components/providers/toast-provider";
+import { DEFAULT_PARTNER_PASSWORD } from "@/lib/ap/default-credentials";
 
 /**
  * Put every partner onto number-based credentials, in one press.
@@ -37,7 +38,7 @@ export function ResetCredentialsButton({ partnerCount }: { partnerCount: number 
 
   async function run() {
     const confirmed = window.confirm(
-      `Sabhi ${partnerCount} DC Partners ka username unka mobile number aur password "Dc@<number>" kar diya jayega.\n\n` +
+      `Sabhi ${partnerCount} DC Partners ka username unka mobile number aur password "${DEFAULT_PARTNER_PASSWORD}" kar diya jayega.\n\n` +
         `Jin partners ne apna password bana rakha hai, unka bhi badal jayega — unhe dobara number wale password se login karna padega.\n\n` +
         `Aage badhein?`,
     );
@@ -98,7 +99,7 @@ export function ResetCredentialsButton({ partnerCount }: { partnerCount: number 
       type="button"
       onClick={() => void run()}
       disabled={running}
-      title="Har partner ka username = mobile number, password = Dc@<number>. Login par unse naya password maanga jayega."
+      title={`Har partner ka username = mobile number, password = ${DEFAULT_PARTNER_PASSWORD}. Login par unse naya password maanga jayega.`}
       className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-ds-border bg-ds-surface px-4 text-sm font-bold text-ds-text-secondary shadow-ds-sm transition hover:bg-ds-surface-sunken disabled:opacity-60"
     >
       {running ? (

@@ -3,7 +3,17 @@
  * Runs before any Supabase Admin Auth call.
  */
 
-export const PARTNER_PASSWORD_MIN_LENGTH = 8;
+/**
+ * Six, not eight, because the password every partner is handed is `Dc@123`.
+ * An eight-character floor here would mean the panel refusing a password the
+ * system itself issues — an admin could not put a partner back onto the
+ * default by typing it, and a partner could not type it back in.
+ *
+ * The cost is that a partner or admin may now choose a six-character password.
+ * That is weaker than the old floor, and it is a smaller weakness than the
+ * shared default it exists to admit.
+ */
+export const PARTNER_PASSWORD_MIN_LENGTH = 6;
 export const PARTNER_PASSWORD_MAX_LENGTH = 128;
 
 export type PartnerPasswordValidation =
